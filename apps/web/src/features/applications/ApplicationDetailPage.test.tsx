@@ -62,6 +62,33 @@ describe('ApplicationDetailPage', () => {
     expect(await screen.findByText('Required')).toBeInTheDocument();
   });
 
+  it('edits the application and clears emptied fields', async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.patch('/api/v1/applications/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({});
+      }),
+    );
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('button', { name: /^edit$/i }));
+    const role = screen.getByLabelText(/role name/i);
+    await user.clear(role);
+    await user.type(role, 'Staff Engineer');
+    await user.clear(screen.getByLabelText(/listing url/i));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(body).toBeDefined());
+    expect(body).toMatchObject({
+      roleName: 'Staff Engineer',
+      listingUrl: '',
+      expectedSalaryIls: 42000,
+      company: { name: 'Acme' },
+    });
+    expect(body).not.toHaveProperty('status');
+    expect(body).not.toHaveProperty('contacts');
+  });
+
   it('shows not found for a missing application', async () => {
     server.use(
       http.get('/api/v1/applications/:id', () =>
