@@ -111,3 +111,16 @@ describe('ApplicationUpdateSchema clearing', () => {
     });
   });
 });
+
+describe('child update schemas', () => {
+  it('ContactUpdateSchema clears blank fields and validates email', async () => {
+    const { ContactUpdateSchema } = await import('./schemas.js');
+    expect(ContactUpdateSchema.parse({ email: '' })).toEqual({ email: null });
+    expect(ContactUpdateSchema.safeParse({ email: 'bad' }).success).toBe(false);
+  });
+
+  it('InterviewUpdateSchema applies no defaults', async () => {
+    const { InterviewUpdateSchema } = await import('./schemas.js');
+    expect(InterviewUpdateSchema.parse({ notes: 'x' })).toEqual({ notes: 'x' });
+  });
+});

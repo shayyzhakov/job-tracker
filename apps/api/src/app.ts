@@ -1,4 +1,10 @@
 import fastifyStatic from '@fastify/static';
+import {
+  ContactInputSchema,
+  ContactUpdateSchema,
+  InterviewInputSchema,
+  InterviewUpdateSchema,
+} from '@job-tracker/shared';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,
@@ -11,9 +17,12 @@ import { NotFoundError } from './errors.js';
 import { DrizzleApplicationsRepository } from './modules/applications/applications.repository.js';
 import { applicationsRoutes } from './modules/applications/applications.routes.js';
 import { ApplicationsService } from './modules/applications/applications.service.js';
+import { childRoutes } from './modules/child-routes.js';
 import { DrizzleCompaniesRepository } from './modules/companies/companies.repository.js';
 import { companiesRoutes } from './modules/companies/companies.routes.js';
+import { DrizzleContactsRepository } from './modules/contacts/contacts.repository.js';
 import { healthRoutes } from './modules/health/health.routes.js';
+import { DrizzleInterviewsRepository } from './modules/interviews/interviews.repository.js';
 
 export interface AppDeps {
   db: Db;
@@ -49,6 +58,26 @@ export async function buildApp({ db, logger = false, webDistDir }: AppDeps) {
         service: applicationsService,
       });
       await api.register(companiesRoutes, { prefix: '/companies', companies });
+      await api.register(
+        childRoutes({
+          entity: 'Contact',
+          inputSchema: ContactInputSchema,
+          updateSchema: ContactUpdateSchema,
+          repo: new DrizzleContactsRepository(db),
+          applications,
+        }),
+        { prefix: '/applications/:applicationId/contacts' },
+      );
+      await api.register(
+        childRoutes({
+          entity: 'Interview',
+          inputSchema: InterviewInputSchema,
+          updateSchema: InterviewUpdateSchema,
+          repo: new DrizzleInterviewsRepository(db),
+          applications,
+        }),
+        { prefix: '/applications/:applicationId/interviews' },
+      );
     },
     { prefix: '/api/v1' },
   );

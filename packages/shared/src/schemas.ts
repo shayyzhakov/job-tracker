@@ -96,3 +96,27 @@ export const ApplicationListQuerySchema = z.object({
   q: optionalText,
 });
 export type ApplicationListQuery = z.infer<typeof ApplicationListQuerySchema>;
+
+const nullableText = z.preprocess(blankToNull, z.string().trim().nullable());
+
+export const ContactUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1),
+    role: nullableText,
+    email: z.preprocess(blankToNull, z.email().nullable()),
+    phone: nullableText,
+    notes: nullableText,
+  })
+  .partial();
+export type ContactUpdate = z.infer<typeof ContactUpdateSchema>;
+
+export const InterviewUpdateSchema = z
+  .object({
+    type: InterviewTypeSchema,
+    scheduledAt: z.coerce.date(),
+    durationMinutes: z.number().int().positive().nullable(),
+    location: nullableText,
+    notes: nullableText,
+  })
+  .partial();
+export type InterviewUpdate = z.infer<typeof InterviewUpdateSchema>;
