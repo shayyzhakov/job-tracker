@@ -4,6 +4,7 @@ import '@mantine/charts/styles.css';
 import '@mantine/notifications/styles.css';
 
 import { MantineProvider } from '@mantine/core';
+import { DatesProvider } from '@mantine/dates';
 import { Notifications } from '@mantine/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
@@ -22,10 +23,13 @@ if (!root) throw new Error('#root missing');
 createRoot(root).render(
   <StrictMode>
     <MantineProvider theme={theme} defaultColorScheme="auto">
-      <Notifications />
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
+      {/* Israeli calendar: weeks start Sunday, weekend is Friday–Saturday. */}
+      <DatesProvider settings={{ firstDayOfWeek: 0, weekendDays: [5, 6] }}>
+        <Notifications />
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </DatesProvider>
     </MantineProvider>
   </StrictMode>,
 );

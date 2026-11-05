@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "docker compose up -d db && pnpm -r --parallel --filter ./apps/* dev",
+    "dev": "docker compose up -d --wait db && pnpm db:migrate && pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm -r build",
     "test": "pnpm -r --workspace-concurrency=1 test",
     "test:watch": "vitest",

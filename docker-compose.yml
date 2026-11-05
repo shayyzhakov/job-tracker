@@ -20,11 +20,10 @@ services:
     profiles: ["app"]
     build: .
     environment:
-      NODE_ENV: production
-      PORT: 3000
+      MIGRATE_ON_START: "true"
       DATABASE_URL: postgres://jobtracker:jobtracker@db:5432/jobtracker
     ports:
-      - "3000:3000"
+      - "8080:3000"
     depends_on:
       db:
         condition: service_healthy

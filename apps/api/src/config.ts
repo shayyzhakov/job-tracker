@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3000),
+  API_PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.url(),
   TEST_DATABASE_URL: z.url().optional(),

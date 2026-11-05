@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
 import { describe, expect, it } from 'vitest';
 import { renderRoute } from '../../../test/render';
@@ -31,6 +31,35 @@ describe('ApplicationDetailPage', () => {
     await user.type(screen.getByLabelText(/contact role/i), 'Hiring manager');
     await user.click(screen.getByRole('button', { name: /save contact/i }));
     await waitFor(() => expect(body).toMatchObject({ name: 'Avi', role: 'Hiring manager' }));
+  });
+
+  it('schedules an interview', async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.post('/api/v1/applications/:id/interviews', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ id: 'i9' }, { status: 201 });
+      }),
+    );
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('button', { name: /schedule interview/i }));
+    fireEvent.change(screen.getByLabelText(/date & time/i), {
+      target: { value: '2026-11-09T10:30' },
+    });
+    await user.type(screen.getByLabelText(/location/i), 'Zoom');
+    await user.click(screen.getByRole('button', { name: /save interview/i }));
+
+    await waitFor(() => expect(body).toBeDefined());
+    expect(body).toMatchObject({ type: 'technical', durationMinutes: 60, location: 'Zoom' });
+    // Sent as an absolute ISO timestamp derived from the local time entered.
+    expect(body?.scheduledAt).toBe(new Date('2026-11-09T10:30').toISOString());
+  });
+
+  it('requires a date before scheduling', async () => {
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('button', { name: /schedule interview/i }));
+    await user.click(screen.getByRole('button', { name: /save interview/i }));
+    expect(await screen.findByText('Required')).toBeInTheDocument();
   });
 
   it('shows not found for a missing application', async () => {

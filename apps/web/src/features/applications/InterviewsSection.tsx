@@ -17,17 +17,16 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
-import { DateTimePicker } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import dayjs from 'dayjs';
 import { useState } from 'react';
 import { useInterviewMutations } from '../../api/hooks';
 import { formatDateTime } from '../../lib/format';
 
 interface InterviewFormValues {
   type: InterviewType;
-  scheduledAt: string | null;
+  /** Local date-time from <input type="datetime-local">, e.g. 2026-11-09T10:30. */
+  scheduledAt: string;
   durationMinutes: number | string;
   location: string;
   notes: string;
@@ -46,7 +45,7 @@ export function InterviewsSection({
     mode: 'controlled',
     initialValues: {
       type: 'technical',
-      scheduledAt: null,
+      scheduledAt: '',
       durationMinutes: 60,
       location: '',
       notes: '',
@@ -118,7 +117,7 @@ export function InterviewsSection({
               create.mutate(
                 {
                   type: v.type,
-                  scheduledAt: dayjs(v.scheduledAt).toDate(),
+                  scheduledAt: new Date(v.scheduledAt), // parsed as local time
                   durationMinutes:
                     typeof v.durationMinutes === 'number' ? v.durationMinutes : undefined,
                   location: v.location || undefined,
@@ -141,10 +140,10 @@ export function InterviewsSection({
                   data={INTERVIEW_TYPES.map((t) => ({ value: t, label: INTERVIEW_TYPE_LABELS[t] }))}
                   {...form.getInputProps('type')}
                 />
-                <DateTimePicker
+                <TextInput
+                  type="datetime-local"
                   label="Date & time"
                   withAsterisk
-                  valueFormat="DD MMM YYYY HH:mm"
                   {...form.getInputProps('scheduledAt')}
                 />
                 <NumberInput

@@ -106,6 +106,7 @@ export function OverviewPage() {
               dataKey="status"
               orientation="vertical"
               yAxisProps={{ width: 130 }}
+              xAxisProps={{ allowDecimals: false }}
               series={[{ name: 'count', label: 'Applications', color: 'indigo.6' }]}
             />
           ) : (
