@@ -23,6 +23,8 @@ import { companiesRoutes } from './modules/companies/companies.routes.js';
 import { DrizzleContactsRepository } from './modules/contacts/contacts.repository.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import { DrizzleInterviewsRepository } from './modules/interviews/interviews.repository.js';
+import { DrizzleOverviewRepository } from './modules/overview/overview.repository.js';
+import { overviewRoutes } from './modules/overview/overview.routes.js';
 
 export interface AppDeps {
   db: Db;
@@ -58,6 +60,10 @@ export async function buildApp({ db, logger = false, webDistDir }: AppDeps) {
         service: applicationsService,
       });
       await api.register(companiesRoutes, { prefix: '/companies', companies });
+      await api.register(overviewRoutes, {
+        prefix: '/overview',
+        repo: new DrizzleOverviewRepository(db),
+      });
       await api.register(
         childRoutes({
           entity: 'Contact',

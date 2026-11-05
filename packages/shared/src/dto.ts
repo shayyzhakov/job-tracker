@@ -70,13 +70,19 @@ export interface OverviewDto {
   totalApplications: number;
   activeApplications: number;
   countsByStatus: Record<ApplicationStatus, number>;
-  /** Share of submitted applications that progressed past "applied" (0–1), null if none submitted. */
+  /**
+   * Share of submitted applications (status past to_apply) that got any response —
+   * reached a stage beyond "applied", rejections included (0–1). Null if none submitted.
+   */
   responseRate: number | null;
+  /** Applications that ever reached the offer stage. */
   offers: number;
-  interviewsThisWeek: number;
+  /** Interviews scheduled within the next 7 days. */
+  interviewsNext7Days: number;
   nextInterview: UpcomingInterviewDto | null;
   upcomingInterviews: UpcomingInterviewDto[];
-  /** Applications submitted per ISO week (week start date, YYYY-MM-DD), last 8 weeks, oldest first. */
+  /** Applications submitted per week (weeks start Sunday, UTC, YYYY-MM-DD), last 8 weeks, oldest first. */
   weeklyApplied: { weekStart: string; count: number }[];
+  /** Mean expected monthly salary across active applications that have one. */
   averageExpectedSalaryIls: number | null;
 }
