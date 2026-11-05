@@ -13,7 +13,7 @@ export const CompanySizeSchema = z.enum(COMPANY_SIZES);
 export const InterviewTypeSchema = z.enum(INTERVIEW_TYPES);
 
 export const CompanyInputSchema = z.object({
-  name: z.string().trim().min(1),
+  name: z.string().trim().min(1, 'Required'),
   size: CompanySizeSchema.optional(),
   isPublic: z.boolean().default(false),
   website: optional(z.url()),
@@ -22,16 +22,17 @@ export const CompanyInputSchema = z.object({
 export type CompanyInput = z.infer<typeof CompanyInputSchema>;
 
 export const ContactInputSchema = z.object({
-  name: z.string().trim().min(1),
+  name: z.string().trim().min(1, 'Required'),
   role: optionalText,
   email: optional(z.email()),
   phone: optionalText,
   notes: optionalText,
 });
 export type ContactInput = z.infer<typeof ContactInputSchema>;
+export type ContactCreateInput = z.input<typeof ContactInputSchema>;
 
 const applicationFields = {
-  roleName: z.string().trim().min(1),
+  roleName: z.string().trim().min(1, 'Required'),
   isManagement: z.boolean().default(false),
   listingUrl: optional(z.url()),
   expectedSalaryIls: z.number().int().nonnegative().optional(),
@@ -55,7 +56,7 @@ export type ApplicationCreate = z.output<typeof ApplicationCreateSchema>;
  */
 export const ApplicationUpdateSchema = z
   .object({
-    roleName: z.string().trim().min(1),
+    roleName: z.string().trim().min(1, 'Required'),
     isManagement: z.boolean(),
     listingUrl: z.preprocess(blankToNull, z.url().nullable()),
     expectedSalaryIls: z.number().int().nonnegative().nullable(),
@@ -64,7 +65,7 @@ export const ApplicationUpdateSchema = z
     appliedAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
     company: z
       .object({
-        name: z.string().trim().min(1),
+        name: z.string().trim().min(1, 'Required'),
         size: CompanySizeSchema.nullable(),
         isPublic: z.boolean(),
         website: z.preprocess(blankToNull, z.url().nullable()),
@@ -74,6 +75,7 @@ export const ApplicationUpdateSchema = z
   })
   .partial();
 export type ApplicationUpdate = z.infer<typeof ApplicationUpdateSchema>;
+export type ApplicationUpdateInput = z.input<typeof ApplicationUpdateSchema>;
 
 export const StatusChangeSchema = z.object({ status: ApplicationStatusSchema });
 export type StatusChange = z.infer<typeof StatusChangeSchema>;
@@ -86,6 +88,7 @@ export const InterviewInputSchema = z.object({
   notes: optionalText,
 });
 export type InterviewInput = z.infer<typeof InterviewInputSchema>;
+export type InterviewCreateInput = z.input<typeof InterviewInputSchema>;
 
 export const ApplicationListQuerySchema = z.object({
   status: ApplicationStatusSchema.optional(),
@@ -101,7 +104,7 @@ const nullableText = z.preprocess(blankToNull, z.string().trim().nullable());
 
 export const ContactUpdateSchema = z
   .object({
-    name: z.string().trim().min(1),
+    name: z.string().trim().min(1, 'Required'),
     role: nullableText,
     email: z.preprocess(blankToNull, z.email().nullable()),
     phone: nullableText,
@@ -109,6 +112,7 @@ export const ContactUpdateSchema = z
   })
   .partial();
 export type ContactUpdate = z.infer<typeof ContactUpdateSchema>;
+export type ContactUpdateInput = z.input<typeof ContactUpdateSchema>;
 
 export const InterviewUpdateSchema = z
   .object({
@@ -120,3 +124,4 @@ export const InterviewUpdateSchema = z
   })
   .partial();
 export type InterviewUpdate = z.infer<typeof InterviewUpdateSchema>;
+export type InterviewUpdateInput = z.input<typeof InterviewUpdateSchema>;
