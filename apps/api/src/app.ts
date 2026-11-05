@@ -1,11 +1,18 @@
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import {
+  hasZodFastifySchemaValidationErrors,
   serializerCompiler,
   validatorCompiler,
   type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 import type { Db } from './db/client.js';
+import { NotFoundError } from './errors.js';
+import { DrizzleApplicationsRepository } from './modules/applications/applications.repository.js';
+import { applicationsRoutes } from './modules/applications/applications.routes.js';
+import { ApplicationsService } from './modules/applications/applications.service.js';
+import { DrizzleCompaniesRepository } from './modules/companies/companies.repository.js';
+import { companiesRoutes } from './modules/companies/companies.routes.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 
 export interface AppDeps {
@@ -20,7 +27,31 @@ export async function buildApp({ db, logger = false, webDistDir }: AppDeps) {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
+  app.setErrorHandler((err, req, reply) => {
+    if (err instanceof NotFoundError) return reply.code(404).send({ message: err.message });
+    if (hasZodFastifySchemaValidationErrors(err)) {
+      return reply.code(400).send({ message: 'Validation failed', issues: err.validation });
+    }
+    req.log.error(err);
+    return reply.code(500).send({ message: 'Internal server error' });
+  });
+
+  // Composition root: wire repositories -> services -> routes.
+  const companies = new DrizzleCompaniesRepository(db);
+  const applications = new DrizzleApplicationsRepository(db);
+  const applicationsService = new ApplicationsService({ applications, companies });
+
   await app.register(healthRoutes, { db });
+  await app.register(
+    async (api) => {
+      await api.register(applicationsRoutes, {
+        prefix: '/applications',
+        service: applicationsService,
+      });
+      await api.register(companiesRoutes, { prefix: '/companies', companies });
+    },
+    { prefix: '/api/v1' },
+  );
 
   if (webDistDir) {
     await app.register(fastifyStatic, { root: webDistDir });

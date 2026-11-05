@@ -1,9 +1,14 @@
+import { sql } from 'drizzle-orm';
 import { type App, buildApp } from '../src/app.js';
 import { createDb, type Db } from '../src/db/client.js';
+import { TEST_DATABASE_URL } from './db-url.js';
 
-export const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  'postgres://jobtracker:jobtracker@localhost:5432/jobtracker_test';
+/** Wipes all data between tests (schema stays). */
+export async function resetDb(db: Db) {
+  await db.execute(
+    sql`truncate table status_history, interviews, contacts, applications, companies restart identity cascade`,
+  );
+}
 
 export interface TestApp {
   app: App;
