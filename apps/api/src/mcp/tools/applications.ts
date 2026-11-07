@@ -35,7 +35,7 @@ const channel = z
   .enum(REFERRAL_CHANNELS)
   .describe(`How the user and the referrer spoke: ${REFERRAL_CHANNELS.join(' | ')}`);
 const REPLY_BY =
-  'ISO 8601 date the employer said they would reply by; replaces the default waiting timer on the Today list';
+  'ISO 8601 date the employer said they would reply by; replaces the default waiting timer on the Tasks list';
 const DUE_AT =
   "ISO 8601 date-time of the user's own deadline: home-assignment due date or offer expiry";
 const nullable = <T extends z.ZodType>(schema: T) => schema.nullable().optional();
@@ -212,7 +212,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     {
       title: 'Snooze application',
       description:
-        "Hide an application's card from the Today action list until the given time. The card returns on its own afterwards.",
+        "Hide an application's card from the Tasks action list until the given time. The card returns on its own afterwards.",
       inputSchema: { id, until: z.string().describe('ISO 8601 date-time with a UTC offset') },
     },
     ({ id, until }) => s.applications.snooze(id, SnoozeSchema.parse({ until }).until),

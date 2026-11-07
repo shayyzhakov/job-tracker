@@ -162,12 +162,11 @@ describe('deriveActions', () => {
       expect(r.scheduled).toHaveLength(1);
     });
 
-    it('asks to prepare within 48h, pinned as a deadline on the day', () => {
+    it('keeps an interview within 48h as scheduled, not a task', () => {
       const a = app('technical_interview');
-      const soon = run([a], [interview(a, inHours(30))]);
-      expect(soon.needsYou[0]).toMatchObject({ kind: 'prep_interview', urgency: 'soon' });
-      const today = run([a], [interview(a, inHours(2))]);
-      expect(today.needsYou[0]).toMatchObject({ kind: 'prep_interview', urgency: 'deadline' });
+      const r = run([a], [interview(a, inHours(30))]);
+      expect(r.needsYou).toEqual([]);
+      expect(r.scheduled).toHaveLength(1);
     });
 
     it('asks for a debrief from the day after, once', () => {
@@ -291,10 +290,13 @@ describe('deriveActions', () => {
       expect(r.counts.needsYou).toBe(9);
     });
 
-    it('produces at most one card per application', () => {
+    it('produces at most one entry per application', () => {
       const a = app('phone_interview', { statusChangedAt: daysAgo(5) });
       const r = run([a], [interview(a, inHours(5)), interview(a, daysAgo(2))]);
-      expect(r.needsYou.filter((x) => x.applicationId === a.id)).toHaveLength(1);
+      const entries = [...r.needsYou, ...r.scheduled, ...r.waiting].filter(
+        (x) => x.applicationId === a.id,
+      );
+      expect(entries).toHaveLength(1);
     });
   });
 

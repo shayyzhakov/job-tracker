@@ -96,7 +96,7 @@ export function TodayPage() {
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>Today</Title>
+        <Title order={2}>Tasks</Title>
         <Summary counts={data.counts} />
       </div>
 

@@ -17,7 +17,7 @@ describe('ApplicationsPage', () => {
     expect(screen.queryByText('Expected salary')).not.toBeInTheDocument();
   });
 
-  it('labels each application with whose move it is', async () => {
+  it('flags only the applications that need you', async () => {
     server.use(
       http.get('/api/v1/applications', () =>
         HttpResponse.json([
@@ -61,13 +61,12 @@ describe('ApplicationsPage', () => {
       ),
     );
     renderRoute(<ApplicationsPage />, { path: '/applications' });
-    await waitFor(() => expect(screen.getAllByTestId('next-move')).toHaveLength(3));
-    const moveOf = (company: string) =>
-      within(screen.getByText(company).closest('tr') as HTMLElement).getByTestId('next-move')
-        .dataset.move;
-    expect(moveOf('Acme')).toBe('needs_you');
-    expect(moveOf('Globex')).toBe('scheduled');
-    expect(moveOf('Initech')).toBe('waiting');
+    await waitFor(() => expect(screen.getAllByTestId('needs-you')).toHaveLength(1));
+    const flagged = (company: string) =>
+      within(screen.getByText(company).closest('tr') as HTMLElement).queryByTestId('needs-you');
+    expect(flagged('Acme')).toBeInTheDocument();
+    expect(flagged('Globex')).not.toBeInTheDocument();
+    expect(flagged('Initech')).not.toBeInTheDocument();
   });
 
   it('filters by role type and company type', async () => {
@@ -82,11 +81,18 @@ describe('ApplicationsPage', () => {
       http.get('/api/v1/applications', () =>
         HttpResponse.json([
           application(),
-          application({ id: 'a2', company: corp, roleName: 'VP R&D', isManagement: true }),
+          application({
+            id: 'a2',
+            company: corp,
+            roleName: 'VP R&D',
+            isManagement: true,
+          }),
         ]),
       ),
     );
-    const { user } = renderRoute(<ApplicationsPage />, { path: '/applications' });
+    const { user } = renderRoute(<ApplicationsPage />, {
+      path: '/applications',
+    });
     await screen.findByText('BigCorp');
     expect(screen.getByText('M')).toBeInTheDocument();
     expect(
@@ -113,7 +119,9 @@ describe('ApplicationsPage', () => {
         return HttpResponse.json([application()]);
       }),
     );
-    const { user } = renderRoute(<ApplicationsPage />, { path: '/applications' });
+    const { user } = renderRoute(<ApplicationsPage />, {
+      path: '/applications',
+    });
     await screen.findByText('Acme');
     expect(seen[0]).toContain('active=true');
 
@@ -129,7 +137,9 @@ describe('ApplicationsPage', () => {
         return HttpResponse.json(applicationDetail({ status: 'phone_interview' }));
       }),
     );
-    const { user } = renderRoute(<ApplicationsPage />, { path: '/applications' });
+    const { user } = renderRoute(<ApplicationsPage />, {
+      path: '/applications',
+    });
     await user.click(await screen.findByRole('combobox', { name: 'Status for Acme' }));
     await user.click(await screen.findByRole('option', { name: 'Phone interview' }));
     await waitFor(() => expect(body).toEqual({ status: 'phone_interview' }));

@@ -120,7 +120,7 @@ const samples: Array<{
       expectedSalaryIls: 38000,
     },
   },
-  // Action-queue samples: each lands in a different part of the Today list.
+  // Action-queue samples: each lands in a different part of the Tasks list.
   {
     input: {
       company: { name: 'Helix Labs', size: 'startup', location: 'Ramat Gan' },

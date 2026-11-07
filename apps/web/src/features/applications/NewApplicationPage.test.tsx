@@ -15,7 +15,9 @@ describe('NewApplicationPage', () => {
         return HttpResponse.json(applicationDetail(), { status: 201 });
       }),
     );
-    const { user } = renderRoute(<NewApplicationPage />, { path: '/applications/new' });
+    const { user } = renderRoute(<NewApplicationPage />, {
+      path: '/applications/new',
+    });
     await user.click(await screen.findByRole('button', { name: /save application/i }));
     expect(await screen.findAllByText(/required/i)).not.toHaveLength(0);
     expect(called).toBe(false);
@@ -26,10 +28,14 @@ describe('NewApplicationPage', () => {
     server.use(
       http.post('/api/v1/applications', async ({ request }) => {
         body = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json(applicationDetail({ id: 'new-id' }), { status: 201 });
+        return HttpResponse.json(applicationDetail({ id: 'new-id' }), {
+          status: 201,
+        });
       }),
     );
-    const { user, router } = renderRoute(<NewApplicationPage />, { path: '/applications/new' });
+    const { user, router } = renderRoute(<NewApplicationPage />, {
+      path: '/applications/new',
+    });
 
     await user.type(await screen.findByRole('combobox', { name: /company name/i }), 'Acme');
     await user.type(screen.getByLabelText(/role name/i), 'Engineering Manager');
@@ -59,10 +65,14 @@ describe('NewApplicationPage', () => {
     server.use(
       http.post('/api/v1/applications', async ({ request }) => {
         body = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json(applicationDetail({ id: 'new-id' }), { status: 201 });
+        return HttpResponse.json(applicationDetail({ id: 'new-id' }), {
+          status: 201,
+        });
       }),
     );
-    const { user, router } = renderRoute(<NewApplicationPage />, { path: '/applications/new' });
+    const { user, router } = renderRoute(<NewApplicationPage />, {
+      path: '/applications/new',
+    });
 
     expect(screen.getByRole('radio', { name: 'Private' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Individual contributor' })).toBeChecked();
@@ -71,6 +81,9 @@ describe('NewApplicationPage', () => {
     await user.click(screen.getByRole('button', { name: /save application/i }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/applications/new-id'));
-    expect(body).toMatchObject({ company: { isPublic: false }, isManagement: false });
+    expect(body).toMatchObject({
+      company: { isPublic: false },
+      isManagement: false,
+    });
   });
 });

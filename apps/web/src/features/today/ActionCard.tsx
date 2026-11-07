@@ -62,7 +62,6 @@ export function ActionCard({ action }: { action: ActionDto }) {
         {open('Open')}
       </>
     ),
-    prep_interview: open('Open prep'),
     schedule_interview: (
       <>
         {act("They're scheduling", hand('they_scheduling'))}

@@ -26,7 +26,7 @@ import { displayNameOf, initialsOf } from '../auth/initials';
 import { Slot } from '../lib/extensions';
 
 const NAV = [
-  { to: '/', label: 'Today', icon: IconChecklist, exact: true, countsActions: true },
+  { to: '/', label: 'Tasks', icon: IconChecklist, exact: true, countsActions: true },
   { to: '/overview', label: 'Overview', icon: IconLayoutDashboard, exact: true },
   { to: '/applications', label: 'Applications', icon: IconList, exact: false },
   { to: '/suggestions', label: 'Suggestions', icon: IconSparkles, exact: false, countsNew: true },

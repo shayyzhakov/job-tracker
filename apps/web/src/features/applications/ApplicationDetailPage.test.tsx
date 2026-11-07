@@ -7,7 +7,10 @@ import { server } from '../../../test/server';
 import { ApplicationDetailPage } from './ApplicationDetailPage';
 
 const renderDetail = () =>
-  renderRoute(<ApplicationDetailPage />, { path: '/applications/a1', route: '/applications/:id' });
+  renderRoute(<ApplicationDetailPage />, {
+    path: '/applications/a1',
+    route: '/applications/:id',
+  });
 
 describe('ApplicationDetailPage', () => {
   it('shows the application, contacts and status timeline', async () => {
@@ -120,7 +123,11 @@ describe('ApplicationDetailPage', () => {
     await user.click(screen.getByRole('button', { name: /save interview/i }));
 
     await waitFor(() => expect(body).toBeDefined());
-    expect(body).toMatchObject({ type: 'technical', durationMinutes: 60, location: 'Zoom' });
+    expect(body).toMatchObject({
+      type: 'technical',
+      durationMinutes: 60,
+      location: 'Zoom',
+    });
     // Sent as an absolute ISO timestamp derived from the local time entered.
     expect(body?.scheduledAt).toBe(new Date('2026-11-09T10:30').toISOString());
   });

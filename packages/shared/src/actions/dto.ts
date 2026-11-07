@@ -1,7 +1,6 @@
 export type ActionKind =
   | 'respond_offer'
   | 'submit_assignment'
-  | 'prep_interview'
   | 'schedule_interview'
   | 'debrief'
   | 'follow_up'

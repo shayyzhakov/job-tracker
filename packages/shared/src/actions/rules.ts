@@ -21,7 +21,6 @@ export const ACTION_RULES = {
   assignmentSoonDays: 3,
   offerOverdueDays: 5,
   /** Prep card appears this many hours before an interview. */
-  prepWindowHours: 48,
   /** Interview length assumed when none is recorded. */
   defaultInterviewMinutes: 60,
   /** After this many follow-ups the card asks whether to mark the application ghosted. */

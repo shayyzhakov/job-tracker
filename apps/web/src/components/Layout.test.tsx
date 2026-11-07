@@ -29,7 +29,7 @@ describe('Suggestions count chip', () => {
   });
 });
 
-describe('Today badge', () => {
+describe('Tasks badge', () => {
   it('shows how many actions need the user, red when something is overdue', async () => {
     server.use(
       http.get('/api/v1/actions', () =>
@@ -50,7 +50,7 @@ describe('Today badge', () => {
 
   it('is hidden when nothing needs the user', async () => {
     renderRoute(<Layout />);
-    await waitFor(() => expect(screen.getByText('Today')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Tasks')).toBeInTheDocument());
     expect(screen.queryByTestId('actions-count')).not.toBeInTheDocument();
   });
 });

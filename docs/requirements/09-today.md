@@ -1,4 +1,4 @@
-# 09. Today (action queue)
+# 09. Tasks (action queue)
 
 Status: **Built**
 
@@ -15,8 +15,7 @@ Each active application is in one state: **your move**, **scheduled** (an interv
 | To apply                          | You        | Apply or drop; amber after 3 days, red after 7                                         |
 | Applied                           | Them       | Follow up after 14 days                                                                |
 | Interview stage, no real time yet | You        | Schedule or confirm; amber after 2 days. "They're scheduling" hands over (3-day timer) |
-| Interview within 48 hours         | You        | Prepare; pinned on the day                                                             |
-| Interview further out             | Scheduled  | Listed under scheduled                                                                 |
+| Interview upcoming                | Scheduled  | Listed under scheduled                                                                 |
 | Interview held, not debriefed     | You, once  | Log how it went, from the day after                                                    |
 | After an interview                | Them       | Follow up after 7 days (5 after a final interview)                                     |
 | Home assignment not submitted     | You        | Ranked by the deadline; amber after 3 days without one                                 |
@@ -31,9 +30,9 @@ Each active application is in one state: **your move**, **scheduled** (an interv
 
 ## Surfaces
 
-- **Today** is the landing page: cards grouped by urgency, a collapsed list of scheduled interviews and of applications waiting on others (with their next check-in date), and an empty state ("You're clear").
-- A badge on the Today nav item shows how many actions need the user; it turns red when any is overdue.
-- The applications list has a "Next move" column (needs you / scheduled / waiting).
+- **Tasks** is the landing page: cards grouped by urgency, a collapsed list of scheduled interviews and of applications waiting on others (with their next check-in date), and an empty state ("You're clear").
+- A badge on the Tasks nav item shows how many actions need the user; it turns red when any is overdue.
+- In the applications list, a red marker on a row flags the applications that need the user.
 - Applications carry optional **reply by**, **your deadline** and **next step** fields (edit form, MCP `update_application`, and the status-change call).
 - Claude (MCP): `get_actions`, `snooze_application`, `hand_over_application`.
 

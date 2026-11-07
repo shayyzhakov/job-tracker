@@ -367,7 +367,12 @@ export function ApplicationDetailPage() {
         onSubmit={(interviewAt) => {
           if (!pendingRound) return;
           changeStatus.mutate(
-            { id: app.id, status: pendingRound.status, repeat: pendingRound.repeat, interviewAt },
+            {
+              id: app.id,
+              status: pendingRound.status,
+              repeat: pendingRound.repeat,
+              interviewAt,
+            },
             { onSuccess: () => setPendingRound(null) },
           );
         }}

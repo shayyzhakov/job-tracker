@@ -15,9 +15,15 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconCalendarCheck, IconPlus, IconSearch } from '@tabler/icons-react';
+import {
+  IconAlertCircleFilled,
+  IconCalendarCheck,
+  IconPlus,
+  IconSearch,
+} from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import {
@@ -47,37 +53,26 @@ const scopeToActive: Record<Scope, boolean | undefined> = {
   all: undefined,
 };
 
-type SortKey = 'company' | 'role' | 'status' | 'move' | 'applied' | 'interview' | 'done';
-
-type Move = 'needs_you' | 'scheduled' | 'waiting';
-const MOVES: Record<Move, { label: string; color: string; order: number }> = {
-  needs_you: { label: 'Needs you', color: 'red', order: 0 },
-  scheduled: { label: 'Scheduled', color: 'blue', order: 1 },
-  waiting: { label: 'Waiting', color: 'gray', order: 2 },
-};
+type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview' | 'done';
 
 export function ApplicationsPage() {
   const [search, setSearch] = useState('');
   const [q] = useDebouncedValue(search.trim(), 250);
   const [scope, setScope] = useState<Scope>('active');
-  const filters: ApplicationFilters = { q: q || undefined, active: scopeToActive[scope] };
+  const filters: ApplicationFilters = {
+    q: q || undefined,
+    active: scopeToActive[scope],
+  };
   const { data, isPending, error } = useApplications(filters);
   const [local] = useLocalFilters();
   const rows = applyLocalFilters(data ?? [], local);
   const changeStatus = useChangeStatus();
   const { data: actions } = useActions();
-  const moves = new Map<string, Move>();
-  for (const w of actions?.waiting ?? []) moves.set(w.applicationId, 'waiting');
-  for (const w of actions?.scheduled ?? []) moves.set(w.applicationId, 'scheduled');
-  for (const a of actions?.needsYou ?? []) moves.set(a.applicationId, 'needs_you');
+  const needsYou = new Set((actions?.needsYou ?? []).map((a) => a.applicationId));
   const { sorted, sort, toggle } = useSortedRows<ApplicationDto, SortKey>(rows, {
     company: (a) => a.company.name,
     role: (a) => a.roleName,
     status: (a) => APPLICATION_STATUSES.indexOf(a.status),
-    move: (a) => {
-      const m = moves.get(a.id);
-      return m ? MOVES[m].order : 3;
-    },
     applied: (a) => a.appliedAt,
     interview: (a) => a.nextInterviewAt,
     done: (a) => a.interviewsCount,
@@ -147,9 +142,6 @@ export function ApplicationsPage() {
                   <SortableTh columnKey="status" sort={sort} onSort={toggle} w={210}>
                     Status
                   </SortableTh>
-                  <SortableTh columnKey="move" sort={sort} onSort={toggle} w={120}>
-                    Next move
-                  </SortableTh>
                   <SortableTh columnKey="applied" sort={sort} onSort={toggle}>
                     Applied
                   </SortableTh>
@@ -163,11 +155,33 @@ export function ApplicationsPage() {
               </Table.Thead>
               <Table.Tbody>
                 {sorted.map((a) => (
-                  <Table.Tr key={a.id}>
+                  <Table.Tr
+                    key={a.id}
+                    data-needs-you={needsYou.has(a.id) || undefined}
+                    style={
+                      needsYou.has(a.id)
+                        ? {
+                            boxShadow: 'inset 3px 0 0 var(--mantine-color-red-6)',
+                          }
+                        : undefined
+                    }
+                  >
                     <Table.Td>
-                      <Anchor component={Link} to={`/applications/${a.id}`} fw={600}>
-                        {a.company.name}
-                      </Anchor>
+                      <Group gap={6} wrap="nowrap">
+                        {needsYou.has(a.id) && (
+                          <Tooltip label="Needs you">
+                            <IconAlertCircleFilled
+                              size={16}
+                              color="var(--mantine-color-red-6)"
+                              data-testid="needs-you"
+                              aria-label="Needs you"
+                            />
+                          </Tooltip>
+                        )}
+                        <Anchor component={Link} to={`/applications/${a.id}`} fw={600}>
+                          {a.company.name}
+                        </Anchor>
+                      </Group>
                       <CorporateBadge company={a.company} />
                       {a.company.location && (
                         <Text size="xs" c="dimmed">
@@ -187,21 +201,6 @@ export function ApplicationsPage() {
                           changeStatus.mutate({ id: a.id, status })
                         }
                       />
-                    </Table.Td>
-                    <Table.Td>
-                      {(() => {
-                        const move = moves.get(a.id);
-                        return move ? (
-                          <Badge
-                            variant="light"
-                            color={MOVES[move].color}
-                            data-testid="next-move"
-                            data-move={move}
-                          >
-                            {MOVES[move].label}
-                          </Badge>
-                        ) : null;
-                      })()}
                     </Table.Td>
                     <Table.Td>{formatDate(a.appliedAt)}</Table.Td>
                     <Table.Td>{formatDateTime(a.nextInterviewAt)}</Table.Td>

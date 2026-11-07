@@ -260,18 +260,6 @@ function evaluateRound(
   const upcoming = real.find((i) => endOf(i) > now);
   if (upcoming) {
     const at = new Date(upcoming.scheduledAt);
-    const hours = (at.getTime() - now.getTime()) / HOUR;
-    if (hours <= R.prepWindowHours) {
-      const today = dayDiff(now, at, tz) === 0;
-      return action(
-        'prep_interview',
-        today ? 'deadline' : 'soon',
-        `Prepare for ${app.company.name}`,
-        `Interview ${when(at, now, tz)}`,
-        at,
-        upcoming.id,
-      );
-    }
     return {
       waiting: {
         ...base,

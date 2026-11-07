@@ -20,7 +20,11 @@ export function NewApplicationPage() {
           create.mutate(toCreatePayload(values), {
             onSuccess: (app) => navigate(`/applications/${app.id}`),
             onError: (err) =>
-              notifications.show({ color: 'red', title: 'Could not save', message: err.message }),
+              notifications.show({
+                color: 'red',
+                title: 'Could not save',
+                message: err.message,
+              }),
           })
         }
       />

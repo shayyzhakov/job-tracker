@@ -193,7 +193,10 @@ export function ApplicationForm({
               label="Company size"
               placeholder="Select…"
               clearable
-              data={COMPANY_SIZES.map((s) => ({ value: s, label: COMPANY_SIZE_LABELS[s] }))}
+              data={COMPANY_SIZES.map((s) => ({
+                value: s,
+                label: COMPANY_SIZE_LABELS[s],
+              }))}
               {...form.getInputProps('company.size')}
             />
             <TextInput

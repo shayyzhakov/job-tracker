@@ -43,7 +43,7 @@ describe('action queue', () => {
     expect(a.counts.needsYou).toBe(2);
   });
 
-  it('asks to schedule a round moved without a time, and prep once a real time is set', async () => {
+  it('asks to schedule a round moved without a time, and lists it as scheduled once a real time is set', async () => {
     const app = await createApplication(t.app);
     await changeStatus(app.id, { status: 'phone_interview' });
     expect((await actions()).needsYou[0]).toMatchObject({ kind: 'schedule_interview' });
@@ -53,7 +53,9 @@ describe('action queue', () => {
       repeat: true,
       interviewAt: inHours(20),
     });
-    expect((await actions()).needsYou[0]).toMatchObject({ kind: 'prep_interview' });
+    const a = await actions();
+    expect(a.needsYou).toEqual([]);
+    expect(a.scheduled).toHaveLength(1);
   });
 
   it('hides a snoozed card and shows it under waiting', async () => {

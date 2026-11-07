@@ -162,7 +162,7 @@ export function useHandOver() {
   });
 }
 
-/** Marks an interview as debriefed from outside its application page (Today cards). */
+/** Marks an interview as debriefed from outside its application page (Tasks cards). */
 export function useDebrief() {
   const invalidate = useInvalidateAll();
   return useMutation({
