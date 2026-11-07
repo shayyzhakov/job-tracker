@@ -1,5 +1,11 @@
-# Dormant until the project lives in a GitHub repository (see infra-plan.yml for the one-time setup).
-# Mirrors scripts/deploy.sh; the `production` environment should require a manual approval.
+# Deploys code + infrastructure to AWS after the quality gate passes.
+#
+# Security model (the repository is public):
+#  - Runs only on pushes to `main`, and `main` is protected: changes land through reviewed pull requests.
+#  - No stored AWS keys. The job exchanges a short-lived GitHub OIDC token for AWS credentials; the IAM role
+#    (infra/bootstrap/github-oidc.tf) trusts only this repo's `production` environment.
+#  - The `production` environment requires manual approval and is limited to the `main` branch.
+# One-time setup: see "CI/CD" in infra/README.md.
 name: deploy
 on:
   push:
@@ -11,34 +17,24 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
 
 env:
   AWS_REGION: us-east-1
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    services:
-      dynamodb:
-        image: amazon/dynamodb-local:latest
-        ports: ["8000:8000"]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with: { node-version-file: .nvmrc, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check && pnpm typecheck && pnpm test
-        env:
-          TEST_DYNAMODB_ENDPOINT: http://localhost:8000
+  ci:
+    uses: ./.github/workflows/ci.yml
 
   deploy:
-    needs: test
+    needs: ci
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      contents: read
+      id-token: write # needed to request the OIDC token; grants nothing by itself
     steps:
       - uses: actions/checkout@v4
+        with: { persist-credentials: false }
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version-file: .nvmrc, cache: pnpm }
@@ -51,6 +47,8 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - run: pnpm install --frozen-lockfile
       - name: Write tfvars
-        run: echo 'owner_email = "${{ vars.OWNER_EMAIL }}"' > infra/envs/prod/terraform.tfvars
-      # Tests already ran in the `test` job; --yes because the `production` environment approval is the gate.
+        env:
+          OWNER_EMAIL: ${{ vars.OWNER_EMAIL }}
+        run: echo "owner_email = \"$OWNER_EMAIL\"" > infra/envs/prod/terraform.tfvars
+      # Tests ran in the `ci` job; --yes because approving the `production` environment is the gate.
       - run: scripts/deploy.sh --skip-tests --yes

@@ -75,7 +75,6 @@ After the first deploy:
 - Everything under `/api` requires a Cognito access token; `/mcp` requires a Cognito OAuth token with the `jobtracker/mcp` scope (plus the open discovery/registration routes under `/.well-known/*` and `/oauth/*`); only `/health` is open.
 - The API Lambda rejects any request without CloudFront's `x-origin-verify` secret; its role can only use the table and its indexes and read `/job-tracker/*` SSM parameters.
 - No WAF (it adds about $5+/month); rate limiting is not implemented. Revisit if the app ever stops being single-user.
-- The CI deploy role (dormant) uses AdministratorAccess, which is acceptable for a one-owner account; narrow it before sharing the account.
 - `tfplan`, `*.tfstate` and `terraform.tfvars` are gitignored.
 
 ## Static checks
@@ -86,6 +85,24 @@ docker run --rm -v "$PWD/infra:/infra" ghcr.io/aquasecurity/trivy:latest config 
 ```
 (or the same with a locally installed `tofu`). Accepted low-severity findings are listed in `.trivyignore`.
 
-## When there is a Git remote
+## CI/CD (GitHub Actions)
 
-Apply `bootstrap/` again with `-var github_repo=<owner>/<repo>` to create the OIDC role, set repository variables `AWS_DEPLOY_ROLE_ARN` and `OWNER_EMAIL`, and the workflows in `.github/workflows/` take over (plan on pull requests, deploy on `main` behind the `production` environment approval).
+`ci.yml` (lint, types, tests, `tofu fmt`, Trivy) runs on every pull request. `deploy.yml` runs on pushes to `main`: it calls `ci.yml`, then, after a manual approval, runs `scripts/deploy.sh` (Lambda bundles, `tofu apply`, web upload, smoke test).
+
+**No AWS keys are stored anywhere.** The deploy job swaps a short-lived GitHub OIDC token for temporary AWS credentials. The IAM role trusts only `repo:<owner>/<repo>:environment:production`, so pull requests, forks and unapproved runs get nothing. The repository is public, but there is no secret in it to leak.
+
+### One-time setup
+
+1. Create the OIDC provider and role (needs your AWS admin login):
+   ```bash
+   cd infra/bootstrap && tofu apply -var github_repo=shayyzhakov/job-tracker
+   tofu output ci_role_arn
+   ```
+2. GitHub, Settings > Secrets and variables > Actions > **Variables**: `AWS_DEPLOY_ROLE_ARN` (the output above) and `OWNER_EMAIL`. These are not secrets.
+3. Settings > Environments > **production**: enable *Required reviewers* (you), and under *Deployment branches* choose *Selected branches* = `main`.
+4. Settings > Rules > Rulesets > new branch ruleset for `main` (enforcement: active): require a pull request with 1 approval and *Require review from Code Owners*, require status checks `quality` and `infra`, block force pushes and deletions. Only you can approve, so nobody else can land or deploy changes.
+5. Settings > Actions > General: *Fork pull request workflows*: require approval for all outside collaborators; *Workflow permissions*: read-only.
+
+With a single maintainer you cannot approve your own pull request; either leave "required approvals" at 0 while keeping the other rules (the environment approval then remains the deploy gate), or let the ruleset's bypass list include yourself.
+
+- The CI deploy role uses AdministratorAccess, which is acceptable for a one-owner account; narrow it before sharing the account.

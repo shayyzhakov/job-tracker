@@ -1,4 +1,4 @@
-# Dormant until var.github_repo is set (there is no remote yet). Lets GitHub Actions deploy without stored AWS keys.
+# Dormant until var.github_repo is set. Lets GitHub Actions deploy without stored AWS keys.
 locals {
   ci_enabled = var.github_repo != ""
 }
@@ -21,8 +21,10 @@ resource "aws_iam_role" "ci_deploy" {
       Condition = {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          # Only the main branch of this one repository can assume the role.
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/main"
+          # Only jobs of this repository that run in its `production` environment can assume the role.
+          # That environment requires manual approval and is restricted to the main branch (see infra/README.md),
+          # so a pull request, a fork or an unapproved run can never obtain AWS credentials.
+          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:production"
         }
       }
     }]
