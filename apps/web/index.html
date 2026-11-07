@@ -10,8 +10,8 @@
       // Apply the stored/OS color scheme before first paint to avoid a white flash in dark mode.
       (() => {
         try {
-          var s = localStorage.getItem('mantine-color-scheme-value');
-          var dark = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          const s = localStorage.getItem('mantine-color-scheme-value');
+          const dark = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
           document.documentElement.setAttribute('data-mantine-color-scheme', dark ? 'dark' : 'light');
         } catch (_e) {}
       })();
@@ -23,8 +23,8 @@
       // so it is easy to tell apart from the real deployment. Runs before first paint.
       (() => {
         try {
-          var h = location.hostname;
-          var local = h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.endsWith('.localhost');
+          const h = location.hostname;
+          const local = h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h.endsWith('.localhost');
           if (!local) return;
           document.title = 'DEV · Job Tracker';
           document.getElementById('favicon').setAttribute('href', '/favicon-dev.svg');

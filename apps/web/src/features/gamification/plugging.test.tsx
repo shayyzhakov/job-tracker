@@ -30,10 +30,16 @@ afterEach(() => {
 describe('unplugged (nothing registered)', () => {
   it('core pages render with no gamification UI and no /progress request', async () => {
     const hit = vi.fn();
-    server.use(http.get('/api/v1/progress', () => (hit(), HttpResponse.json(progress))));
-    renderRoute(<OverviewPage />);
+    server.use(
+      http.get('/api/v1/progress', () => {
+        hit();
+        return HttpResponse.json(progress);
+      }),
+    );
+    const overview = renderRoute(<OverviewPage />);
     expect(await screen.findByTestId('kpi-active')).toBeInTheDocument();
     expect(screen.queryByTestId('gm-hero')).not.toBeInTheDocument();
+    overview.unmount();
 
     renderRoute(<ApplicationsPage />);
     expect(await screen.findByText('Applications')).toBeInTheDocument();
@@ -58,7 +64,12 @@ describe('plugged', () => {
   it('the runtime switch hides everything and stops requests', async () => {
     localStorage.setItem('gamification.enabled', 'false');
     const hit = vi.fn();
-    server.use(http.get('/api/v1/progress', () => (hit(), HttpResponse.json(progress))));
+    server.use(
+      http.get('/api/v1/progress', () => {
+        hit();
+        return HttpResponse.json(progress);
+      }),
+    );
     unplug = registerGamification();
 
     renderRoute(<OverviewPage />);

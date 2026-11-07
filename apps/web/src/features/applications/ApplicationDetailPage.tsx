@@ -22,7 +22,13 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import {
+  IconArrowLeft,
+  IconExternalLink,
+  IconPencil,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
@@ -205,8 +211,12 @@ export function ApplicationDetailPage() {
             ) : (
               <Details app={app} />
             )}
-            <InterviewsSection applicationId={app.id} interviews={app.interviews} />
-            <ContactsSection applicationId={app.id} contacts={app.contacts} />
+            {!editing && (
+              <>
+                <InterviewsSection applicationId={app.id} interviews={app.interviews} />
+                <ContactsSection applicationId={app.id} contacts={app.contacts} />
+              </>
+            )}
           </Stack>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 4 }}>

@@ -104,7 +104,15 @@ export function useUpdateApplication(id: string) {
 export function useChangeStatus() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ id, status, repeat }: { id: string; status: ApplicationStatus; repeat?: boolean }) =>
+    mutationFn: ({
+      id,
+      status,
+      repeat,
+    }: {
+      id: string;
+      status: ApplicationStatus;
+      repeat?: boolean;
+    }) =>
       api<ApplicationDetailDto>(`/applications/${id}/status`, {
         method: 'PATCH',
         json: { status, repeat },

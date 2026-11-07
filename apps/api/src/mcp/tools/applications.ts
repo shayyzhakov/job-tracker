@@ -175,7 +175,9 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         repeat: z
           .boolean()
           .optional()
-          .describe('Set true to add another step with the same status (e.g. a second phone interview)'),
+          .describe(
+            'Set true to add another step with the same status (e.g. a second phone interview)',
+          ),
       },
     },
     ({ id, ...body }) => {
