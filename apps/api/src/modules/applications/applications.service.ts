@@ -5,6 +5,7 @@ import type {
   ApplicationStatus,
   ApplicationUpdate,
   CompanyDto,
+  HandOverReason,
   InterviewDto,
   InterviewInput,
 } from '@job-tracker/shared';
@@ -87,6 +88,7 @@ export class ApplicationsService {
     status: ApplicationStatus,
     repeat = false,
     interviewAt?: Date,
+    timeline: { replyBy?: Date; dueAt?: Date } = {},
   ): Promise<ApplicationDetailDto> {
     const state = await this.requireState(id);
     if (state.status !== status || repeat) {
@@ -95,6 +97,7 @@ export class ApplicationsService {
         ? await this.interviews.create(id, {
             type: ROUND_STATUS_INTERVIEW_TYPE[status],
             scheduledAt: interviewAt ?? now,
+            timeUnknown: !interviewAt,
           })
         : null;
       await this.apps.changeStatus(id, {
@@ -103,7 +106,21 @@ export class ApplicationsService {
         appliedAt: state.appliedAt ?? (status === 'to_apply' ? null : now),
         at: now,
         interviewId: interview?.id ?? null,
+        replyBy: timeline.replyBy ?? null,
+        dueAt: timeline.dueAt ?? null,
       });
+    }
+    return this.get(id);
+  }
+
+  async snooze(id: string, until: Date): Promise<ApplicationDetailDto> {
+    if (!(await this.apps.snooze(id, until))) throw new NotFoundError('Application', id);
+    return this.get(id);
+  }
+
+  async handOver(id: string, reason: HandOverReason): Promise<ApplicationDetailDto> {
+    if (!(await this.apps.handOver(id, reason, this.now()))) {
+      throw new NotFoundError('Application', id);
     }
     return this.get(id);
   }

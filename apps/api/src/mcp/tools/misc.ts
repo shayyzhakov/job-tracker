@@ -39,6 +39,20 @@ export function registerMiscTools(server: McpServer, s: Services, logger?: ToolL
 
   defineTool(
     server,
+    'get_actions',
+    {
+      title: 'Get action list',
+      description:
+        'What needs the user right now. needsYou: ranked action cards (deadlines first, then overdue, soon, nudges); scheduled: interviews further out; waiting: applications waiting on the employer with their next check-in date. Use hand_over_application, snooze_application or change_application_status to resolve cards.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    () => s.actions.get(),
+    logger,
+  );
+
+  defineTool(
+    server,
     'get_scout_criteria',
     {
       title: 'Get scout criteria',

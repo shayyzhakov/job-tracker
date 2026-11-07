@@ -56,6 +56,9 @@ const applicationFields = {
   methodDetails: optionalText,
   notes: optionalText,
   appliedAt: optional(z.coerce.date()),
+  replyBy: optional(z.coerce.date()),
+  dueAt: optional(z.coerce.date()),
+  nextStep: optionalText,
 };
 
 export const ApplicationCreateSchema = z.object({
@@ -84,6 +87,9 @@ export const ApplicationUpdateSchema = z
     methodDetails: z.preprocess(blankToNull, z.string().trim().nullable()),
     notes: z.preprocess(blankToNull, z.string().trim().nullable()),
     appliedAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
+    replyBy: z.preprocess(blankToNull, z.coerce.date().nullable()),
+    dueAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
+    nextStep: z.preprocess(blankToNull, z.string().trim().nullable()),
     company: z
       .object({
         name: z.string().trim().min(1, 'Required'),
@@ -104,8 +110,19 @@ export const StatusChangeSchema = z.object({
   repeat: z.boolean().optional(),
   /** When the interview for a round stage takes place (past or future); defaults to now. */
   interviewAt: z.coerce.date().optional(),
+  /** Optional timeline the employer gave: when they'll reply by, and the user's own deadline (assignment due / offer expiry). */
+  replyBy: optional(z.coerce.date()),
+  dueAt: optional(z.coerce.date()),
 });
 export type StatusChange = z.infer<typeof StatusChangeSchema>;
+
+export const SnoozeSchema = z.object({ until: z.coerce.date() });
+export type Snooze = z.infer<typeof SnoozeSchema>;
+
+export const HAND_OVER_REASONS = ['followed_up', 'submitted', 'they_scheduling'] as const;
+export type HandOverReason = (typeof HAND_OVER_REASONS)[number];
+export const HandOverSchema = z.object({ reason: z.enum(HAND_OVER_REASONS) });
+export type HandOver = z.infer<typeof HandOverSchema>;
 
 export const InterviewInputSchema = z.object({
   type: InterviewTypeSchema.default('other'),
@@ -113,6 +130,8 @@ export const InterviewInputSchema = z.object({
   durationMinutes: z.number().int().positive().optional(),
   location: optionalText,
   notes: optionalText,
+  /** The round exists but nobody has given a real time yet (scheduledAt is a placeholder). */
+  timeUnknown: z.boolean().optional(),
 });
 export type InterviewInput = z.infer<typeof InterviewInputSchema>;
 export type InterviewCreateInput = z.input<typeof InterviewInputSchema>;
@@ -149,6 +168,8 @@ export const InterviewUpdateSchema = z
     durationMinutes: z.number().int().positive().nullable(),
     location: nullableText,
     notes: nullableText,
+    /** Set to true to mark the interview debriefed (now), or null to clear. */
+    debriefed: z.boolean().nullable(),
   })
   .partial();
 export type InterviewUpdate = z.infer<typeof InterviewUpdateSchema>;

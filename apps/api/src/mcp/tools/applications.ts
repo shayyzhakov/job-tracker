@@ -4,7 +4,10 @@ import {
   ApplicationCreateSchema,
   ApplicationUpdateSchema,
   COMPANY_SIZES,
+  HAND_OVER_REASONS,
+  HandOverSchema,
   REFERRAL_CHANNELS,
+  SnoozeSchema,
   StatusChangeSchema,
 } from '@job-tracker/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -31,6 +34,10 @@ const method = z
 const channel = z
   .enum(REFERRAL_CHANNELS)
   .describe(`How the user and the referrer spoke: ${REFERRAL_CHANNELS.join(' | ')}`);
+const REPLY_BY =
+  'ISO 8601 date the employer said they would reply by; replaces the default waiting timer on the Today list';
+const DUE_AT =
+  "ISO 8601 date-time of the user's own deadline: home-assignment due date or offer expiry";
 const nullable = <T extends z.ZodType>(schema: T) => schema.nullable().optional();
 
 export function registerApplicationTools(server: McpServer, s: Services, logger?: ToolLogger) {
@@ -149,6 +156,9 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         methodDetails: nullable(z.string()),
         notes: nullable(z.string()),
         appliedAt: nullable(z.string()).describe('ISO 8601 date'),
+        replyBy: nullable(z.string()).describe(REPLY_BY),
+        dueAt: nullable(z.string()).describe(DUE_AT),
+        nextStep: nullable(z.string()).describe('One-line note on what the user should do next'),
         company: z
           .object({
             name: z.string().optional(),
@@ -185,12 +195,40 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .describe(
             'For interview-round statuses: ISO 8601 date-time with a UTC offset of the interview (past or future). Defaults to now.',
           ),
+        replyBy: z.string().optional().describe(REPLY_BY),
+        dueAt: z.string().optional().describe(DUE_AT),
       },
     },
     ({ id, ...body }) => {
-      const { status, repeat, interviewAt } = StatusChangeSchema.parse(body);
-      return s.applications.changeStatus(id, status, repeat, interviewAt);
+      const { status, repeat, interviewAt, replyBy, dueAt } = StatusChangeSchema.parse(body);
+      return s.applications.changeStatus(id, status, repeat, interviewAt, { replyBy, dueAt });
     },
+    logger,
+  );
+
+  defineTool(
+    server,
+    'snooze_application',
+    {
+      title: 'Snooze application',
+      description:
+        "Hide an application's card from the Today action list until the given time. The card returns on its own afterwards.",
+      inputSchema: { id, until: z.string().describe('ISO 8601 date-time with a UTC offset') },
+    },
+    ({ id, until }) => s.applications.snooze(id, SnoozeSchema.parse({ until }).until),
+    logger,
+  );
+
+  defineTool(
+    server,
+    'hand_over_application',
+    {
+      title: 'Hand ball to employer',
+      description:
+        'Record that the user did their part and is now waiting on the employer: followed_up (a follow-up was sent), submitted (home assignment handed in) or they_scheduling (the employer will propose an interview time). Starts the waiting timer.',
+      inputSchema: { id, reason: z.enum(HAND_OVER_REASONS) },
+    },
+    ({ id, reason }) => s.applications.handOver(id, HandOverSchema.parse({ reason }).reason),
     logger,
   );
 

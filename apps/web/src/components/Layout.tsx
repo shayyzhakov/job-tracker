@@ -12,6 +12,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconBriefcase,
+  IconChecklist,
   IconLayoutDashboard,
   IconList,
   IconLogout,
@@ -19,13 +20,14 @@ import {
   IconSparkles,
 } from '@tabler/icons-react';
 import { Link, Outlet, useLocation } from 'react-router';
-import { useOpportunities } from '../api/hooks';
+import { useActions, useOpportunities } from '../api/hooks';
 import { useSession } from '../auth/AuthGate';
 import { displayNameOf, initialsOf } from '../auth/initials';
 import { Slot } from '../lib/extensions';
 
 const NAV = [
-  { to: '/', label: 'Overview', icon: IconLayoutDashboard, exact: true },
+  { to: '/', label: 'Today', icon: IconChecklist, exact: true, countsActions: true },
+  { to: '/overview', label: 'Overview', icon: IconLayoutDashboard, exact: true },
   { to: '/applications', label: 'Applications', icon: IconList, exact: false },
   { to: '/suggestions', label: 'Suggestions', icon: IconSparkles, exact: false, countsNew: true },
   { to: '/integrations', label: 'Integrations', icon: IconPlugConnected, exact: false },
@@ -38,6 +40,9 @@ export function Layout() {
   const userName = session && displayNameOf(session.user);
   const { data: newSuggestions } = useOpportunities('new');
   const suggestionCount = newSuggestions?.length ?? 0;
+  const { data: actions } = useActions();
+  const actionCount = actions?.counts.needsYou ?? 0;
+  const overdueCount = actions?.counts.overdue ?? 0;
 
   return (
     <>
@@ -88,7 +93,7 @@ export function Layout() {
           </Group>
         </AppShell.Header>
         <AppShell.Navbar p="xs">
-          {NAV.map(({ to, label, icon: Icon, exact, countsNew }) => (
+          {NAV.map(({ to, label, icon: Icon, exact, countsNew, countsActions }) => (
             <NavLink
               key={to}
               component={Link}
@@ -96,7 +101,18 @@ export function Layout() {
               label={label}
               leftSection={<Icon size={18} />}
               rightSection={
-                countsNew && suggestionCount > 0 ? (
+                countsActions && actionCount > 0 ? (
+                  <Badge
+                    size="sm"
+                    radius="xl"
+                    variant="filled"
+                    color={overdueCount > 0 ? 'red' : 'indigo'}
+                    aria-label={`${actionCount} actions need you${overdueCount > 0 ? `, ${overdueCount} overdue` : ''}`}
+                    data-testid="actions-count"
+                  >
+                    {actionCount}
+                  </Badge>
+                ) : countsNew && suggestionCount > 0 ? (
                   <Badge
                     size="sm"
                     radius="xl"

@@ -72,6 +72,9 @@ function Details({ app }: { app: ApplicationDetailDto }) {
         <Field label="Management role">{app.isManagement ? 'Yes' : 'No'}</Field>
         <Field label="Expected salary">{formatIls(app.expectedSalaryIls)}</Field>
         <Field label="Applied on">{formatDate(app.appliedAt)}</Field>
+        {app.replyBy && <Field label="Reply expected by">{formatDate(app.replyBy)}</Field>}
+        {app.dueAt && <Field label="Your deadline">{formatDateTime(app.dueAt)}</Field>}
+        {app.nextStep && <Field label="Next step">{app.nextStep}</Field>}
         <Field label="Application method">
           {app.applicationMethod ? APPLICATION_METHOD_LABELS[app.applicationMethod] : null}
         </Field>

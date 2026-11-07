@@ -18,6 +18,7 @@ import type { TokenVerifier } from './auth/token-verifier.js';
 import type { Db } from './db/dynamo.js';
 import { ConflictError, NotFoundError } from './errors.js';
 import { mcpRoutes } from './mcp/mcp.routes.js';
+import { actionsRoutes } from './modules/actions/actions.routes.js';
 import { applicationsRoutes } from './modules/applications/applications.routes.js';
 import { childRoutes } from './modules/child-routes.js';
 import { companiesRoutes } from './modules/companies/companies.routes.js';
@@ -103,6 +104,10 @@ export async function buildApp({
       await api.register(scoutCriteriaRoutes, {
         prefix: '/scout/criteria',
         repo: services.scoutCriteria,
+      });
+      await api.register(actionsRoutes, {
+        prefix: '/actions',
+        service: services.actions,
       });
       await api.register(overviewRoutes, {
         prefix: '/overview',

@@ -111,6 +111,9 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
         durationMinutes: nullable(z.number()),
         location: nullable(z.string()),
         notes: nullable(z.string()),
+        debriefed: nullable(z.boolean()).describe(
+          'true: mark the interview as debriefed (the user logged how it went); null clears it',
+        ),
       },
     },
     ({ applicationId, interviewId, ...patch }) =>

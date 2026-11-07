@@ -18,6 +18,8 @@ export class DynamoInterviewsRepository {
       durationMinutes: nul(input.durationMinutes),
       location: nul(input.location),
       notes: nul(input.notes),
+      timeUnknown: input.timeUnknown ?? false,
+      debriefedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -36,10 +38,12 @@ export class DynamoInterviewsRepository {
 
   /** Returns null when the interview doesn't exist under this application. */
   async update(applicationId: string, id: string, patch: InterviewUpdate) {
-    const { scheduledAt, ...rest } = patch;
+    const { scheduledAt, debriefed, ...rest } = patch;
     const set: Record<string, unknown> = { ...rest };
+    if (debriefed !== undefined) set.debriefedAt = debriefed ? iso(new Date()) : null;
     if (scheduledAt) {
       set.scheduledAt = iso(scheduledAt);
+      set.timeUnknown = false;
       set.GSI1SK = interviewIndexKeys(id, iso(scheduledAt)).GSI1SK;
     }
     if (Object.keys(set).length > 0) set.updatedAt = iso(new Date());

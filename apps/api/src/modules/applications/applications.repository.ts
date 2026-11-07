@@ -8,6 +8,7 @@ import type {
   ApplicationStatus,
   ApplicationUpdate,
   ContactInput,
+  HandOverReason,
   ReferralChannel,
 } from '@job-tracker/shared';
 import { CLOSED_STATUSES } from '@job-tracker/shared';
@@ -52,6 +53,9 @@ export interface NewApplication {
   methodDetails?: string;
   notes?: string;
   appliedAt: Date | null;
+  replyBy?: Date;
+  dueAt?: Date;
+  nextStep?: string;
 }
 
 export type ApplicationFieldsPatch = Omit<ApplicationUpdate, 'company'>;
@@ -69,6 +73,9 @@ export interface StatusTransition {
   at: Date;
   /** Interview created for (or behind) this step, if it is an interview round. */
   interviewId?: string | null;
+  /** Timeline the employer gave for the new stage; replaces whatever the previous stage had. */
+  replyBy?: Date | null;
+  dueAt?: Date | null;
 }
 
 export interface ApplicationsRepository {
@@ -80,6 +87,10 @@ export interface ApplicationsRepository {
   update(id: string, patch: ApplicationFieldsPatch): Promise<void>;
   /** Updates status (and appliedAt) and appends a history entry atomically. */
   changeStatus(id: string, transition: StatusTransition): Promise<void>;
+  /** Hides the application's action card until `until`. False when the application doesn't exist. */
+  snooze(id: string, until: Date): Promise<boolean>;
+  /** Hands the ball to the employer at `at`; a follow-up also counts toward the ghosted prompt. */
+  handOver(id: string, reason: HandOverReason, at: Date): Promise<boolean>;
   delete(id: string): Promise<boolean>;
 }
 
@@ -138,6 +149,14 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       notes: nul(app.notes),
       appliedAt: isoOrNull(app.appliedAt),
       reachedStatuses: [app.status],
+      replyBy: isoOrNull(app.replyBy ?? null),
+      dueAt: isoOrNull(app.dueAt ?? null),
+      nextStep: nul(app.nextStep),
+      snoozedUntil: null,
+      // An application added as already applied (appliedAt may be in the past) has been waiting since then.
+      statusChangedAt: app.status === 'applied' && app.appliedAt ? iso(app.appliedAt) : now,
+      waitingOnThemAt: null,
+      followUps: 0,
       createdAt: now,
       updatedAt: now,
     };
@@ -250,7 +269,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
 
   async update(id: string, patch: ApplicationFieldsPatch) {
     if (Object.keys(patch).length === 0) return;
-    const { appliedAt, ...rest } = patch;
+    const { appliedAt, replyBy, dueAt, ...rest } = patch;
     const updatedAt = iso(new Date());
     try {
       await this.db.doc.send(
@@ -261,6 +280,8 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
           ...buildUpdate({
             ...rest,
             ...(appliedAt !== undefined && { appliedAt: isoOrNull(appliedAt) }),
+            ...(replyBy !== undefined && { replyBy: isoOrNull(replyBy) }),
+            ...(dueAt !== undefined && { dueAt: isoOrNull(dueAt) }),
             updatedAt,
             GSI1SK: appIndexKeys(id, updatedAt).GSI1SK,
           }),
@@ -271,7 +292,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     }
   }
 
-  async changeStatus(id: string, { from, to, appliedAt, at, interviewId }: StatusTransition) {
+  async changeStatus(
+    id: string,
+    { from, to, appliedAt, at, interviewId, replyBy, dueAt }: StatusTransition,
+  ) {
     const current = (
       await this.db.doc.send(new GetCommand({ TableName: this.db.table, Key: key.app(id) }))
     ).Item as ApplicationItem | undefined;
@@ -291,6 +315,13 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
                 status: to,
                 appliedAt: isoOrNull(appliedAt),
                 reachedStatuses: reached,
+                // A new stage starts a new wait: the old hand-over, snooze and timeline no longer apply.
+                statusChangedAt: changedAt,
+                waitingOnThemAt: null,
+                followUps: 0,
+                snoozedUntil: null,
+                replyBy: isoOrNull(replyBy ?? null),
+                dueAt: isoOrNull(dueAt ?? null),
                 updatedAt: changedAt,
                 GSI1SK: appIndexKeys(id, changedAt).GSI1SK,
               }),
@@ -305,6 +336,38 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
         ],
       }),
     );
+  }
+
+  async snooze(id: string, until: Date) {
+    return this.touch(id, { snoozedUntil: iso(until) });
+  }
+
+  async handOver(id: string, reason: HandOverReason, at: Date) {
+    return this.touch(id, { waitingOnThemAt: iso(at) }, reason === 'followed_up');
+  }
+
+  /** Sets attributes without bumping updatedAt, so list ordering isn't disturbed. */
+  private async touch(id: string, set: Record<string, unknown>, countFollowUp = false) {
+    const update = buildUpdate(set);
+    try {
+      await this.db.doc.send(
+        new UpdateCommand({
+          TableName: this.db.table,
+          Key: key.app(id),
+          ConditionExpression: 'attribute_exists(PK)',
+          ...update,
+          UpdateExpression: `${update.UpdateExpression}${countFollowUp ? ' ADD followUps :one' : ''}`,
+          ExpressionAttributeValues: {
+            ...update.ExpressionAttributeValues,
+            ...(countFollowUp && { ':one': 1 }),
+          },
+        }),
+      );
+      return true;
+    } catch (err) {
+      if (isConditionFailed(err)) return false;
+      throw err;
+    }
   }
 
   async delete(id: string) {

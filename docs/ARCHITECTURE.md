@@ -38,7 +38,7 @@ MCP tools (defineTool)               ┴─> services ─> repositories ─> Dyn
 ```
 
 - **`services.ts` is the composition root.** `createServices(db)` wires repositories into services once; both the REST routes and the MCP tools receive the same `Services` object, so business rules (status history, company de-duplication, applied-date handling, promote/dismiss conflicts) live in one place.
-- **Modules** under `src/modules/`: `applications`, `companies`, `contacts`, `interviews`, `overview`, `opportunities`, `scout-criteria`, `integrations`, `health`. Contacts and interviews share a generic `ChildService`; `InterviewsService` extends it so scheduling an interview also advances the application's stage.
+- **Modules** under `src/modules/`: `actions`, `applications`, `companies`, `contacts`, `interviews`, `overview`, `opportunities`, `scout-criteria`, `integrations`, `health`. Contacts and interviews share a generic `ChildService`; `InterviewsService` extends it so scheduling an interview also advances the application's stage.
 - **Validation:** request and response schemas come from `packages/shared` via `fastify-type-provider-zod`. MCP handlers re-validate with the same schemas.
 - **Errors:** services throw `NotFoundError` / `ConflictError`. The Fastify error handler maps them to 404 / 409 (validation to 400); the MCP layer maps them to tool errors with readable messages.
 - **Repository interfaces** have a DynamoDB implementation and, for unit tests, an in-memory fake in `apps/api/test/fakes.ts`.
@@ -90,6 +90,8 @@ DynamoDB, single table, on-demand billing, keys `PK`/`SK`, two global secondary 
 | Scout criteria           | `SCOUT`              | `CRITERIA`          |                                                                                                                  |
 
 ### Design notes
+
+- **The action queue is derived, not stored.** `deriveActions` (`packages/shared/src/actions`) is a pure function of the active applications and all interviews; `GET /api/v1/actions` loads them and calls it. Only the user's inputs are stored on the application item: `replyBy`, `dueAt`, `nextStep`, `snoozedUntil`, `waitingOnThemAt`, `followUps` and `statusChangedAt` (rows without it fall back to `appliedAt` while applied, else `updatedAt`). A status change resets the hand-over, snooze and timeline. Interviews carry `timeUnknown` (placeholder time from a status change) and `debriefedAt`.
 
 - **Item collections per application.** An application, its contacts, interviews and history share the partition `APP#<id>`, so loading a full application is one `Query`.
 - **Uniqueness via marker items.** Company names and listing URLs are made unique by writing a marker item in the same `TransactWriteItems` as the entity, guarded by `attribute_not_exists`.

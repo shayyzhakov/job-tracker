@@ -1,4 +1,5 @@
 import type {
+  ActionsDto,
   ApplicationCreateInput,
   ApplicationDetailDto,
   ApplicationDto,
@@ -8,6 +9,7 @@ import type {
   ContactCreateInput,
   ContactDto,
   ContactUpdateInput,
+  HandOverReason,
   InterviewCreateInput,
   InterviewDto,
   InterviewUpdateInput,
@@ -28,6 +30,7 @@ export interface ApplicationFilters {
 }
 
 export const queryKeys = {
+  actions: ['actions'] as const,
   overview: ['overview'] as const,
   applications: ['applications'] as const,
   applicationList: (f: ApplicationFilters) => ['applications', 'list', f] as const,
@@ -49,6 +52,9 @@ const toSearch = (f: ApplicationFilters) => {
 
 export const useOverview = () =>
   useQuery({ queryKey: queryKeys.overview, queryFn: () => api<OverviewDto>('/overview') });
+
+export const useActions = () =>
+  useQuery({ queryKey: queryKeys.actions, queryFn: () => api<ActionsDto>('/actions') });
 
 export const useApplications = (filters: ApplicationFilters) =>
   useQuery({
@@ -77,6 +83,7 @@ function useInvalidateAll() {
     Promise.all([
       qc.invalidateQueries({ queryKey: queryKeys.applications }),
       qc.invalidateQueries({ queryKey: queryKeys.overview }),
+      qc.invalidateQueries({ queryKey: queryKeys.actions }),
     ]);
 }
 
@@ -109,21 +116,62 @@ export function useChangeStatus() {
       status,
       repeat,
       interviewAt,
+      replyBy,
+      dueAt,
     }: {
       id: string;
       status: ApplicationStatus;
       repeat?: boolean;
       /** When the interview for a round stage takes place; defaults to now on the server. */
       interviewAt?: Date;
+      /** When the employer said they'd reply by. */
+      replyBy?: Date;
+      /** The user's own deadline for this stage (assignment due, offer expiry). */
+      dueAt?: Date;
     }) =>
       api<ApplicationDetailDto>(`/applications/${id}/status`, {
         method: 'PATCH',
-        json: { status, repeat, interviewAt },
+        json: { status, repeat, interviewAt, replyBy, dueAt },
       }),
     onSuccess: async (_updated, { id, status }) => {
       await invalidate();
       emitAppEvent({ type: 'status.changed', applicationId: id, status });
     },
+  });
+}
+
+export function useSnooze() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ id, until }: { id: string; until: Date }) =>
+      api<ApplicationDetailDto>(`/applications/${id}/snooze`, { method: 'POST', json: { until } }),
+    onSuccess: invalidate,
+  });
+}
+
+/** "I did my part, now it's their move": follow-up sent, assignment submitted, or they're scheduling. */
+export function useHandOver() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: HandOverReason }) =>
+      api<ApplicationDetailDto>(`/applications/${id}/hand-over`, {
+        method: 'POST',
+        json: { reason },
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+/** Marks an interview as debriefed from outside its application page (Today cards). */
+export function useDebrief() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ applicationId, interviewId }: { applicationId: string; interviewId: string }) =>
+      api<InterviewDto>(`/applications/${applicationId}/interviews/${interviewId}`, {
+        method: 'PATCH',
+        json: { debriefed: true },
+      }),
+    onSuccess: invalidate,
   });
 }
 

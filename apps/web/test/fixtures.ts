@@ -1,4 +1,6 @@
 import type {
+  ActionDto,
+  ActionsDto,
   ApplicationDetailDto,
   ApplicationDto,
   CompanyDto,
@@ -37,6 +39,13 @@ export const application = (overrides: Partial<ApplicationDto> = {}): Applicatio
   updatedAt: '2026-11-01T10:00:00.000Z',
   nextInterviewAt: null,
   interviewsCount: 0,
+  replyBy: null,
+  dueAt: null,
+  nextStep: null,
+  snoozedUntil: null,
+  statusChangedAt: '2026-11-01T10:00:00.000Z',
+  waitingOnThemAt: null,
+  followUps: 0,
   ...overrides,
 });
 
@@ -78,9 +87,33 @@ export const upcomingInterview: UpcomingInterviewDto = {
   durationMinutes: 60,
   location: null,
   notes: null,
+  timeUnknown: false,
+  debriefedAt: null,
   companyName: 'Acme',
   roleName: 'Backend Engineer',
 };
+
+export const actionCard = (overrides: Partial<ActionDto> = {}): ActionDto => ({
+  applicationId: 'a1',
+  company: 'Acme',
+  roleName: 'Backend Engineer',
+  kind: 'follow_up',
+  urgency: 'nudge',
+  title: 'Follow up with Acme',
+  subtitle: 'Applied 15 days ago',
+  dueAt: null,
+  interviewId: null,
+  ...overrides,
+});
+
+export const actions = (overrides: Partial<ActionsDto> = {}): ActionsDto => ({
+  needsYou: [],
+  scheduled: [],
+  waiting: [],
+  hiddenNudges: 0,
+  counts: { needsYou: 0, overdue: 0, waiting: 0 },
+  ...overrides,
+});
 
 export const overview = (overrides: Partial<OverviewDto> = {}): OverviewDto => ({
   totalApplications: 5,

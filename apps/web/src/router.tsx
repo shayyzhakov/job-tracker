@@ -7,6 +7,7 @@ import { IntegrationsPage } from './features/integrations/IntegrationsPage';
 import { OverviewPage } from './features/overview/OverviewPage';
 import { ScoutSettingsPage } from './features/scout/ScoutSettingsPage';
 import { SuggestionsPage } from './features/suggestions/SuggestionsPage';
+import { TodayPage } from './features/today/TodayPage';
 import { getRegisteredRoutes } from './lib/extensions';
 
 /** Built after optional layers had a chance to register their routes (see main.tsx). */
@@ -16,7 +17,8 @@ export const createAppRouter = () =>
       path: '/',
       Component: Layout,
       children: [
-        { index: true, Component: OverviewPage },
+        { index: true, Component: TodayPage },
+        { path: 'overview', Component: OverviewPage },
         { path: 'applications', Component: ApplicationsPage },
         { path: 'applications/new', Component: NewApplicationPage },
         { path: 'applications/:id', Component: ApplicationDetailPage },

@@ -57,6 +57,11 @@ export interface ApplicationFormValues {
   referrerChannel: ReferralChannel | null;
   methodDetails: string;
   appliedAt: string | null;
+  /** When the employer said they'd reply by (YYYY-MM-DD). */
+  replyBy: string | null;
+  /** The user's own deadline: assignment due date or offer expiry (YYYY-MM-DD). */
+  dueAt: string | null;
+  nextStep: string;
   notes: string;
   contacts: ContactFormValues[];
 }
@@ -73,9 +78,22 @@ const blankValues: ApplicationFormValues = {
   referrerChannel: null,
   methodDetails: '',
   appliedAt: null,
+  replyBy: null,
+  dueAt: null,
+  nextStep: '',
   notes: '',
   contacts: [],
 };
+
+/** ISO instant -> YYYY-MM-DD in the user's local time. */
+const localDate = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+/** A deadline set as a date means the end of that day, local time. */
+const endOfDay = (date: string | null) => (date ? new Date(`${date}T23:59:00`) : null);
 
 export const valuesFromApplication = (a: ApplicationDetailDto): ApplicationFormValues => ({
   company: {
@@ -95,6 +113,9 @@ export const valuesFromApplication = (a: ApplicationDetailDto): ApplicationFormV
   referrerChannel: a.referrerChannel,
   methodDetails: a.methodDetails ?? '',
   appliedAt: a.appliedAt ? a.appliedAt.slice(0, 10) : null,
+  replyBy: a.replyBy ? localDate(a.replyBy) : null,
+  dueAt: a.dueAt ? localDate(a.dueAt) : null,
+  nextStep: a.nextStep ?? '',
   notes: a.notes ?? '',
   contacts: [],
 });
@@ -109,6 +130,8 @@ export const toCreatePayload = (v: ApplicationFormValues) => ({
   company: { ...v.company, size: v.company.size ?? undefined },
   expectedSalaryIls: salary(v.expectedSalaryIls),
   appliedAt: v.appliedAt ?? undefined,
+  replyBy: v.replyBy ?? undefined,
+  dueAt: endOfDay(v.dueAt) ?? undefined,
 });
 
 /** Form values -> PATCH payload (blank fields become null, i.e. cleared). */
@@ -118,6 +141,8 @@ export const toUpdatePayload = (v: ApplicationFormValues) => {
     ...rest,
     expectedSalaryIls: salary(v.expectedSalaryIls) ?? null,
     appliedAt: v.appliedAt ?? null,
+    replyBy: v.replyBy ?? null,
+    dueAt: endOfDay(v.dueAt),
   };
 };
 
@@ -238,6 +263,34 @@ export function ApplicationForm({
             </Input.Wrapper>
           </SimpleGrid>
           <Textarea label="Notes" autosize minRows={3} mt="sm" {...form.getInputProps('notes')} />
+        </Card>
+
+        <Card withBorder padding="lg">
+          <Text fw={600} mb="sm">
+            Timeline
+          </Text>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <DateInput
+              label="They said they'd reply by"
+              description="Replaces the default waiting time before a follow-up is suggested."
+              clearable
+              valueFormat="DD MMM YYYY"
+              {...form.getInputProps('replyBy')}
+            />
+            <DateInput
+              label="Your deadline"
+              description="Home assignment due date or offer expiry."
+              clearable
+              valueFormat="DD MMM YYYY"
+              {...form.getInputProps('dueAt')}
+            />
+          </SimpleGrid>
+          <TextInput
+            label="Next step"
+            description="Anything you want to remember to do."
+            mt="sm"
+            {...form.getInputProps('nextStep')}
+          />
         </Card>
 
         <Card withBorder padding="lg">

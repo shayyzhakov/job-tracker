@@ -6,6 +6,7 @@ import type {
   CompanyDto,
   CompanyInput,
   ContactInput,
+  HandOverReason,
   InterviewDto,
   InterviewInput,
   OpportunityDto,
@@ -88,6 +89,16 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       updatedAt: at.toISOString(),
       nextInterviewAt: null,
       interviewsCount: 0,
+      replyBy: app.replyBy?.toISOString() ?? null,
+      dueAt: app.dueAt?.toISOString() ?? null,
+      nextStep: app.nextStep ?? null,
+      snoozedUntil: null,
+      statusChangedAt: (app.status === 'applied' && app.appliedAt
+        ? app.appliedAt
+        : at
+      ).toISOString(),
+      waitingOnThemAt: null,
+      followUps: 0,
       contacts: contacts.map((c) => ({
         id: randomUUID(),
         applicationId: id,
@@ -144,16 +155,41 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
   async update(id: string, patch: ApplicationFieldsPatch) {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return;
-    const { appliedAt, ...rest } = patch;
+    const { appliedAt, replyBy, dueAt, ...rest } = patch;
     Object.assign(row, rest);
     if (appliedAt !== undefined) row.appliedAt = appliedAt?.toISOString() ?? null;
+    if (replyBy !== undefined) row.replyBy = replyBy?.toISOString() ?? null;
+    if (dueAt !== undefined) row.dueAt = dueAt?.toISOString() ?? null;
   }
 
-  async changeStatus(id: string, { from, to, appliedAt, at, interviewId }: StatusTransition) {
+  async snooze(id: string, until: Date) {
+    const row = this.rows.find((r) => r.id === id);
+    if (row) row.snoozedUntil = until.toISOString();
+    return !!row;
+  }
+
+  async handOver(id: string, reason: HandOverReason, at: Date) {
+    const row = this.rows.find((r) => r.id === id);
+    if (!row) return false;
+    row.waitingOnThemAt = at.toISOString();
+    if (reason === 'followed_up') row.followUps += 1;
+    return true;
+  }
+
+  async changeStatus(
+    id: string,
+    { from, to, appliedAt, at, interviewId, replyBy, dueAt }: StatusTransition,
+  ) {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return;
     row.status = to;
     row.appliedAt = appliedAt?.toISOString() ?? null;
+    row.statusChangedAt = at.toISOString();
+    row.waitingOnThemAt = null;
+    row.followUps = 0;
+    row.snoozedUntil = null;
+    row.replyBy = replyBy?.toISOString() ?? null;
+    row.dueAt = dueAt?.toISOString() ?? null;
     row.history.push({
       id: randomUUID(),
       applicationId: id,
@@ -184,6 +220,8 @@ export class FakeInterviewsRepository {
       durationMinutes: input.durationMinutes ?? null,
       location: input.location ?? null,
       notes: input.notes ?? null,
+      timeUnknown: input.timeUnknown ?? false,
+      debriefedAt: null,
     };
     this.created.push(dto);
     return dto;

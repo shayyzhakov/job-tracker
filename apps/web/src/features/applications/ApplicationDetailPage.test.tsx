@@ -29,6 +29,8 @@ describe('ApplicationDetailPage', () => {
       durationMinutes: null,
       location: null,
       notes: null,
+      timeUnknown: false,
+      debriefedAt: null,
     });
     server.use(
       http.get('/api/v1/applications/:id', () =>
@@ -155,6 +157,36 @@ describe('ApplicationDetailPage', () => {
     });
     expect(body).not.toHaveProperty('status');
     expect(body).not.toHaveProperty('contacts');
+  });
+
+  it('shows the timeline the employer gave and sends a typed next step', async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.get('/api/v1/applications/:id', () =>
+        HttpResponse.json(
+          applicationDetail({
+            replyBy: '2026-11-20T00:00:00.000Z',
+            nextStep: 'Send portfolio link',
+          }),
+        ),
+      ),
+      http.patch('/api/v1/applications/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({});
+      }),
+    );
+    const { user } = renderDetail();
+    expect(await screen.findByText('Reply expected by')).toBeInTheDocument();
+    expect(screen.getByText('Send portfolio link')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    const step = screen.getByLabelText(/next step/i);
+    await user.clear(step);
+    await user.type(step, 'Prepare questions');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(body).toBeDefined());
+    expect(body).toMatchObject({ nextStep: 'Prepare questions', dueAt: null });
+    expect(typeof body?.replyBy).toBe('string');
   });
 
   it('shows not found for a missing application', async () => {

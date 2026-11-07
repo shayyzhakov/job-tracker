@@ -2,7 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { HttpResponse, http } from 'msw/http';
 import { describe, expect, it, vi } from 'vitest';
-import { opportunity } from '../../test/fixtures';
+import { actionCard, actions, opportunity } from '../../test/fixtures';
 import { renderRoute } from '../../test/render';
 import { server } from '../../test/server';
 import { SessionContext } from '../auth/AuthGate';
@@ -26,6 +26,32 @@ describe('Suggestions count chip', () => {
     renderRoute(<Layout />);
     await waitFor(() => expect(screen.getByText('Suggestions')).toBeInTheDocument());
     expect(screen.queryByTestId('suggestions-count')).not.toBeInTheDocument();
+  });
+});
+
+describe('Today badge', () => {
+  it('shows how many actions need the user, red when something is overdue', async () => {
+    server.use(
+      http.get('/api/v1/actions', () =>
+        HttpResponse.json(
+          actions({
+            needsYou: [actionCard()],
+            counts: { needsYou: 3, overdue: 1, waiting: 0 },
+          }),
+        ),
+      ),
+    );
+    renderRoute(<Layout />);
+    const chip = await screen.findByTestId('actions-count');
+    expect(chip).toHaveTextContent('3');
+    expect(chip).toHaveAccessibleName('3 actions need you, 1 overdue');
+    expect(chip.closest('a')).toHaveAttribute('href', '/');
+  });
+
+  it('is hidden when nothing needs the user', async () => {
+    renderRoute(<Layout />);
+    await waitFor(() => expect(screen.getByText('Today')).toBeInTheDocument());
+    expect(screen.queryByTestId('actions-count')).not.toBeInTheDocument();
   });
 });
 

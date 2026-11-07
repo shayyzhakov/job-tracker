@@ -35,6 +35,10 @@ export interface InterviewDto {
   durationMinutes: number | null;
   location: string | null;
   notes: string | null;
+  /** True when the round was created from a status change without a real time; the time is a placeholder. */
+  timeUnknown: boolean;
+  /** When the user logged how the interview went (or dismissed the prompt); null until then. */
+  debriefedAt: string | null;
 }
 
 export interface StatusHistoryDto {
@@ -72,6 +76,20 @@ export interface ApplicationDto {
   nextInterviewAt: string | null;
   /** Interview rounds reached so far, derived from the status history. */
   interviewsCount: number;
+  /** When the employer said they'd reply by (ISO date); overrides the default waiting timer. */
+  replyBy: string | null;
+  /** The user's own deadline: home-assignment due date or offer expiry. */
+  dueAt: string | null;
+  /** One-line manual "what I should do next". */
+  nextStep: string | null;
+  /** The action card for this application is hidden until this time. */
+  snoozedUntil: string | null;
+  /** When the application last moved to its current status. */
+  statusChangedAt: string;
+  /** When the user handed the ball to the employer (follow-up sent, assignment submitted…); ignored if older than statusChangedAt. */
+  waitingOnThemAt: string | null;
+  /** Follow-ups sent since the last status change. */
+  followUps: number;
 }
 
 export interface ApplicationDetailDto extends ApplicationDto {

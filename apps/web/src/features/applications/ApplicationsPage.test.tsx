@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
 import { describe, expect, it } from 'vitest';
-import { application, applicationDetail } from '../../../test/fixtures';
+import { actionCard, actions, application, applicationDetail } from '../../../test/fixtures';
 import { renderRoute } from '../../../test/render';
 import { server } from '../../../test/server';
 import { ApplicationsPage } from './ApplicationsPage';
@@ -15,6 +15,59 @@ describe('ApplicationsPage', () => {
     expect(within(row).getByRole('combobox', { name: 'Status for Acme' })).toHaveValue('Applied');
     expect(within(row).getByText('IC')).toBeInTheDocument();
     expect(screen.queryByText('Expected salary')).not.toBeInTheDocument();
+  });
+
+  it('labels each application with whose move it is', async () => {
+    server.use(
+      http.get('/api/v1/applications', () =>
+        HttpResponse.json([
+          application(),
+          application({
+            id: 'a2',
+            company: { ...application().company, id: 'c2', name: 'Globex' },
+          }),
+          application({
+            id: 'a3',
+            company: { ...application().company, id: 'c3', name: 'Initech' },
+          }),
+        ]),
+      ),
+      http.get('/api/v1/actions', () =>
+        HttpResponse.json(
+          actions({
+            needsYou: [actionCard({ applicationId: 'a1' })],
+            scheduled: [
+              {
+                applicationId: 'a2',
+                company: 'Globex',
+                roleName: 'Backend Engineer',
+                state: 'scheduled',
+                subtitle: 'Interview in 5 days',
+                checkInAt: '2026-11-12T10:00:00.000Z',
+              },
+            ],
+            waiting: [
+              {
+                applicationId: 'a3',
+                company: 'Initech',
+                roleName: 'Backend Engineer',
+                state: 'waiting',
+                subtitle: 'Applied 3 days ago',
+                checkInAt: '2026-11-16T10:00:00.000Z',
+              },
+            ],
+          }),
+        ),
+      ),
+    );
+    renderRoute(<ApplicationsPage />, { path: '/applications' });
+    await waitFor(() => expect(screen.getAllByTestId('next-move')).toHaveLength(3));
+    const moveOf = (company: string) =>
+      within(screen.getByText(company).closest('tr') as HTMLElement).getByTestId('next-move')
+        .dataset.move;
+    expect(moveOf('Acme')).toBe('needs_you');
+    expect(moveOf('Globex')).toBe('scheduled');
+    expect(moveOf('Initech')).toBe('waiting');
   });
 
   it('filters by role type and company type', async () => {

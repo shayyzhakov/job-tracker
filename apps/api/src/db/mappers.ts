@@ -44,6 +44,14 @@ export interface ApplicationItem {
   appliedAt: string | null;
   /** Every status this application has ever had (replaces an aggregate over the history rows). */
   reachedStatuses: ApplicationStatus[];
+  /** Action-queue fields; absent on rows written before they existed. */
+  replyBy?: string | null;
+  dueAt?: string | null;
+  nextStep?: string | null;
+  snoozedUntil?: string | null;
+  statusChangedAt?: string;
+  waitingOnThemAt?: string | null;
+  followUps?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -69,6 +77,8 @@ export interface InterviewItem {
   durationMinutes: number | null;
   location: string | null;
   notes: string | null;
+  timeUnknown?: boolean;
+  debriefedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -134,6 +144,8 @@ export const toInterviewDto = (i: InterviewItem): InterviewDto => ({
   durationMinutes: i.durationMinutes,
   location: i.location,
   notes: i.notes,
+  timeUnknown: i.timeUnknown ?? false,
+  debriefedAt: i.debriefedAt ?? null,
 });
 
 export const toHistoryDto = (h: HistoryItem): StatusHistoryDto => ({
@@ -148,6 +160,10 @@ export const toHistoryDto = (h: HistoryItem): StatusHistoryDto => ({
 /** Distinct interview-round statuses the application has ever had (reachedStatuses mirrors the status history). */
 const interviewRoundsReached = (reached: readonly ApplicationStatus[]) =>
   new Set(reached.filter((s) => (INTERVIEW_ROUND_STATUSES as readonly string[]).includes(s))).size;
+
+/** Rows from before statusChangedAt existed: appliedAt is exact while still "applied", else the last touch. */
+const statusChangedFallback = (a: ApplicationItem) =>
+  a.status === 'applied' && a.appliedAt ? a.appliedAt : a.updatedAt;
 
 export const toApplicationDto = (
   a: ApplicationItem,
@@ -172,6 +188,13 @@ export const toApplicationDto = (
   updatedAt: a.updatedAt,
   nextInterviewAt,
   interviewsCount: interviewRoundsReached(a.reachedStatuses),
+  replyBy: nul(a.replyBy),
+  dueAt: nul(a.dueAt),
+  nextStep: nul(a.nextStep),
+  snoozedUntil: nul(a.snoozedUntil),
+  statusChangedAt: a.statusChangedAt ?? statusChangedFallback(a),
+  waitingOnThemAt: nul(a.waitingOnThemAt),
+  followUps: a.followUps ?? 0,
 });
 
 export const toOpportunityDto = (o: OpportunityItem): OpportunityDto => ({

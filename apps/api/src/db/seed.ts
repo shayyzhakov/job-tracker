@@ -30,6 +30,10 @@ const samples: Array<{
   input: ApplicationCreateInput;
   path?: Parameters<ApplicationsService['changeStatus']>[1][];
   interviewInDays?: number;
+  /** Replies/deadlines for the last status in `path`. */
+  timeline?: { replyBy?: Date; dueAt?: Date };
+  /** An interview round at a given offset (negative = already happened), after `path`. */
+  round?: { status: Parameters<ApplicationsService['changeStatus']>[1]; days: number };
 }> = [
   {
     input: {
@@ -116,12 +120,55 @@ const samples: Array<{
       expectedSalaryIls: 38000,
     },
   },
+  // Action-queue samples: each lands in a different part of the Today list.
+  {
+    input: {
+      company: { name: 'Helix Labs', size: 'startup', location: 'Ramat Gan' },
+      roleName: 'Backend Developer',
+      status: 'applied',
+      appliedAt: at(-22),
+    },
+  },
+  {
+    input: {
+      company: { name: 'Vertex Pay', size: 'unicorn', location: 'Tel Aviv' },
+      roleName: 'Senior Engineer',
+      status: 'applied',
+      appliedAt: at(-30),
+      expectedSalaryIls: 45000,
+    },
+    path: ['offer'],
+    timeline: { dueAt: at(2, 18) },
+  },
+  {
+    input: {
+      company: { name: 'Lumen Labs', size: 'startup', location: 'Jerusalem' },
+      roleName: 'Platform Engineer',
+      status: 'applied',
+      appliedAt: at(-9),
+    },
+    path: ['home_assignment'],
+    timeline: { dueAt: at(1, 18) },
+  },
+  {
+    input: {
+      company: { name: 'Kite Security', size: 'startup', location: 'Tel Aviv' },
+      roleName: 'Security Engineer',
+      status: 'applied',
+      appliedAt: at(-8),
+    },
+    round: { status: 'phone_interview', days: -2 },
+  },
 ];
 
 await clearTable(db);
-for (const { input, path = [], interviewInDays } of samples) {
+for (const { input, path = [], interviewInDays, timeline, round } of samples) {
   const { id } = await service.create(ApplicationCreateSchema.parse(input));
-  for (const status of path) await service.changeStatus(id, status);
+  for (const [i, status] of path.entries()) {
+    const last = i === path.length - 1;
+    await service.changeStatus(id, status, false, undefined, last ? timeline : undefined);
+  }
+  if (round) await service.changeStatus(id, round.status, false, at(round.days, 14));
   // The upcoming technical round is a status step too: it creates the interview record.
   if (interviewInDays !== undefined) {
     await service.changeStatus(id, 'technical_interview', false, at(interviewInDays, 14));

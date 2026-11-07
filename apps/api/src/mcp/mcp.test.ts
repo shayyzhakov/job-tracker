@@ -1,4 +1,5 @@
 import type {
+  ActionsDto,
   ApplicationDetailDto,
   ContactDto,
   InterviewDto,
@@ -75,6 +76,9 @@ describe('MCP server', () => {
         'remove_interview',
         'search_companies',
         'get_overview',
+        'get_actions',
+        'snooze_application',
+        'hand_over_application',
         'list_suggestions',
         'add_suggestion',
         'promote_suggestion',
@@ -83,7 +87,7 @@ describe('MCP server', () => {
         'update_scout_criteria',
       ].sort(),
     );
-    for (const name of ['list_applications', 'get_application', 'get_overview']) {
+    for (const name of ['list_applications', 'get_application', 'get_overview', 'get_actions']) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
     for (const name of ['delete_application', 'remove_contact', 'remove_interview']) {
@@ -321,5 +325,36 @@ describe('MCP server', () => {
     expect(await callError('add_contact', { applicationId: unknown, name: 'X' })).toMatch(
       /Application .* not found/,
     );
+  });
+  it('drives the action list: deadlines, hand-over and snooze', async () => {
+    const created = await call<ApplicationDetailDto>('create_application', {
+      company: { name: 'Actionco' },
+      roleName: 'Engineer',
+      status: 'applied',
+    });
+    await call('change_application_status', {
+      id: created.id,
+      status: 'offer',
+      dueAt: new Date(Date.now() + 36 * 3_600_000).toISOString(),
+    });
+    const actions = await call<ActionsDto>('get_actions');
+    expect(actions.needsYou[0]).toMatchObject({
+      applicationId: created.id,
+      kind: 'respond_offer',
+      urgency: 'deadline',
+    });
+
+    const snoozed = await call<ApplicationDetailDto>('snooze_application', {
+      id: created.id,
+      until: new Date(Date.now() + 24 * 3_600_000).toISOString(),
+    });
+    expect(snoozed.snoozedUntil).not.toBeNull();
+    expect((await call<ActionsDto>('get_actions')).needsYou).toEqual([]);
+
+    const handed = await call<ApplicationDetailDto>('hand_over_application', {
+      id: created.id,
+      reason: 'followed_up',
+    });
+    expect(handed.followUps).toBe(1);
   });
 });
