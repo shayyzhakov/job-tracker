@@ -23,31 +23,40 @@ export function HeaderChip() {
     <>
       <Runtime />
       {state && (
-        <UnstyledButton
-          component={Link}
-          to="/achievements"
-          aria-label="Open achievements"
-          data-testid="gm-chip"
+        <Tooltip
+          label={`${state.game.level.xpIntoLevel} / ${state.game.level.xpForNext} XP`}
+          withArrow
         >
-          <Group gap={10} className="gm-chip" wrap="nowrap">
-            <Text size="xs" fw={700} className="tabular-nums">
-              Lv {state.game.level.level}
-            </Text>
-            <div className="gm-chip-bar" aria-hidden>
-              <div style={{ width: `${Math.round(state.game.level.pct * 100)}%` }} />
-            </div>
-            <Group
-              gap={2}
-              wrap="nowrap"
-              className={state.game.streak.activeToday ? 'gm-flame gm-flame--on' : 'gm-flame'}
-            >
-              <IconFlame size={16} aria-hidden />
+          <UnstyledButton
+            component={Link}
+            to="/achievements"
+            aria-label="Open achievements"
+            data-testid="gm-chip"
+          >
+            <Group gap={10} className="gm-chip" wrap="nowrap">
               <Text size="xs" fw={700} className="tabular-nums">
-                {state.game.streak.current}
+                Lv {state.game.level.level}
               </Text>
+              <div className="gm-chip-bar" aria-hidden>
+                <div
+                  style={{
+                    width: `${Math.round(state.game.level.pct * 100)}%`,
+                  }}
+                />
+              </div>
+              <Group
+                gap={2}
+                wrap="nowrap"
+                className={state.game.streak.activeToday ? 'gm-flame gm-flame--on' : 'gm-flame'}
+              >
+                <IconFlame size={16} aria-hidden />
+                <Text size="xs" fw={700} className="tabular-nums">
+                  {state.game.streak.current}
+                </Text>
+              </Group>
             </Group>
-          </Group>
-        </UnstyledButton>
+          </UnstyledButton>
+        </Tooltip>
       )}
     </>
   );
