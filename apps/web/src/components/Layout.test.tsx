@@ -29,7 +29,7 @@ describe('Suggestions count chip', () => {
   });
 });
 
-describe('Tasks badge', () => {
+describe('Tasks bell', () => {
   it('shows how many actions need the user, red when something is overdue', async () => {
     server.use(
       http.get('/api/v1/actions', () =>
@@ -42,16 +42,16 @@ describe('Tasks badge', () => {
       ),
     );
     renderRoute(<Layout />);
-    const chip = await screen.findByTestId('actions-count');
-    expect(chip).toHaveTextContent('3');
-    expect(chip).toHaveAccessibleName('3 actions need you, 1 overdue');
-    expect(chip.closest('a')).toHaveAttribute('href', '/');
+    const bell = await screen.findByRole('link', { name: 'Tasks: 3 need you, 1 overdue' });
+    expect(bell).toHaveAttribute('href', '/tasks');
+    expect(screen.getByTestId('actions-count')).toHaveTextContent('3');
   });
 
   it('is hidden when nothing needs the user', async () => {
     renderRoute(<Layout />);
-    await waitFor(() => expect(screen.getByText('Tasks')).toBeInTheDocument());
-    expect(screen.queryByTestId('actions-count')).not.toBeInTheDocument();
+    const bell = await screen.findByRole('link', { name: 'Tasks' });
+    expect(bell).toHaveAttribute('href', '/tasks');
+    expect(screen.getByTestId('actions-count')).not.toHaveTextContent(/\d/);
   });
 });
 

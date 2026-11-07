@@ -1,9 +1,11 @@
 import {
+  ActionIcon,
   AppShell,
   Avatar,
   Badge,
   Burger,
   Group,
+  Indicator,
   Menu,
   NavLink,
   Text,
@@ -11,8 +13,8 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
+  IconBell,
   IconBriefcase,
-  IconChecklist,
   IconLayoutDashboard,
   IconList,
   IconLogout,
@@ -26,8 +28,7 @@ import { displayNameOf, initialsOf } from '../auth/initials';
 import { Slot } from '../lib/extensions';
 
 const NAV = [
-  { to: '/', label: 'Tasks', icon: IconChecklist, exact: true, countsActions: true },
-  { to: '/overview', label: 'Overview', icon: IconLayoutDashboard, exact: true },
+  { to: '/', label: 'Overview', icon: IconLayoutDashboard, exact: true },
   { to: '/applications', label: 'Applications', icon: IconList, exact: false },
   { to: '/suggestions', label: 'Suggestions', icon: IconSparkles, exact: false, countsNew: true },
   { to: '/integrations', label: 'Integrations', icon: IconPlugConnected, exact: false },
@@ -63,6 +64,30 @@ export function Layout() {
             </Group>
             <Group gap="sm">
               <Slot name="header.right" />
+              <Indicator
+                label={<span aria-hidden>{actionCount}</span>}
+                disabled={actionCount === 0}
+                size={16}
+                offset={4}
+                mr={6}
+                color={overdueCount > 0 ? 'red' : 'indigo'}
+                data-testid="actions-count"
+              >
+                <ActionIcon
+                  component={Link}
+                  to="/tasks"
+                  variant={pathname === '/tasks' ? 'light' : 'subtle'}
+                  color="gray"
+                  size="lg"
+                  aria-label={
+                    actionCount > 0
+                      ? `Tasks: ${actionCount} need you${overdueCount > 0 ? `, ${overdueCount} overdue` : ''}`
+                      : 'Tasks'
+                  }
+                >
+                  <IconBell size={20} />
+                </ActionIcon>
+              </Indicator>
               {session && (
                 <Menu position="bottom-end" shadow="md" width={240}>
                   <Menu.Target>
@@ -93,7 +118,7 @@ export function Layout() {
           </Group>
         </AppShell.Header>
         <AppShell.Navbar p="xs">
-          {NAV.map(({ to, label, icon: Icon, exact, countsNew, countsActions }) => (
+          {NAV.map(({ to, label, icon: Icon, exact, countsNew }) => (
             <NavLink
               key={to}
               component={Link}
@@ -101,18 +126,7 @@ export function Layout() {
               label={label}
               leftSection={<Icon size={18} />}
               rightSection={
-                countsActions && actionCount > 0 ? (
-                  <Badge
-                    size="sm"
-                    radius="xl"
-                    variant="filled"
-                    color={overdueCount > 0 ? 'red' : 'indigo'}
-                    aria-label={`${actionCount} actions need you${overdueCount > 0 ? `, ${overdueCount} overdue` : ''}`}
-                    data-testid="actions-count"
-                  >
-                    {actionCount}
-                  </Badge>
-                ) : countsNew && suggestionCount > 0 ? (
+                countsNew && suggestionCount > 0 ? (
                   <Badge
                     size="sm"
                     radius="xl"

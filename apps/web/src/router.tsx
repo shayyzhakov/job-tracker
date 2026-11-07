@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { Layout } from './components/Layout';
 import { ApplicationDetailPage } from './features/applications/ApplicationDetailPage';
 import { ApplicationsPage } from './features/applications/ApplicationsPage';
@@ -17,8 +17,9 @@ export const createAppRouter = () =>
       path: '/',
       Component: Layout,
       children: [
-        { index: true, Component: TodayPage },
-        { path: 'overview', Component: OverviewPage },
+        { index: true, Component: OverviewPage },
+        { path: 'overview', element: <Navigate to="/" replace /> },
+        { path: 'tasks', Component: TodayPage },
         { path: 'applications', Component: ApplicationsPage },
         { path: 'applications/new', Component: NewApplicationPage },
         { path: 'applications/:id', Component: ApplicationDetailPage },

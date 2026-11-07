@@ -68,7 +68,11 @@ export function ApplicationsPage() {
   const rows = applyLocalFilters(data ?? [], local);
   const changeStatus = useChangeStatus();
   const { data: actions } = useActions();
-  const needsYou = new Set((actions?.needsYou ?? []).map((a) => a.applicationId));
+  // needsYou is ranked most urgent first, so the first card per application is its next step.
+  const needsYou = new Map<string, string>();
+  for (const a of actions?.needsYou ?? []) {
+    if (!needsYou.has(a.applicationId)) needsYou.set(a.applicationId, a.title);
+  }
   const { sorted, sort, toggle } = useSortedRows<ApplicationDto, SortKey>(rows, {
     company: (a) => a.company.name,
     role: (a) => a.roleName,
@@ -161,7 +165,7 @@ export function ApplicationsPage() {
                     style={
                       needsYou.has(a.id)
                         ? {
-                            boxShadow: 'inset 3px 0 0 var(--mantine-color-red-6)',
+                            boxShadow: 'inset 3px 0 0 var(--mantine-color-yellow-6)',
                           }
                         : undefined
                     }
@@ -169,12 +173,12 @@ export function ApplicationsPage() {
                     <Table.Td>
                       <Group gap={6} wrap="nowrap">
                         {needsYou.has(a.id) && (
-                          <Tooltip label="Needs you">
+                          <Tooltip label={needsYou.get(a.id)}>
                             <IconAlertCircleFilled
                               size={16}
-                              color="var(--mantine-color-red-6)"
+                              color="var(--mantine-color-yellow-6)"
                               data-testid="needs-you"
-                              aria-label="Needs you"
+                              aria-label={needsYou.get(a.id)}
                             />
                           </Tooltip>
                         )}

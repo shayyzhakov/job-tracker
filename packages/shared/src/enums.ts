@@ -87,7 +87,7 @@ export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
   onsite: 'Onsite',
   managerial: 'Managerial',
   final: 'Final',
-  coffee: 'Coffee chat (informal)',
+  coffee: 'Coffee chat',
   other: 'Other',
 };
 
