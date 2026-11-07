@@ -20,6 +20,23 @@ describe('interviews API', () => {
       await t.app.inject({ method: 'GET', url: `/api/v1/applications/${id}` })
     ).json<ApplicationDetailDto>();
 
+  it('does not count a round in interviewsCount until its interview has happened', async () => {
+    const { id } = await createApplication(t.app);
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'hr', scheduledAt: inDays(2) },
+    });
+    expect((await getApp(id)).interviewsCount).toBe(0);
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'technical', scheduledAt: inDays(5) },
+    });
+    // hr round moved on to technical: hr counted, upcoming technical not yet
+    expect((await getApp(id)).interviewsCount).toBe(1);
+  });
+
   it('is one record per round: a status change creates it, a scheduled one advances the status', async () => {
     const { id } = await createApplication(t.app);
     const when = inDays(3);

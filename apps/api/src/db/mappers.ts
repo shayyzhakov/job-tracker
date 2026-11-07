@@ -158,8 +158,17 @@ export const toHistoryDto = (h: HistoryItem): StatusHistoryDto => ({
 });
 
 /** Distinct interview-round statuses the application has ever had (reachedStatuses mirrors the status history). */
-const interviewRoundsReached = (reached: readonly ApplicationStatus[]) =>
-  new Set(reached.filter((s) => (INTERVIEW_ROUND_STATUSES as readonly string[]).includes(s))).size;
+const interviewRoundsReached = (
+  reached: readonly ApplicationStatus[],
+  status: ApplicationStatus,
+  nextInterviewAt: string | null,
+) => {
+  const isRound = (s: string) => (INTERVIEW_ROUND_STATUSES as readonly string[]).includes(s);
+  const rounds = new Set(reached.filter(isRound));
+  // The current round hasn't happened yet while its interview is still upcoming.
+  if (nextInterviewAt && isRound(status)) rounds.delete(status);
+  return rounds.size;
+};
 
 /** Rows from before statusChangedAt existed: appliedAt is exact while still "applied", else the last touch. */
 const statusChangedFallback = (a: ApplicationItem) =>
@@ -187,7 +196,7 @@ export const toApplicationDto = (
   createdAt: a.createdAt,
   updatedAt: a.updatedAt,
   nextInterviewAt,
-  interviewsCount: interviewRoundsReached(a.reachedStatuses),
+  interviewsCount: interviewRoundsReached(a.reachedStatuses, a.status, nextInterviewAt),
   replyBy: nul(a.replyBy),
   dueAt: nul(a.dueAt),
   nextStep: nul(a.nextStep),

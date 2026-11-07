@@ -68,9 +68,9 @@ export function ApplicationsPage() {
   const rows = applyLocalFilters(data ?? [], local);
   const changeStatus = useChangeStatus();
   const { data: actions } = useActions();
-  // needsYou is ranked most urgent first, so the first card per application is its next step.
+  // flagged is ranked most urgent first (and includes capped nudges), so the first card per application is its next step.
   const needsYou = new Map<string, string>();
-  for (const a of actions?.needsYou ?? []) {
+  for (const a of actions?.flagged ?? []) {
     if (!needsYou.has(a.applicationId)) needsYou.set(a.applicationId, a.title);
   }
   const { sorted, sort, toggle } = useSortedRows<ApplicationDto, SortKey>(rows, {
@@ -133,11 +133,11 @@ export function ApplicationsPage() {
         </Card>
       ) : (
         <Card withBorder padding={0}>
-          <Table.ScrollContainer minWidth={900}>
-            <Table highlightOnHover verticalSpacing="sm">
+          <Table.ScrollContainer minWidth={1000}>
+            <Table highlightOnHover verticalSpacing="sm" layout="fixed">
               <Table.Thead>
                 <Table.Tr>
-                  <SortableTh columnKey="company" sort={sort} onSort={toggle}>
+                  <SortableTh columnKey="company" sort={sort} onSort={toggle} w={260}>
                     Company
                   </SortableTh>
                   <SortableTh columnKey="role" sort={sort} onSort={toggle}>
@@ -146,10 +146,10 @@ export function ApplicationsPage() {
                   <SortableTh columnKey="status" sort={sort} onSort={toggle} w={210}>
                     Status
                   </SortableTh>
-                  <SortableTh columnKey="applied" sort={sort} onSort={toggle}>
+                  <SortableTh columnKey="applied" sort={sort} onSort={toggle} w={120}>
                     Applied
                   </SortableTh>
-                  <SortableTh columnKey="interview" sort={sort} onSort={toggle}>
+                  <SortableTh columnKey="interview" sort={sort} onSort={toggle} w={170}>
                     Next interview
                   </SortableTh>
                   <SortableTh columnKey="done" sort={sort} onSort={toggle} w={110}>
@@ -171,10 +171,11 @@ export function ApplicationsPage() {
                     }
                   >
                     <Table.Td>
-                      <Group gap={6} wrap="nowrap">
+                      <Group gap={0} wrap="wrap" style={{ rowGap: 2 }}>
                         {needsYou.has(a.id) && (
                           <Tooltip label={needsYou.get(a.id)}>
                             <IconAlertCircleFilled
+                              style={{ marginRight: 6 }}
                               size={16}
                               color="var(--mantine-color-yellow-6)"
                               data-testid="needs-you"
@@ -185,15 +186,15 @@ export function ApplicationsPage() {
                         <Anchor component={Link} to={`/applications/${a.id}`} fw={600}>
                           {a.company.name}
                         </Anchor>
+                        <CorporateBadge company={a.company} />
                       </Group>
-                      <CorporateBadge company={a.company} />
                       {a.company.location && (
                         <Text size="xs" c="dimmed">
                           {a.company.location}
                         </Text>
                       )}
                     </Table.Td>
-                    <Table.Td>
+                    <Table.Td style={{ overflowWrap: 'anywhere' }}>
                       <RoleTitle name={a.roleName} isManagement={a.isManagement} />
                     </Table.Td>
                     <Table.Td>
@@ -206,8 +207,10 @@ export function ApplicationsPage() {
                         }
                       />
                     </Table.Td>
-                    <Table.Td>{formatDate(a.appliedAt)}</Table.Td>
-                    <Table.Td>{formatDateTime(a.nextInterviewAt)}</Table.Td>
+                    <Table.Td style={{ whiteSpace: 'nowrap' }}>{formatDate(a.appliedAt)}</Table.Td>
+                    <Table.Td style={{ whiteSpace: 'nowrap' }}>
+                      {formatDateTime(a.nextInterviewAt)}
+                    </Table.Td>
                     <Table.Td>
                       {a.interviewsCount > 0 ? (
                         <Badge

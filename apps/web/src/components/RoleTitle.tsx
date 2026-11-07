@@ -3,13 +3,13 @@ import { Badge, Group, Text } from '@mantine/core';
 /** Role name prefixed with an M (management) / IC (individual contributor) badge. */
 export function RoleTitle({ name, isManagement }: { name: string; isManagement: boolean }) {
   return (
-    <Group gap={6} wrap="nowrap">
+    <Group gap={6} wrap="nowrap" align="flex-start">
       <Badge
         size="xs"
         variant="light"
         color={isManagement ? 'grape' : 'gray'}
         title={isManagement ? 'Management' : 'Individual contributor'}
-        style={{ flexShrink: 0 }}
+        style={{ flexShrink: 0, marginTop: 2 }}
       >
         {isManagement ? 'M' : 'IC'}
       </Badge>

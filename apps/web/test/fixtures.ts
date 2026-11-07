@@ -111,6 +111,7 @@ export const actions = (overrides: Partial<ActionsDto> = {}): ActionsDto => ({
   scheduled: [],
   waiting: [],
   hiddenNudges: 0,
+  flagged: [],
   counts: { needsYou: 0, overdue: 0, waiting: 0 },
   ...overrides,
 });

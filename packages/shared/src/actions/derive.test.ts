@@ -286,6 +286,7 @@ describe('deriveActions', () => {
       const r = run([...nudges, deadline]);
       expect(r.needsYou.filter((a) => a.urgency === 'nudge')).toHaveLength(5);
       expect(r.hiddenNudges).toBe(3);
+      expect(r.flagged).toHaveLength(9);
       expect(r.needsYou[0]?.kind).toBe('respond_offer');
       expect(r.counts.needsYou).toBe(9);
     });

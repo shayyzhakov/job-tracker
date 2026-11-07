@@ -44,5 +44,7 @@ export interface ActionsDto {
   /** Waiting on the employer, soonest check-in first. */
   waiting: WaitingDto[];
   hiddenNudges: number;
+  /** Every application with an open card, including nudges hidden by the cap (for flags in lists). */
+  flagged: { applicationId: string; title: string }[];
   counts: { needsYou: number; overdue: number; waiting: number };
 }

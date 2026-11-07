@@ -62,14 +62,20 @@ export function Layout() {
               <IconBriefcase size={22} aria-hidden />
               <Text fw={700}>Job Tracker</Text>
             </Group>
-            <Group gap="sm">
+            <Group gap="md">
               <Slot name="header.right" />
               <Indicator
-                label={<span aria-hidden>{actionCount}</span>}
+                label={<span aria-hidden>{actionCount > 9 ? '9+' : actionCount}</span>}
                 disabled={actionCount === 0}
                 size={16}
-                offset={4}
-                mr={6}
+                offset={6}
+                styles={{
+                  indicator: {
+                    fontSize: 10,
+                    fontWeight: 700,
+                    boxShadow: '0 0 0 2px var(--mantine-color-body)',
+                  },
+                }}
                 color={overdueCount > 0 ? 'red' : 'indigo'}
                 data-testid="actions-count"
               >
@@ -78,6 +84,7 @@ export function Layout() {
                   to="/tasks"
                   variant={pathname === '/tasks' ? 'light' : 'subtle'}
                   color="gray"
+                  c={pathname === '/tasks' ? undefined : 'dimmed'}
                   size="lg"
                   aria-label={
                     actionCount > 0
@@ -85,7 +92,7 @@ export function Layout() {
                       : 'Tasks'
                   }
                 >
-                  <IconBell size={20} />
+                  <IconBell size={20} stroke={1.5} />
                 </ActionIcon>
               </Indicator>
               {session && (

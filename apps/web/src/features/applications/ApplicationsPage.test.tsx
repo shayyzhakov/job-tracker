@@ -36,6 +36,7 @@ describe('ApplicationsPage', () => {
         HttpResponse.json(
           actions({
             needsYou: [actionCard({ applicationId: 'a1' })],
+            flagged: [{ applicationId: 'a1', title: 'Follow up' }],
             scheduled: [
               {
                 applicationId: 'a2',

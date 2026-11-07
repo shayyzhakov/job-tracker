@@ -110,6 +110,7 @@ export function deriveActions(input: DeriveActionsInput): ActionsDto {
     scheduled,
     waiting,
     hiddenNudges,
+    flagged: actions.map((a) => ({ applicationId: a.applicationId, title: a.title })),
     counts: {
       needsYou: actions.length,
       overdue: actions.filter((a) => a.urgency === 'overdue').length,
