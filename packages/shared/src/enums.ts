@@ -15,6 +15,16 @@ export const APPLICATION_STATUSES = [
 ] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
+/** Statuses that represent an interview round (as opposed to applying, an offer, or a close). */
+export const INTERVIEW_ROUND_STATUSES = [
+  'hr_screening',
+  'phone_interview',
+  'technical_interview',
+  'home_assignment',
+  'onsite_interview',
+  'final_interview',
+] as const satisfies readonly ApplicationStatus[];
+
 export const CLOSED_STATUSES = [
   'accepted',
   'rejected',

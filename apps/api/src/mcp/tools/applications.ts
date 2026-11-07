@@ -61,6 +61,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         roleName: a.roleName,
         status: a.status,
         nextInterviewAt: a.nextInterviewAt,
+        interviewsCount: a.interviewsCount,
         updatedAt: a.updatedAt,
       }));
     },

@@ -36,6 +36,7 @@ export const application = (overrides: Partial<ApplicationDto> = {}): Applicatio
   createdAt: '2026-11-01T10:00:00.000Z',
   updatedAt: '2026-11-01T10:00:00.000Z',
   nextInterviewAt: null,
+  interviewsCount: 0,
   ...overrides,
 });
 

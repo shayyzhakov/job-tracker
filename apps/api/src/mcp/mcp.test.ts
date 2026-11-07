@@ -182,6 +182,7 @@ describe('MCP server', () => {
         roleName: 'Engineering Manager',
         status: 'technical_interview',
         nextInterviewAt: null,
+        interviewsCount: 1,
         updatedAt: expect.any(String),
       },
     ]);

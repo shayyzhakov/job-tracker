@@ -68,6 +68,8 @@ export interface ApplicationDto {
   updatedAt: string;
   /** Next upcoming interview, if any — convenient for list views. */
   nextInterviewAt: string | null;
+  /** Interview rounds reached so far, derived from the status history. */
+  interviewsCount: number;
 }
 
 export interface ApplicationDetailDto extends ApplicationDto {

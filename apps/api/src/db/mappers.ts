@@ -1,16 +1,17 @@
-import type {
-  ApplicationDto,
-  ApplicationMethod,
-  ApplicationStatus,
-  CompanyDto,
-  CompanySize,
-  ContactDto,
-  InterviewDto,
-  InterviewType,
-  OpportunityDto,
-  OpportunityStatus,
-  ReferralChannel,
-  StatusHistoryDto,
+import {
+  type ApplicationDto,
+  type ApplicationMethod,
+  type ApplicationStatus,
+  type CompanyDto,
+  type CompanySize,
+  type ContactDto,
+  INTERVIEW_ROUND_STATUSES,
+  type InterviewDto,
+  type InterviewType,
+  type OpportunityDto,
+  type OpportunityStatus,
+  type ReferralChannel,
+  type StatusHistoryDto,
 } from '@job-tracker/shared';
 
 // Stored item shapes (dates are ISO strings; key attributes are not part of these types).
@@ -141,6 +142,10 @@ export const toHistoryDto = (h: HistoryItem): StatusHistoryDto => ({
   changedAt: h.changedAt,
 });
 
+/** Distinct interview-round statuses the application has ever had (reachedStatuses mirrors the status history). */
+const interviewRoundsReached = (reached: readonly ApplicationStatus[]) =>
+  new Set(reached.filter((s) => (INTERVIEW_ROUND_STATUSES as readonly string[]).includes(s))).size;
+
 export const toApplicationDto = (
   a: ApplicationItem,
   company: CompanyItem,
@@ -163,6 +168,7 @@ export const toApplicationDto = (
   createdAt: a.createdAt,
   updatedAt: a.updatedAt,
   nextInterviewAt,
+  interviewsCount: interviewRoundsReached(a.reachedStatuses),
 });
 
 export const toOpportunityDto = (o: OpportunityItem): OpportunityDto => ({

@@ -5,6 +5,7 @@ import {
 } from '@job-tracker/shared';
 import {
   Anchor,
+  Badge,
   Button,
   Card,
   Group,
@@ -16,7 +17,7 @@ import {
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
-import { IconPlus, IconSearch } from '@tabler/icons-react';
+import { IconCalendarCheck, IconPlus, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { type ApplicationFilters, useApplications, useChangeStatus } from '../../api/hooks';
@@ -41,7 +42,7 @@ const scopeToActive: Record<Scope, boolean | undefined> = {
   all: undefined,
 };
 
-type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview';
+type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview' | 'done';
 
 export function ApplicationsPage() {
   const [search, setSearch] = useState('');
@@ -58,6 +59,7 @@ export function ApplicationsPage() {
     status: (a) => APPLICATION_STATUSES.indexOf(a.status),
     applied: (a) => a.appliedAt,
     interview: (a) => a.nextInterviewAt,
+    done: (a) => a.interviewsCount,
   });
 
   return (
@@ -130,6 +132,9 @@ export function ApplicationsPage() {
                   <SortableTh columnKey="interview" sort={sort} onSort={toggle}>
                     Next interview
                   </SortableTh>
+                  <SortableTh columnKey="done" sort={sort} onSort={toggle} w={110}>
+                    Interviews
+                  </SortableTh>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -161,6 +166,19 @@ export function ApplicationsPage() {
                     </Table.Td>
                     <Table.Td>{formatDate(a.appliedAt)}</Table.Td>
                     <Table.Td>{formatDateTime(a.nextInterviewAt)}</Table.Td>
+                    <Table.Td>
+                      {a.interviewsCount > 0 ? (
+                        <Badge
+                          variant="light"
+                          leftSection={<IconCalendarCheck size={12} />}
+                          aria-label={`${a.interviewsCount} interview rounds reached`}
+                        >
+                          {a.interviewsCount}
+                        </Badge>
+                      ) : (
+                        <Text c="dimmed">–</Text>
+                      )}
+                    </Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>

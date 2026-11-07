@@ -123,6 +123,20 @@ describe('applications API', () => {
     ]);
   });
 
+  it('derives interviewsCount from the interview rounds in the status history', async () => {
+    const { id } = await create();
+    const setStatus = (status: string) =>
+      t.app.inject({ method: 'PATCH', url: `${BASE}/${id}/status`, payload: { status } });
+    for (const status of ['phone_interview', 'technical_interview', 'phone_interview', 'rejected'])
+      await setStatus(status);
+    const detail = (
+      await t.app.inject({ method: 'GET', url: `${BASE}/${id}` })
+    ).json<ApplicationDetailDto>();
+    expect(detail.interviewsCount).toBe(2);
+    const list = (await t.app.inject({ method: 'GET', url: BASE })).json<ApplicationDetailDto[]>();
+    expect(list.find((a) => a.id === id)?.interviewsCount).toBe(2);
+  });
+
   it('PATCH /:id/status rejects an unknown status', async () => {
     const { id } = await create();
     const res = await t.app.inject({

@@ -85,6 +85,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       createdAt: at.toISOString(),
       updatedAt: at.toISOString(),
       nextInterviewAt: null,
+      interviewsCount: 0,
       contacts: contacts.map((c) => ({
         id: randomUUID(),
         applicationId: id,
