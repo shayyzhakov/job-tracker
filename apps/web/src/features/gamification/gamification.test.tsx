@@ -1,4 +1,4 @@
-import type { ProgressDto } from '@job-tracker/shared';
+import { dayKey, type ProgressDto } from '@job-tracker/shared';
 import { notifications } from '@mantine/notifications';
 import { screen } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
@@ -10,12 +10,13 @@ import { celebrate } from './celebrations';
 import { ProgressHero } from './ProgressHero';
 import { StageProgress } from './StageProgress';
 
+// The game state is computed against the real clock, so the fixture's "today" must follow it.
+const today = dayKey(new Date(), 'Asia/Jerusalem');
+
 const progress = (over: Partial<ProgressDto> = {}): ProgressDto => ({
   timezone: 'Asia/Jerusalem',
-  today: '2026-11-06',
-  days: [
-    { date: '2026-11-06', added: 1, applied: 1, statusChanges: 0, interviews: 0, contacts: 0 },
-  ],
+  today,
+  days: [{ date: today, added: 1, applied: 1, statusChanges: 0, interviews: 0, contacts: 0 }],
   applicationsCount: 12,
   appliedCount: 12,
   stageReachedCounts: { offer: 1 },
