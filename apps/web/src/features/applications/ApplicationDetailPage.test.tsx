@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
 import { describe, expect, it } from 'vitest';
+import { applicationDetail } from '../../../test/fixtures';
 import { renderRoute } from '../../../test/render';
 import { server } from '../../../test/server';
 import { ApplicationDetailPage } from './ApplicationDetailPage';
@@ -15,6 +16,73 @@ describe('ApplicationDetailPage', () => {
     expect(screen.getByText('Dana Levi')).toBeInTheDocument();
     expect(screen.getByText('dana@acme.com')).toBeInTheDocument();
     expect(screen.getByTestId('status-timeline')).toHaveTextContent('Applied');
+  });
+
+  it('shows each interview once, scheduled only when it is in the future', async () => {
+    const past = '2020-01-01T10:00:00.000Z';
+    const future = '2999-01-01T10:00:00.000Z';
+    const interview = (id: string, scheduledAt: string) => ({
+      id,
+      applicationId: 'a1',
+      type: 'technical' as const,
+      scheduledAt,
+      durationMinutes: null,
+      location: null,
+      notes: null,
+    });
+    server.use(
+      http.get('/api/v1/applications/:id', () =>
+        HttpResponse.json(
+          applicationDetail({
+            history: [
+              {
+                id: 'h1',
+                applicationId: 'a1',
+                fromStatus: null,
+                toStatus: 'applied',
+                changedAt: past,
+                interviewId: null,
+              },
+              // the status step that created interview i2: must not appear a second time
+              {
+                id: 'h2',
+                applicationId: 'a1',
+                fromStatus: 'applied',
+                toStatus: 'technical_interview',
+                changedAt: past,
+                interviewId: 'i2',
+              },
+            ],
+            interviews: [interview('i1', past), interview('i2', future)],
+          }),
+        ),
+      ),
+    );
+    renderDetail();
+    const timeline = await screen.findByTestId('status-timeline');
+    expect(screen.getAllByTestId('upcoming-step')).toHaveLength(1);
+    expect(timeline.textContent?.match(/Technical interview/g)).toHaveLength(2); // i1 + i2, not h2
+  });
+
+  it('asks when the interview is before moving to a round stage', async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.patch('/api/v1/applications/:id/status', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(applicationDetail());
+      }),
+    );
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('combobox', { name: 'Change status' }));
+    await user.click(await screen.findByRole('option', { name: 'Technical interview' }));
+    expect(await screen.findByText(/when is the technical interview/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+    await waitFor(() =>
+      expect(body).toMatchObject({
+        status: 'technical_interview',
+        interviewAt: expect.any(String),
+      }),
+    );
   });
 
   it('adds a contact', async () => {

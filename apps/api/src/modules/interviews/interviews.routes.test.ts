@@ -20,6 +20,37 @@ describe('interviews API', () => {
       await t.app.inject({ method: 'GET', url: `/api/v1/applications/${id}` })
     ).json<ApplicationDetailDto>();
 
+  it('is one record per round: a status change creates it, a scheduled one advances the status', async () => {
+    const { id } = await createApplication(t.app);
+    const when = inDays(3);
+    const moved = await t.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/applications/${id}/status`,
+      payload: { status: 'technical_interview', interviewAt: when },
+    });
+    const afterMove = moved.json<ApplicationDetailDto>();
+    expect(afterMove.interviews).toMatchObject([{ type: 'technical', scheduledAt: when }]);
+    expect(afterMove.history.at(-1)?.interviewId).toBe(afterMove.interviews[0]?.id);
+
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'final', scheduledAt: inDays(6) },
+    });
+    const detail = await getApp(id);
+    expect(detail.status).toBe('final_interview');
+    expect(detail.interviews).toHaveLength(2);
+    expect(detail.history.at(-1)?.interviewId).toBe(detail.interviews[1]?.id);
+
+    // an earlier-stage interview doesn't pull the status back
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'hr', scheduledAt: inDays(-1) },
+    });
+    expect((await getApp(id)).status).toBe('final_interview');
+  });
+
   it('schedules interviews and exposes the next upcoming one on the application', async () => {
     const { id } = await createApplication(t.app);
     for (const [type, days] of [

@@ -17,8 +17,8 @@ const { db, close } = createDb(config);
 const service = new ApplicationsService({
   applications: new DynamoApplicationsRepository(db),
   companies: new DynamoCompaniesRepository(db),
+  interviews: new DynamoInterviewsRepository(db),
 });
-const interviews = new DynamoInterviewsRepository(db);
 const day = 86_400_000;
 const at = (days: number, hour = 10) => {
   const d = new Date(Date.now() + days * day);
@@ -122,11 +122,9 @@ await clearTable(db);
 for (const { input, path = [], interviewInDays } of samples) {
   const { id } = await service.create(ApplicationCreateSchema.parse(input));
   for (const status of path) await service.changeStatus(id, status);
+  // The upcoming technical round is a status step too: it creates the interview record.
   if (interviewInDays !== undefined) {
-    await interviews.create(id, {
-      type: 'technical',
-      scheduledAt: at(interviewInDays, 14),
-    });
+    await service.changeStatus(id, 'technical_interview', false, at(interviewInDays, 14));
   }
 }
 console.log(`Seeded ${samples.length} applications`);

@@ -1,6 +1,10 @@
 import { type ApplicationCreateInput, ApplicationCreateSchema } from '@job-tracker/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { FakeApplicationsRepository, FakeCompaniesRepository } from '../../../test/fakes.js';
+import {
+  FakeApplicationsRepository,
+  FakeCompaniesRepository,
+  FakeInterviewsRepository,
+} from '../../../test/fakes.js';
 import { NotFoundError } from '../../errors.js';
 import { ApplicationsService } from './applications.service.js';
 
@@ -15,14 +19,17 @@ const input = (overrides: Partial<ApplicationCreateInput> = {}) =>
 describe('ApplicationsService', () => {
   let apps: FakeApplicationsRepository;
   let companies: FakeCompaniesRepository;
+  let interviews: FakeInterviewsRepository;
   let service: ApplicationsService;
 
   beforeEach(() => {
     companies = new FakeCompaniesRepository();
     apps = new FakeApplicationsRepository(companies);
+    interviews = new FakeInterviewsRepository();
     service = new ApplicationsService({
       applications: apps,
       companies,
+      interviews,
       now: () => NOW,
     });
   });
@@ -84,6 +91,37 @@ describe('ApplicationsService', () => {
           toStatus: 'hr_screening',
         }),
       );
+    });
+
+    it('creates the interview for a round stage, at the given time or now', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'hr_screening');
+      const at = new Date('2026-11-08T12:00:00.000Z');
+      const updated = await service.changeStatus(id, 'technical_interview', false, at);
+      expect(interviews.created.map((i) => [i.type, i.scheduledAt])).toEqual([
+        ['hr', NOW.toISOString()],
+        ['technical', at.toISOString()],
+      ]);
+      expect(updated.history.at(-1)?.interviewId).toBe(interviews.created[1]?.id);
+    });
+
+    it('does not create an interview for non-round statuses', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      const updated = await service.changeStatus(id, 'offer');
+      expect(interviews.created).toEqual([]);
+      expect(updated.history.at(-1)?.interviewId).toBeNull();
+    });
+
+    it('advances to the stage of a directly scheduled interview, but never backwards', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      const phone = await interviews.create(id, { type: 'phone', scheduledAt: NOW });
+      await service.advanceToInterviewStage(id, phone);
+      expect((await service.get(id)).status).toBe('phone_interview');
+      expect((await service.get(id)).history.at(-1)?.interviewId).toBe(phone.id);
+
+      const hr = await interviews.create(id, { type: 'hr', scheduledAt: NOW });
+      await service.advanceToInterviewStage(id, hr);
+      expect((await service.get(id)).status).toBe('phone_interview');
     });
 
     it('does not record history when the status is unchanged', async () => {

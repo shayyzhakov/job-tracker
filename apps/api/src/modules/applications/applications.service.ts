@@ -5,6 +5,15 @@ import type {
   ApplicationStatus,
   ApplicationUpdate,
   CompanyDto,
+  InterviewDto,
+  InterviewInput,
+} from '@job-tracker/shared';
+import {
+  APPLICATION_STATUSES,
+  INTERVIEW_TYPE_ROUND_STATUS,
+  isActiveStatus,
+  isRoundStatus,
+  ROUND_STATUS_INTERVIEW_TYPE,
 } from '@job-tracker/shared';
 import { NotFoundError } from '../../errors.js';
 import type { CompaniesRepository } from '../companies/companies.repository.js';
@@ -13,17 +22,25 @@ import type { ApplicationsRepository } from './applications.repository.js';
 export interface ApplicationsServiceDeps {
   applications: ApplicationsRepository;
   companies: CompaniesRepository;
+  interviews: { create(applicationId: string, input: InterviewInput): Promise<InterviewDto> };
   now?: () => Date;
 }
 
 export class ApplicationsService {
   private readonly apps: ApplicationsRepository;
   private readonly companies: CompaniesRepository;
+  private readonly interviews: ApplicationsServiceDeps['interviews'];
   private readonly now: () => Date;
 
-  constructor({ applications, companies, now = () => new Date() }: ApplicationsServiceDeps) {
+  constructor({
+    applications,
+    companies,
+    interviews,
+    now = () => new Date(),
+  }: ApplicationsServiceDeps) {
     this.apps = applications;
     this.companies = companies;
+    this.interviews = interviews;
     this.now = now;
   }
 
@@ -61,22 +78,50 @@ export class ApplicationsService {
     return this.get(id);
   }
 
+  /**
+   * Moving to an interview-round stage records the interview itself (at `interviewAt`, default now),
+   * so a round is one entity whether it is upcoming or already happened.
+   */
   async changeStatus(
     id: string,
     status: ApplicationStatus,
     repeat = false,
+    interviewAt?: Date,
   ): Promise<ApplicationDetailDto> {
     const state = await this.requireState(id);
     if (state.status !== status || repeat) {
       const now = this.now();
+      const interview = isRoundStatus(status)
+        ? await this.interviews.create(id, {
+            type: ROUND_STATUS_INTERVIEW_TYPE[status],
+            scheduledAt: interviewAt ?? now,
+          })
+        : null;
       await this.apps.changeStatus(id, {
         from: state.status,
         to: status,
         appliedAt: state.appliedAt ?? (status === 'to_apply' ? null : now),
         at: now,
+        interviewId: interview?.id ?? null,
       });
     }
     return this.get(id);
+  }
+
+  /** An interview scheduled directly moves the application forward to that interview's stage. */
+  async advanceToInterviewStage(id: string, interview: InterviewDto): Promise<void> {
+    const to = INTERVIEW_TYPE_ROUND_STATUS[interview.type];
+    const state = await this.apps.getState(id);
+    if (!to || !state || !isActiveStatus(state.status)) return;
+    if (APPLICATION_STATUSES.indexOf(to) <= APPLICATION_STATUSES.indexOf(state.status)) return;
+    const now = this.now();
+    await this.apps.changeStatus(id, {
+      from: state.status,
+      to,
+      appliedAt: state.appliedAt ?? now,
+      at: now,
+      interviewId: interview.id,
+    });
   }
 
   async remove(id: string): Promise<void> {

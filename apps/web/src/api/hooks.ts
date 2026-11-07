@@ -108,14 +108,17 @@ export function useChangeStatus() {
       id,
       status,
       repeat,
+      interviewAt,
     }: {
       id: string;
       status: ApplicationStatus;
       repeat?: boolean;
+      /** When the interview for a round stage takes place; defaults to now on the server. */
+      interviewAt?: Date;
     }) =>
       api<ApplicationDetailDto>(`/applications/${id}/status`, {
         method: 'PATCH',
-        json: { status, repeat },
+        json: { status, repeat, interviewAt },
       }),
     onSuccess: async (_updated, { id, status }) => {
       await invalidate();

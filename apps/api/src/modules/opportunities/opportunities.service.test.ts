@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   FakeApplicationsRepository,
   FakeCompaniesRepository,
+  FakeInterviewsRepository,
   FakeOpportunitiesRepository,
   newOpportunity,
 } from '../../../test/fakes.js';
@@ -22,6 +23,7 @@ describe('OpportunitiesService', () => {
     const applications = new ApplicationsService({
       applications: apps,
       companies,
+      interviews: new FakeInterviewsRepository(),
     });
     service = new OpportunitiesService({ opportunities, applications });
   });

@@ -1,12 +1,5 @@
 // Composition root: wires repositories into the services that the REST routes and the MCP tools share.
-import type {
-  ContactDto,
-  ContactInput,
-  ContactUpdate,
-  InterviewDto,
-  InterviewInput,
-  InterviewUpdate,
-} from '@job-tracker/shared';
+import type { ContactDto, ContactInput, ContactUpdate } from '@job-tracker/shared';
 import type { Db } from './db/dynamo.js';
 import { DynamoApplicationsRepository } from './modules/applications/applications.repository.js';
 import { ApplicationsService } from './modules/applications/applications.service.js';
@@ -17,6 +10,7 @@ import {
 } from './modules/companies/companies.repository.js';
 import { DynamoContactsRepository } from './modules/contacts/contacts.repository.js';
 import { DynamoInterviewsRepository } from './modules/interviews/interviews.repository.js';
+import { InterviewsService } from './modules/interviews/interviews.service.js';
 import { DynamoOpportunitiesRepository } from './modules/opportunities/opportunities.repository.js';
 import { OpportunitiesService } from './modules/opportunities/opportunities.service.js';
 import { DynamoOverviewRepository } from './modules/overview/overview.repository.js';
@@ -30,7 +24,7 @@ export interface Services {
   applications: ApplicationsService;
   companies: CompaniesRepository;
   contacts: ChildService<ContactInput, ContactUpdate, ContactDto>;
-  interviews: ChildService<InterviewInput, InterviewUpdate, InterviewDto>;
+  interviews: InterviewsService;
   overview: OverviewService;
   opportunities: OpportunitiesService;
   scoutCriteria: ScoutCriteriaRepository;
@@ -39,15 +33,17 @@ export interface Services {
 export function createServices(db: Db): Services {
   const companies = new DynamoCompaniesRepository(db);
   const applicationsRepo = new DynamoApplicationsRepository(db);
+  const interviewsRepo = new DynamoInterviewsRepository(db);
   const applications = new ApplicationsService({
     applications: applicationsRepo,
     companies,
+    interviews: interviewsRepo,
   });
   return {
     applications,
     companies,
     contacts: new ChildService('Contact', new DynamoContactsRepository(db), applicationsRepo),
-    interviews: new ChildService('Interview', new DynamoInterviewsRepository(db), applicationsRepo),
+    interviews: new InterviewsService(interviewsRepo, applicationsRepo, applications),
     overview: new OverviewService(new DynamoOverviewRepository(db)),
     opportunities: new OpportunitiesService({
       opportunities: new DynamoOpportunitiesRepository(db),

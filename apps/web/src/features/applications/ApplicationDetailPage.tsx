@@ -1,8 +1,10 @@
 import {
   APPLICATION_METHOD_LABELS,
   type ApplicationDetailDto,
+  type ApplicationStatus,
   COMPANY_SIZE_LABELS,
   INTERVIEW_TYPE_LABELS,
+  isRoundStatus,
   REFERRAL_CHANNEL_LABELS,
   STATUS_LABELS,
 } from '@job-tracker/shared';
@@ -17,6 +19,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  TextInput,
   Timeline,
   Title,
 } from '@mantine/core';
@@ -116,6 +119,95 @@ function Details({ app }: { app: ApplicationDetailDto }) {
   );
 }
 
+interface TimelineStep {
+  key: string;
+  title: string;
+  at: string;
+  /** Dated in the future: hasn't happened yet. */
+  scheduled: boolean;
+}
+
+/**
+ * Status changes and interviews share one chronological timeline. A step is "scheduled"
+ * purely by its timestamp being in the future — there is no separate upcoming/past entity.
+ */
+function buildTimelineSteps(
+  history: ApplicationDetailDto['history'],
+  interviews: ApplicationDetailDto['interviews'],
+  now: number,
+): TimelineStep[] {
+  // A history row that created/came from an interview is that interview: show it once.
+  const interviewIds = new Set(interviews.map((i) => i.id));
+  const steps: TimelineStep[] = [
+    ...history
+      .filter((h) => !(h.interviewId && interviewIds.has(h.interviewId)))
+      .map((h) => ({
+        key: `h-${h.id}`,
+        title: STATUS_LABELS[h.toStatus],
+        at: h.changedAt,
+      })),
+    ...interviews.map((i) => ({
+      key: `i-${i.id}`,
+      title: `${INTERVIEW_TYPE_LABELS[i.type]} interview`,
+      at: i.scheduledAt,
+    })),
+  ].map((s) => ({ ...s, scheduled: new Date(s.at).getTime() > now }));
+  return steps.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+}
+
+/** Local date-time for <input type="datetime-local">, e.g. 2026-11-09T10:30. */
+const toLocalInput = (d: Date) =>
+  new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+
+function RoundTimeModal({
+  round,
+  submitting,
+  onClose,
+  onSubmit,
+}: {
+  round: { status: ApplicationStatus; repeat: boolean } | null;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (interviewAt: Date) => void;
+}) {
+  const [value, setValue] = useState(() => toLocalInput(new Date()));
+  return (
+    <Modal
+      opened={round !== null}
+      onClose={onClose}
+      title={round ? `When is the ${STATUS_LABELS[round.status].toLowerCase()}?` : ''}
+      centered
+    >
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (value) onSubmit(new Date(value)); // parsed as local time
+        }}
+      >
+        <Stack>
+          <TextInput
+            type="datetime-local"
+            label="Date & time"
+            description="Past or future. Future ones show as scheduled."
+            value={value}
+            onChange={(e) => setValue(e.currentTarget.value)}
+            required
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submitting} disabled={!value}>
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
 export function ApplicationDetailPage() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
@@ -125,14 +217,21 @@ export function ApplicationDetailPage() {
   const remove = useDeleteApplication();
   const [editing, setEditing] = useState(false);
   const [confirmOpen, confirm] = useDisclosure(false);
+  const [pendingRound, setPendingRound] = useState<{
+    status: ApplicationStatus;
+    repeat: boolean;
+  } | null>(null);
 
   if (isPending) return <PageLoader />;
   if (error) return <ErrorAlert error={error} what="application" />;
 
-  const now = Date.now();
-  const upcoming = app.interviews
-    .filter((i) => new Date(i.scheduledAt).getTime() > now)
-    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  // Interview-round stages are interviews: ask when it takes place before recording the step.
+  const requestStatus = (status: ApplicationStatus, repeat = false) =>
+    isRoundStatus(status)
+      ? setPendingRound({ status, repeat })
+      : changeStatus.mutate({ id: app.id, status, repeat });
+  const steps = buildTimelineSteps(app.history, app.interviews, Date.now());
+  const lastDone = steps.reduce((last, s, i) => (s.scheduled ? last : i), -1);
 
   return (
     <Stack>
@@ -154,13 +253,13 @@ export function ApplicationDetailPage() {
           <StatusSelect
             aria-label="Change status"
             value={app.status}
-            onChange={(status) => changeStatus.mutate({ id: app.id, status })}
+            onChange={(status) => requestStatus(status)}
             w={200}
           />
           <Button
             variant="light"
             leftSection={<IconPlus size={16} />}
-            onClick={() => changeStatus.mutate({ id: app.id, status: app.status, repeat: true })}
+            onClick={() => requestStatus(app.status, true)}
           >
             Add another {STATUS_LABELS[app.status]} step
           </Button>
@@ -224,37 +323,31 @@ export function ApplicationDetailPage() {
             <Text fw={600} mb="md">
               Status history
             </Text>
-            <Timeline
-              active={app.history.length - 1}
-              bulletSize={14}
-              lineWidth={2}
-              data-testid="status-timeline"
-            >
-              {app.history.map((h) => (
-                <Timeline.Item key={h.id} title={STATUS_LABELS[h.toStatus]}>
-                  <Text size="xs" c="dimmed">
-                    {formatDateTime(h.changedAt)}
-                  </Text>
-                </Timeline.Item>
-              ))}
-              {upcoming.map((i) => (
+            <Timeline active={lastDone} bulletSize={14} lineWidth={2} data-testid="status-timeline">
+              {steps.map((step) => (
                 <Timeline.Item
-                  key={i.id}
-                  lineVariant="dashed"
+                  key={step.key}
+                  lineVariant={step.scheduled ? 'dashed' : 'solid'}
                   title={
-                    <Text span fs="italic" c="dimmed" size="sm" fw={500}>
-                      {INTERVIEW_TYPE_LABELS[i.type]} interview
-                    </Text>
+                    step.scheduled ? (
+                      <Text span fs="italic" c="dimmed" size="sm" fw={500}>
+                        {step.title}
+                      </Text>
+                    ) : (
+                      step.title
+                    )
                   }
-                  data-testid="upcoming-step"
+                  data-testid={step.scheduled ? 'upcoming-step' : undefined}
                 >
-                  <Group gap={6}>
-                    <Badge size="xs" variant="outline" color="gray">
-                      Scheduled
-                    </Badge>
-                  </Group>
-                  <Text size="xs" c="dimmed" mt={4}>
-                    {formatDateTime(i.scheduledAt)}
+                  {step.scheduled && (
+                    <Group gap={6}>
+                      <Badge size="xs" variant="outline" color="gray">
+                        Scheduled
+                      </Badge>
+                    </Group>
+                  )}
+                  <Text size="xs" c="dimmed" mt={step.scheduled ? 4 : 0}>
+                    {formatDateTime(step.at)}
                   </Text>
                 </Timeline.Item>
               ))}
@@ -262,6 +355,20 @@ export function ApplicationDetailPage() {
           </Card>
         </Grid.Col>
       </Grid>
+
+      <RoundTimeModal
+        key={pendingRound ? `${pendingRound.status}-${pendingRound.repeat}` : 'none'}
+        round={pendingRound}
+        submitting={changeStatus.isPending}
+        onClose={() => setPendingRound(null)}
+        onSubmit={(interviewAt) => {
+          if (!pendingRound) return;
+          changeStatus.mutate(
+            { id: app.id, status: pendingRound.status, repeat: pendingRound.repeat, interviewAt },
+            { onSuccess: () => setPendingRound(null) },
+          );
+        }}
+      />
 
       <Modal opened={confirmOpen} onClose={confirm.close} title="Delete application?" centered>
         <Text mb="md">

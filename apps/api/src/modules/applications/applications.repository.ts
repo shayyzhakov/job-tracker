@@ -67,6 +67,8 @@ export interface StatusTransition {
   to: ApplicationStatus;
   appliedAt: Date | null;
   at: Date;
+  /** Interview created for (or behind) this step, if it is an interview round. */
+  interviewId?: string | null;
 }
 
 export interface ApplicationsRepository {
@@ -101,7 +103,15 @@ const historyItem = (
   fromStatus: ApplicationStatus | null,
   toStatus: ApplicationStatus,
   changedAt: string,
-): HistoryItem => ({ id: randomUUID(), applicationId, fromStatus, toStatus, changedAt });
+  interviewId: string | null = null,
+): HistoryItem => ({
+  id: randomUUID(),
+  applicationId,
+  fromStatus,
+  toStatus,
+  changedAt,
+  interviewId,
+});
 
 const byCreated = (a: { createdAt: string; id: string }, b: { createdAt: string; id: string }) =>
   a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
@@ -261,13 +271,13 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     }
   }
 
-  async changeStatus(id: string, { from, to, appliedAt, at }: StatusTransition) {
+  async changeStatus(id: string, { from, to, appliedAt, at, interviewId }: StatusTransition) {
     const current = (
       await this.db.doc.send(new GetCommand({ TableName: this.db.table, Key: key.app(id) }))
     ).Item as ApplicationItem | undefined;
     if (!current) return;
     const changedAt = iso(at);
-    const history = historyItem(id, from, to, changedAt);
+    const history = historyItem(id, from, to, changedAt, interviewId ?? null);
     const reached = [...new Set([...current.reachedStatuses, to])];
     await this.db.doc.send(
       new TransactWriteCommand({

@@ -87,9 +87,13 @@ export function InterviewsSection({
                   <Badge variant="outline" size="sm">
                     {INTERVIEW_TYPE_LABELS[i.type]}
                   </Badge>
-                  {past && (
+                  {past ? (
                     <Badge color="gray" size="sm">
                       Past
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" color="gray" size="sm">
+                      Scheduled
                     </Badge>
                   )}
                 </Group>

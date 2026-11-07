@@ -102,6 +102,8 @@ export const StatusChangeSchema = z.object({
   status: ApplicationStatusSchema,
   /** Record a new step even when the status is unchanged (e.g. a second phone interview). */
   repeat: z.boolean().optional(),
+  /** When the interview for a round stage takes place (past or future); defaults to now. */
+  interviewAt: z.coerce.date().optional(),
 });
 export type StatusChange = z.infer<typeof StatusChangeSchema>;
 

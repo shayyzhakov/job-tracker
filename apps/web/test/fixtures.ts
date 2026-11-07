@@ -64,6 +64,7 @@ export const applicationDetail = (
       fromStatus: null,
       toStatus: 'applied',
       changedAt: '2026-11-01T10:00:00.000Z',
+      interviewId: null,
     },
   ],
   ...overrides,

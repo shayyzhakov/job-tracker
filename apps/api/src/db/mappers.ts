@@ -79,6 +79,8 @@ export interface HistoryItem {
   fromStatus: ApplicationStatus | null;
   toStatus: ApplicationStatus;
   changedAt: string;
+  /** Absent on rows written before interviews were linked to stages. */
+  interviewId?: string | null;
 }
 
 export interface OpportunityItem {
@@ -140,6 +142,7 @@ export const toHistoryDto = (h: HistoryItem): StatusHistoryDto => ({
   fromStatus: h.fromStatus,
   toStatus: h.toStatus,
   changedAt: h.changedAt,
+  interviewId: h.interviewId ?? null,
 });
 
 /** Distinct interview-round statuses the application has ever had (reachedStatuses mirrors the status history). */

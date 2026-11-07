@@ -38,7 +38,7 @@ MCP tools (defineTool)               ┴─> services ─> repositories ─> Dyn
 ```
 
 - **`services.ts` is the composition root.** `createServices(db)` wires repositories into services once; both the REST routes and the MCP tools receive the same `Services` object, so business rules (status history, company de-duplication, applied-date handling, promote/dismiss conflicts) live in one place.
-- **Modules** under `src/modules/`: `applications`, `companies`, `contacts`, `interviews`, `overview`, `opportunities`, `scout-criteria`, `integrations`, `health`. Contacts and interviews share a generic `ChildService`.
+- **Modules** under `src/modules/`: `applications`, `companies`, `contacts`, `interviews`, `overview`, `opportunities`, `scout-criteria`, `integrations`, `health`. Contacts and interviews share a generic `ChildService`; `InterviewsService` extends it so scheduling an interview also advances the application's stage.
 - **Validation:** request and response schemas come from `packages/shared` via `fastify-type-provider-zod`. MCP handlers re-validate with the same schemas.
 - **Errors:** services throw `NotFoundError` / `ConflictError`. The Fastify error handler maps them to 404 / 409 (validation to 400); the MCP layer maps them to tool errors with readable messages.
 - **Repository interfaces** have a DynamoDB implementation and, for unit tests, an in-memory fake in `apps/api/test/fakes.ts`.
@@ -82,7 +82,7 @@ DynamoDB, single table, on-demand billing, keys `PK`/`SK`, two global secondary 
 | Application              | `APP#<id>`           | `META`              | GSI1: `APPS` / `<updatedAt>#<id>` (list, newest first)                                                           |
 | Contact                  | `APP#<id>`           | `CONTACT#<id>`      |                                                                                                                  |
 | Interview                | `APP#<id>`           | `INTERVIEW#<id>`    | GSI1: `INTERVIEWS` / `<scheduledAt>#<id>` (upcoming interviews)                                                  |
-| Status history entry     | `APP#<id>`           | `HISTORY#<at>#<id>` |                                                                                                                  |
+| Status history entry     | `APP#<id>`           | `HISTORY#<at>#<id>` | Carries `interviewId` when the step created or came from an interview (absent on older rows)                     |
 | Company                  | `COMPANY#<id>`       | `META`              | GSI1 (company listing and search)                                                                                |
 | Company-name marker      | `CNAME#<lowercased>` | `META`              | Uniqueness only                                                                                                  |
 | Opportunity (suggestion) | `OPP#<id>`           | `META`              | GSI1: `OPPSTATUS#<status>` / zero-padded score + time (best first); GSI2: `APPOPP#<applicationId>` once promoted |

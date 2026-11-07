@@ -169,7 +169,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     'change_application_status',
     {
       title: 'Change application status',
-      description: `Move an application to a new status and record it in its history. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
+      description: `Move an application to a new status and record it in its history. Interview-round statuses also create the interview itself, so do not call schedule_interview for the same round. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
       inputSchema: {
         id,
         status: z.string().describe(APPLICATION_STATUSES.join(' | ')),
@@ -179,11 +179,17 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .describe(
             'Set true to add another step with the same status (e.g. a second phone interview)',
           ),
+        interviewAt: z
+          .string()
+          .optional()
+          .describe(
+            'For interview-round statuses: ISO 8601 date-time with a UTC offset of the interview (past or future). Defaults to now.',
+          ),
       },
     },
     ({ id, ...body }) => {
-      const { status, repeat } = StatusChangeSchema.parse(body);
-      return s.applications.changeStatus(id, status, repeat);
+      const { status, repeat, interviewAt } = StatusChangeSchema.parse(body);
+      return s.applications.changeStatus(id, status, repeat, interviewAt);
     },
     logger,
   );

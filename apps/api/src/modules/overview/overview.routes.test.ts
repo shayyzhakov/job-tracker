@@ -46,12 +46,13 @@ describe('GET /api/v1/overview', () => {
       totalApplications: 3,
       activeApplications: 2,
       offers: 1,
-      responseRate: 0.5,
+      responseRate: 1,
       interviewsNext7Days: 1,
       averageExpectedSalaryIls: 40000,
     });
+    // scheduling a technical interview moved `a` from applied to that stage
     expect(o.countsByStatus).toMatchObject({
-      applied: 1,
+      technical_interview: 1,
       to_apply: 1,
       rejected: 1,
     });

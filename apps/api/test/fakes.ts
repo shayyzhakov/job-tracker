@@ -6,6 +6,8 @@ import type {
   CompanyDto,
   CompanyInput,
   ContactInput,
+  InterviewDto,
+  InterviewInput,
   OpportunityDto,
   OpportunityListQuery,
   ScoutCriteria,
@@ -104,6 +106,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
           fromStatus: null,
           toStatus: app.status,
           changedAt: at.toISOString(),
+          interviewId: null,
         },
       ],
     });
@@ -146,7 +149,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     if (appliedAt !== undefined) row.appliedAt = appliedAt?.toISOString() ?? null;
   }
 
-  async changeStatus(id: string, { from, to, appliedAt, at }: StatusTransition) {
+  async changeStatus(id: string, { from, to, appliedAt, at, interviewId }: StatusTransition) {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return;
     row.status = to;
@@ -157,6 +160,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       fromStatus: from,
       toStatus: to,
       changedAt: at.toISOString(),
+      interviewId: interviewId ?? null,
     });
   }
 
@@ -164,6 +168,25 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     const before = this.rows.length;
     this.rows = this.rows.filter((r) => r.id !== id);
     return this.rows.length < before;
+  }
+}
+
+/** Records the interviews the service creates; nothing reads them back. */
+export class FakeInterviewsRepository {
+  created: InterviewDto[] = [];
+
+  async create(applicationId: string, input: InterviewInput): Promise<InterviewDto> {
+    const dto: InterviewDto = {
+      id: randomUUID(),
+      applicationId,
+      type: input.type,
+      scheduledAt: input.scheduledAt.toISOString(),
+      durationMinutes: input.durationMinutes ?? null,
+      location: input.location ?? null,
+      notes: input.notes ?? null,
+    };
+    this.created.push(dto);
+    return dto;
   }
 }
 

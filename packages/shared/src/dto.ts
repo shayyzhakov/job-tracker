@@ -43,6 +43,8 @@ export interface StatusHistoryDto {
   fromStatus: ApplicationStatus | null;
   toStatus: ApplicationStatus;
   changedAt: string;
+  /** The interview this step created or came from; null for plain status changes and older rows. */
+  interviewId: string | null;
 }
 
 export interface ApplicationDto {

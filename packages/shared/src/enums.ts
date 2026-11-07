@@ -67,6 +67,7 @@ export const INTERVIEW_TYPES = [
   'phone',
   'technical',
   'system_design',
+  'home_assignment',
   'home_assignment_review',
   'onsite',
   'managerial',
@@ -80,12 +81,43 @@ export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
   phone: 'Phone',
   technical: 'Technical',
   system_design: 'System design',
+  home_assignment: 'Home assignment',
   home_assignment_review: 'Home assignment review',
   onsite: 'Onsite',
   managerial: 'Managerial',
   final: 'Final',
   other: 'Other',
 };
+
+/** Interview type recorded for each interview-round status. */
+export const ROUND_STATUS_INTERVIEW_TYPE: Record<
+  (typeof INTERVIEW_ROUND_STATUSES)[number],
+  InterviewType
+> = {
+  hr_screening: 'hr',
+  phone_interview: 'phone',
+  technical_interview: 'technical',
+  home_assignment: 'home_assignment',
+  onsite_interview: 'onsite',
+  final_interview: 'final',
+};
+
+/** Pipeline stage an interview type belongs to (types without a stage don't move the status). */
+export const INTERVIEW_TYPE_ROUND_STATUS: Partial<Record<InterviewType, ApplicationStatus>> = {
+  hr: 'hr_screening',
+  phone: 'phone_interview',
+  technical: 'technical_interview',
+  system_design: 'technical_interview',
+  home_assignment: 'home_assignment',
+  onsite: 'onsite_interview',
+  final: 'final_interview',
+};
+
+export function isRoundStatus(
+  status: ApplicationStatus,
+): status is (typeof INTERVIEW_ROUND_STATUSES)[number] {
+  return (INTERVIEW_ROUND_STATUSES as readonly ApplicationStatus[]).includes(status);
+}
 
 /** How the user applied to / got into the process for a role. */
 export const APPLICATION_METHODS = [
