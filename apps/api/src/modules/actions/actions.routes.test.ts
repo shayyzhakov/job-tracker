@@ -45,13 +45,14 @@ describe('action queue', () => {
 
   it('asks to schedule a round moved without a time, and lists it as scheduled once a real time is set', async () => {
     const app = await createApplication(t.app);
-    await changeStatus(app.id, { status: 'phone_interview' });
+    const moved = await changeStatus(app.id, { status: 'phone_interview' });
     expect((await actions()).needsYou[0]).toMatchObject({ kind: 'schedule_interview' });
 
-    await changeStatus(app.id, {
-      status: 'phone_interview',
-      repeat: true,
-      interviewAt: inHours(20),
+    const interviewId = moved.json<ApplicationDetailDto>().interviews[0]?.id;
+    await t.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/applications/${app.id}/interviews/${interviewId}`,
+      payload: { scheduledAt: inHours(20), timeUnknown: false },
     });
     const a = await actions();
     expect(a.needsYou).toEqual([]);

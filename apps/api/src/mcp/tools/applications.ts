@@ -183,12 +183,6 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
       inputSchema: {
         id,
         status: z.string().describe(APPLICATION_STATUSES.join(' | ')),
-        repeat: z
-          .boolean()
-          .optional()
-          .describe(
-            'Set true to add another step with the same status (e.g. a second phone interview)',
-          ),
         interviewAt: z
           .string()
           .optional()
@@ -200,8 +194,11 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
       },
     },
     ({ id, ...body }) => {
-      const { status, repeat, interviewAt, replyBy, dueAt } = StatusChangeSchema.parse(body);
-      return s.applications.changeStatus(id, status, repeat, interviewAt, { replyBy, dueAt });
+      const { status, interviewAt, replyBy, dueAt } = StatusChangeSchema.parse(body);
+      return s.applications.changeStatus(id, status, interviewAt, {
+        replyBy,
+        dueAt,
+      });
     },
     logger,
   );
@@ -213,7 +210,10 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
       title: 'Snooze application',
       description:
         "Hide an application's card from the Tasks action list until the given time. The card returns on its own afterwards.",
-      inputSchema: { id, until: z.string().describe('ISO 8601 date-time with a UTC offset') },
+      inputSchema: {
+        id,
+        until: z.string().describe('ISO 8601 date-time with a UTC offset'),
+      },
     },
     ({ id, until }) => s.applications.snooze(id, SnoozeSchema.parse({ until }).until),
     logger,

@@ -114,14 +114,12 @@ export function useChangeStatus() {
     mutationFn: ({
       id,
       status,
-      repeat,
       interviewAt,
       replyBy,
       dueAt,
     }: {
       id: string;
       status: ApplicationStatus;
-      repeat?: boolean;
       /** When the interview for a round stage takes place; defaults to now on the server. */
       interviewAt?: Date;
       /** When the employer said they'd reply by. */
@@ -131,7 +129,7 @@ export function useChangeStatus() {
     }) =>
       api<ApplicationDetailDto>(`/applications/${id}/status`, {
         method: 'PATCH',
-        json: { status, repeat, interviewAt, replyBy, dueAt },
+        json: { status, interviewAt, replyBy, dueAt },
       }),
     onSuccess: async (_updated, { id, status }) => {
       await invalidate();

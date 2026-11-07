@@ -37,6 +37,21 @@ describe('interviews API', () => {
     expect((await getApp(id)).interviewsCount).toBe(1);
   });
 
+  it('counts a round once it has a past interview, even with a follow-up scheduled', async () => {
+    const { id } = await createApplication(t.app);
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'hr', scheduledAt: inDays(-3) },
+    });
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'hr', scheduledAt: inDays(2) },
+    });
+    expect((await getApp(id)).interviewsCount).toBe(1);
+  });
+
   it('is one record per round: a status change creates it, a scheduled one advances the status', async () => {
     const { id } = await createApplication(t.app);
     const when = inDays(3);

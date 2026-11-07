@@ -177,7 +177,9 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
         updatedAt: createdAt,
       };
     });
-    const put = (Item: Record<string, unknown>) => ({ Put: { TableName: this.db.table, Item } });
+    const put = (Item: Record<string, unknown>) => ({
+      Put: { TableName: this.db.table, Item },
+    });
     await this.db.doc.send(
       new TransactWriteCommand({
         TransactItems: [
@@ -191,15 +193,17 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
   }
 
   /** Earliest interview strictly after `now` per application id. */
-  private async nextInterviews(now: Date): Promise<Map<string, string>> {
-    const upcoming = await queryGsi1<InterviewItem>(this.db, 'INTERVIEWS', {
-      skCondition: 'GSI1SK > :after',
-      values: { ':after': afterTime(now) },
-    });
-    const next = new Map<string, string>();
-    for (const i of upcoming)
-      if (!next.has(i.applicationId)) next.set(i.applicationId, i.scheduledAt);
-    return next;
+  private async interviewTimes(now: Date) {
+    const all = await queryGsi1<InterviewItem>(this.db, 'INTERVIEWS');
+    const after = afterTime(now);
+    const times = new Map<string, { next: string | null; hasPast: boolean }>();
+    for (const i of all) {
+      const t = times.get(i.applicationId) ?? { next: null, hasPast: false };
+      if (`${i.scheduledAt}` > after) t.next ??= i.scheduledAt;
+      else t.hasPast = true;
+      times.set(i.applicationId, t);
+    }
+    return times;
   }
 
   async findById(id: string): Promise<ApplicationDetailDto | null> {
@@ -208,7 +212,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     if (!app) return null;
     const company = (
       await this.db.doc.send(
-        new GetCommand({ TableName: this.db.table, Key: key.company(app.companyId) }),
+        new GetCommand({
+          TableName: this.db.table,
+          Key: key.company(app.companyId),
+        }),
       )
     ).Item as CompanyItem;
     const ofKind = <T>(prefix: string) =>
@@ -220,8 +227,9 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     const history = ofKind<HistoryItem>('HISTORY#'); // sort key already orders by time then id
     const nowIso = iso(new Date());
     const next = interviews.find((i) => i.scheduledAt > nowIso)?.scheduledAt ?? null;
+    const hasPast = interviews.some((i) => i.scheduledAt <= nowIso);
     return {
-      ...toApplicationDto(app, company, next),
+      ...toApplicationDto(app, company, next, hasPast),
       contacts: contacts.map(toContactDto),
       interviews: interviews.map(toInterviewDto),
       history: history.map(toHistoryDto),
@@ -229,10 +237,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
   }
 
   async list(query: ApplicationListQuery) {
-    const [apps, companies, next] = await Promise.all([
+    const [apps, companies, times] = await Promise.all([
       queryGsi1<ApplicationItem>(this.db, 'APPS', { desc: true }),
       queryGsi1<CompanyItem>(this.db, 'COMPANIES'),
-      this.nextInterviews(new Date()),
+      this.interviewTimes(new Date()),
     ]);
     const companyById = new Map(companies.map((c) => [c.id, c]));
     const needle = query.q?.toLowerCase();
@@ -253,7 +261,8 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       })
       .flatMap((a): ApplicationDto[] => {
         const company = companyById.get(a.companyId);
-        return company ? [toApplicationDto(a, company, next.get(a.id) ?? null)] : [];
+        const t = times.get(a.id);
+        return company ? [toApplicationDto(a, company, t?.next ?? null, t?.hasPast ?? false)] : [];
       });
   }
 
@@ -263,7 +272,11 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     );
     const a = res.Item as ApplicationItem | undefined;
     return a
-      ? { companyId: a.companyId, status: a.status, appliedAt: dateOrNull(a.appliedAt) }
+      ? {
+          companyId: a.companyId,
+          status: a.status,
+          appliedAt: dateOrNull(a.appliedAt),
+        }
       : null;
   }
 

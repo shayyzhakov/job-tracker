@@ -106,8 +106,6 @@ export type ApplicationUpdateInput = z.input<typeof ApplicationUpdateSchema>;
 
 export const StatusChangeSchema = z.object({
   status: ApplicationStatusSchema,
-  /** Record a new step even when the status is unchanged (e.g. a second phone interview). */
-  repeat: z.boolean().optional(),
   /** When the interview for a round stage takes place (past or future); defaults to now. */
   interviewAt: z.coerce.date().optional(),
   /** Optional timeline the employer gave: when they'll reply by, and the user's own deadline (assignment due / offer expiry). */

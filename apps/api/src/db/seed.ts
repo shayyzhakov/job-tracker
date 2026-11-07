@@ -166,12 +166,12 @@ for (const { input, path = [], interviewInDays, timeline, round } of samples) {
   const { id } = await service.create(ApplicationCreateSchema.parse(input));
   for (const [i, status] of path.entries()) {
     const last = i === path.length - 1;
-    await service.changeStatus(id, status, false, undefined, last ? timeline : undefined);
+    await service.changeStatus(id, status, undefined, last ? timeline : undefined);
   }
-  if (round) await service.changeStatus(id, round.status, false, at(round.days, 14));
+  if (round) await service.changeStatus(id, round.status, at(round.days, 14));
   // The upcoming technical round is a status step too: it creates the interview record.
   if (interviewInDays !== undefined) {
-    await service.changeStatus(id, 'technical_interview', false, at(interviewInDays, 14));
+    await service.changeStatus(id, 'technical_interview', at(interviewInDays, 14));
   }
 }
 console.log(`Seeded ${samples.length} applications`);

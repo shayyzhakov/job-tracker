@@ -17,6 +17,7 @@
     "db:setup": "pnpm --filter @job-tracker/api db:setup",
     "db:seed": "pnpm --filter @job-tracker/api db:seed",
     "deploy:aws": "scripts/deploy.sh",
+    "deploy:code": "scripts/deploy-code.sh",
     "infra:init": "scripts/infra-init.sh"
   },
   "devDependencies": {

@@ -97,7 +97,7 @@ describe('ApplicationsService', () => {
       const { id } = await service.create(input({ status: 'applied' }));
       await service.changeStatus(id, 'hr_screening');
       const at = new Date('2026-11-08T12:00:00.000Z');
-      const updated = await service.changeStatus(id, 'technical_interview', false, at);
+      const updated = await service.changeStatus(id, 'technical_interview', at);
       expect(interviews.created.map((i) => [i.type, i.scheduledAt])).toEqual([
         ['hr', NOW.toISOString()],
         ['technical', at.toISOString()],
@@ -128,15 +128,6 @@ describe('ApplicationsService', () => {
       const { id } = await service.create(input({ status: 'applied' }));
       const updated = await service.changeStatus(id, 'applied');
       expect(updated.history).toHaveLength(1);
-    });
-
-    it('records another history step when the same status is repeated explicitly', async () => {
-      const { id } = await service.create(input({ status: 'phone_interview' }));
-      const updated = await service.changeStatus(id, 'phone_interview', true);
-      expect(updated.history).toHaveLength(2);
-      expect(updated.history.at(-1)).toEqual(
-        expect.objectContaining({ fromStatus: 'phone_interview', toStatus: 'phone_interview' }),
-      );
     });
 
     it('sets appliedAt when moving out of to_apply for the first time', async () => {

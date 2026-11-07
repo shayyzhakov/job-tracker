@@ -86,12 +86,11 @@ export class ApplicationsService {
   async changeStatus(
     id: string,
     status: ApplicationStatus,
-    repeat = false,
     interviewAt?: Date,
     timeline: { replyBy?: Date; dueAt?: Date } = {},
   ): Promise<ApplicationDetailDto> {
     const state = await this.requireState(id);
-    if (state.status !== status || repeat) {
+    if (state.status !== status) {
       const now = this.now();
       const interview = isRoundStatus(status)
         ? await this.interviews.create(id, {

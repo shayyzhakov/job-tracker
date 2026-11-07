@@ -162,11 +162,12 @@ const interviewRoundsReached = (
   reached: readonly ApplicationStatus[],
   status: ApplicationStatus,
   nextInterviewAt: string | null,
+  hasPastInterview: boolean,
 ) => {
   const isRound = (s: string) => (INTERVIEW_ROUND_STATUSES as readonly string[]).includes(s);
   const rounds = new Set(reached.filter(isRound));
-  // The current round hasn't happened yet while its interview is still upcoming.
-  if (nextInterviewAt && isRound(status)) rounds.delete(status);
+  // The current round hasn't happened yet while its only interview is still upcoming.
+  if (nextInterviewAt && !hasPastInterview && isRound(status)) rounds.delete(status);
   return rounds.size;
 };
 
@@ -178,6 +179,7 @@ export const toApplicationDto = (
   a: ApplicationItem,
   company: CompanyItem,
   nextInterviewAt: string | null,
+  hasPastInterview = false,
 ): ApplicationDto => ({
   id: a.id,
   company: toCompanyDto(company),
@@ -196,7 +198,12 @@ export const toApplicationDto = (
   createdAt: a.createdAt,
   updatedAt: a.updatedAt,
   nextInterviewAt,
-  interviewsCount: interviewRoundsReached(a.reachedStatuses, a.status, nextInterviewAt),
+  interviewsCount: interviewRoundsReached(
+    a.reachedStatuses,
+    a.status,
+    nextInterviewAt,
+    hasPastInterview,
+  ),
   replyBy: nul(a.replyBy),
   dueAt: nul(a.dueAt),
   nextStep: nul(a.nextStep),

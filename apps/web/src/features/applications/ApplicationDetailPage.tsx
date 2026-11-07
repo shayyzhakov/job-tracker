@@ -25,13 +25,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import {
-  IconArrowLeft,
-  IconExternalLink,
-  IconPencil,
-  IconPlus,
-  IconTrash,
-} from '@tabler/icons-react';
+import { IconArrowLeft, IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
@@ -168,7 +162,7 @@ function RoundTimeModal({
   onClose,
   onSubmit,
 }: {
-  round: { status: ApplicationStatus; repeat: boolean } | null;
+  round: { status: ApplicationStatus } | null;
   submitting: boolean;
   onClose: () => void;
   onSubmit: (interviewAt: Date) => void;
@@ -222,17 +216,16 @@ export function ApplicationDetailPage() {
   const [confirmOpen, confirm] = useDisclosure(false);
   const [pendingRound, setPendingRound] = useState<{
     status: ApplicationStatus;
-    repeat: boolean;
   } | null>(null);
 
   if (isPending) return <PageLoader />;
   if (error) return <ErrorAlert error={error} what="application" />;
 
   // Interview-round stages are interviews: ask when it takes place before recording the step.
-  const requestStatus = (status: ApplicationStatus, repeat = false) =>
+  const requestStatus = (status: ApplicationStatus) =>
     isRoundStatus(status)
-      ? setPendingRound({ status, repeat })
-      : changeStatus.mutate({ id: app.id, status, repeat });
+      ? setPendingRound({ status })
+      : changeStatus.mutate({ id: app.id, status });
   const steps = buildTimelineSteps(app.history, app.interviews, Date.now());
   const lastDone = steps.reduce((last, s, i) => (s.scheduled ? last : i), -1);
 
@@ -259,13 +252,6 @@ export function ApplicationDetailPage() {
             onChange={(status) => requestStatus(status)}
             w={200}
           />
-          <Button
-            variant="light"
-            leftSection={<IconPlus size={16} />}
-            onClick={() => requestStatus(app.status, true)}
-          >
-            Add another {STATUS_LABELS[app.status]} step
-          </Button>
           {!editing && (
             <Button
               variant="default"
@@ -360,7 +346,7 @@ export function ApplicationDetailPage() {
       </Grid>
 
       <RoundTimeModal
-        key={pendingRound ? `${pendingRound.status}-${pendingRound.repeat}` : 'none'}
+        key={pendingRound?.status ?? 'none'}
         round={pendingRound}
         submitting={changeStatus.isPending}
         onClose={() => setPendingRound(null)}
@@ -370,7 +356,6 @@ export function ApplicationDetailPage() {
             {
               id: app.id,
               status: pendingRound.status,
-              repeat: pendingRound.repeat,
               interviewAt,
             },
             { onSuccess: () => setPendingRound(null) },
