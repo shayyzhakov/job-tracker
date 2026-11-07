@@ -46,7 +46,10 @@ tf_out() { tf output -raw "$1"; }
 if ! $SKIP_TESTS; then
   echo "==> Quality gate"
   docker compose up -d --wait dynamodb # route tests run against DynamoDB Local
-  pnpm check && pnpm typecheck && pnpm test
+  # Separate commands: a failing `a && b` list does not trigger `set -e`, which let a red gate deploy anyway.
+  pnpm check
+  pnpm typecheck
+  pnpm test
 fi
 
 echo "==> Initialising OpenTofu"

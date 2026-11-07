@@ -94,14 +94,15 @@ docker run --rm -v "$PWD/infra:/infra" ghcr.io/aquasecurity/trivy:latest config 
 ### One-time setup
 
 1. Create the OIDC provider and role (needs your AWS admin login):
+
    ```bash
    cd infra/bootstrap && tofu apply -var github_repo=shayyzhakov/job-tracker
    tofu output ci_role_arn
    ```
 2. GitHub, Settings > Secrets and variables > Actions > **Variables**: `AWS_DEPLOY_ROLE_ARN` (the output above) and `OWNER_EMAIL`. These are not secrets.
-3. Settings > Environments > **production**: enable *Required reviewers* (you), and under *Deployment branches* choose *Selected branches* = `main`.
-4. Settings > Rules > Rulesets > new branch ruleset for `main` (enforcement: active): require a pull request with 1 approval and *Require review from Code Owners*, require status checks `quality` and `infra`, block force pushes and deletions. Only you can approve, so nobody else can land or deploy changes.
-5. Settings > Actions > General: *Fork pull request workflows*: require approval for all outside collaborators; *Workflow permissions*: read-only.
+3. Settings > Environments > **production**: enable _Required reviewers_ (you), and under _Deployment branches_ choose _Selected branches_ = `main`.
+4. Settings > Rules > Rulesets > new branch ruleset for `main` (enforcement: active): require a pull request with 1 approval and _Require review from Code Owners_, require status checks `quality` and `infra`, block force pushes and deletions. Only you can approve, so nobody else can land or deploy changes.
+5. Settings > Actions > General: _Fork pull request workflows_: require approval for all outside collaborators; _Workflow permissions_: read-only.
 
 With a single maintainer you cannot approve your own pull request; either leave "required approvals" at 0 while keeping the other rules (the environment approval then remains the deploy gate), or let the ruleset's bypass list include yourself.
 
