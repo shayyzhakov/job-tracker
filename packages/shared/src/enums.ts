@@ -72,6 +72,7 @@ export const INTERVIEW_TYPES = [
   'onsite',
   'managerial',
   'final',
+  'coffee',
   'other',
 ] as const;
 export type InterviewType = (typeof INTERVIEW_TYPES)[number];
@@ -86,6 +87,7 @@ export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
   onsite: 'Onsite',
   managerial: 'Managerial',
   final: 'Final',
+  coffee: 'Coffee chat (informal)',
   other: 'Other',
 };
 

@@ -18,7 +18,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useInterviewMutations } from '../../api/hooks';
 import { formatDateTime } from '../../lib/format';
@@ -32,6 +32,21 @@ interface InterviewFormValues {
   notes: string;
 }
 
+/** ISO instant -> value for <input type="datetime-local"> in the user's local time. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const EMPTY: InterviewFormValues = {
+  type: 'technical',
+  scheduledAt: '',
+  durationMinutes: 60,
+  location: '',
+  notes: '',
+};
+
 export function InterviewsSection({
   applicationId,
   interviews,
@@ -40,25 +55,108 @@ export function InterviewsSection({
   interviews: InterviewDto[];
 }) {
   const [adding, setAdding] = useState(false);
-  const { create, remove } = useInterviewMutations(applicationId);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const { create, update, remove } = useInterviewMutations(applicationId);
   const form = useForm<InterviewFormValues>({
     mode: 'controlled',
-    initialValues: {
-      type: 'technical',
-      scheduledAt: '',
-      durationMinutes: 60,
-      location: '',
-      notes: '',
-    },
+    initialValues: EMPTY,
     validate: { scheduledAt: (v) => (v ? null : 'Required') },
   });
   const now = Date.now();
+
+  const close = () => {
+    setAdding(false);
+    setEditingId(null);
+    form.reset();
+  };
+
+  const startEdit = (i: InterviewDto) => {
+    setAdding(false);
+    setEditingId(i.id);
+    form.setValues({
+      type: i.type,
+      scheduledAt: toLocalInput(i.scheduledAt),
+      durationMinutes: i.durationMinutes ?? '',
+      location: i.location ?? '',
+      notes: i.notes ?? '',
+    });
+  };
+
+  const submit = (v: InterviewFormValues) => {
+    const base = {
+      type: v.type,
+      scheduledAt: new Date(v.scheduledAt), // parsed as local time
+      durationMinutes: typeof v.durationMinutes === 'number' ? v.durationMinutes : undefined,
+      location: v.location || undefined,
+      notes: v.notes || undefined,
+    };
+    if (editingId) {
+      update.mutate(
+        {
+          id: editingId,
+          patch: {
+            ...base,
+            durationMinutes: base.durationMinutes ?? null,
+            location: base.location ?? null,
+            notes: base.notes ?? null,
+          },
+        },
+        { onSuccess: close },
+      );
+    } else {
+      create.mutate(base, { onSuccess: close });
+    }
+  };
+
+  const formEl = (
+    <form noValidate onSubmit={form.onSubmit(submit)}>
+      <Stack gap="xs">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <Select
+            label="Interview type"
+            allowDeselect={false}
+            data={INTERVIEW_TYPES.map((t) => ({
+              value: t,
+              label: INTERVIEW_TYPE_LABELS[t],
+            }))}
+            {...form.getInputProps('type')}
+          />
+          <TextInput
+            type="datetime-local"
+            label="Date & time"
+            withAsterisk
+            {...form.getInputProps('scheduledAt')}
+          />
+          <NumberInput
+            label="Duration (minutes)"
+            min={5}
+            step={15}
+            {...form.getInputProps('durationMinutes')}
+          />
+          <TextInput
+            label="Location / link"
+            placeholder="Zoom, office…"
+            {...form.getInputProps('location')}
+          />
+        </SimpleGrid>
+        <TextInput label="Interview notes" {...form.getInputProps('notes')} />
+        <Group justify="flex-end">
+          <Button variant="default" size="xs" onClick={close}>
+            Cancel
+          </Button>
+          <Button type="submit" size="xs" loading={create.isPending || update.isPending}>
+            {editingId ? 'Save changes' : 'Save interview'}
+          </Button>
+        </Group>
+      </Stack>
+    </form>
+  );
 
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">
         <Text fw={600}>Interviews</Text>
-        {!adding && (
+        {!adding && !editingId && (
           <Button
             variant="light"
             size="xs"
@@ -76,6 +174,7 @@ export function InterviewsSection({
           </Text>
         )}
         {interviews.map((i) => {
+          if (editingId === i.id) return <div key={i.id}>{formEl}</div>;
           const past = new Date(i.scheduledAt).getTime() < now;
           return (
             <Group key={i.id} justify="space-between" wrap="nowrap">
@@ -103,77 +202,28 @@ export function InterviewsSection({
                   </Text>
                 )}
               </Stack>
-              <ActionIcon
-                variant="subtle"
-                color="red"
-                aria-label="Delete interview"
-                onClick={() => remove.mutate(i.id)}
-              >
-                <IconTrash size={16} />
-              </ActionIcon>
+              <Group gap={4} wrap="nowrap">
+                <ActionIcon
+                  variant="subtle"
+                  aria-label="Edit interview"
+                  disabled={adding}
+                  onClick={() => startEdit(i)}
+                >
+                  <IconPencil size={16} />
+                </ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  aria-label="Delete interview"
+                  onClick={() => remove.mutate(i.id)}
+                >
+                  <IconTrash size={16} />
+                </ActionIcon>
+              </Group>
             </Group>
           );
         })}
-        {adding && (
-          <form
-            noValidate
-            onSubmit={form.onSubmit((v) =>
-              create.mutate(
-                {
-                  type: v.type,
-                  scheduledAt: new Date(v.scheduledAt), // parsed as local time
-                  durationMinutes:
-                    typeof v.durationMinutes === 'number' ? v.durationMinutes : undefined,
-                  location: v.location || undefined,
-                  notes: v.notes || undefined,
-                },
-                {
-                  onSuccess: () => {
-                    form.reset();
-                    setAdding(false);
-                  },
-                },
-              ),
-            )}
-          >
-            <Stack gap="xs">
-              <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <Select
-                  label="Interview type"
-                  allowDeselect={false}
-                  data={INTERVIEW_TYPES.map((t) => ({ value: t, label: INTERVIEW_TYPE_LABELS[t] }))}
-                  {...form.getInputProps('type')}
-                />
-                <TextInput
-                  type="datetime-local"
-                  label="Date & time"
-                  withAsterisk
-                  {...form.getInputProps('scheduledAt')}
-                />
-                <NumberInput
-                  label="Duration (minutes)"
-                  min={5}
-                  step={15}
-                  {...form.getInputProps('durationMinutes')}
-                />
-                <TextInput
-                  label="Location / link"
-                  placeholder="Zoom, office…"
-                  {...form.getInputProps('location')}
-                />
-              </SimpleGrid>
-              <TextInput label="Interview notes" {...form.getInputProps('notes')} />
-              <Group justify="flex-end">
-                <Button variant="default" size="xs" onClick={() => setAdding(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" size="xs" loading={create.isPending}>
-                  Save interview
-                </Button>
-              </Group>
-            </Stack>
-          </form>
-        )}
+        {adding && formEl}
       </Stack>
     </Card>
   );

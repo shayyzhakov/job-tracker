@@ -1,13 +1,74 @@
-import { type ContactDto, ContactInputSchema } from '@job-tracker/shared';
+import { type ContactDto, ContactInputSchema, ContactUpdateSchema } from '@job-tracker/shared';
 import { ActionIcon, Anchor, Button, Card, Group, Stack, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconBrandLinkedin, IconMail, IconPhone, IconPlus, IconTrash } from '@tabler/icons-react';
+import {
+  IconBrandLinkedin,
+  IconMail,
+  IconPencil,
+  IconPhone,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
 import { useState } from 'react';
 import { useContactMutations } from '../../api/hooks';
 import { zodErrors } from '../../lib/zod-form';
 import { ContactFields, type ContactFormValues, emptyContact } from './ContactFields';
 
-function ContactRow({ contact, onDelete }: { contact: ContactDto; onDelete: () => void }) {
+function EditContactForm({
+  contact,
+  applicationId,
+  onDone,
+}: {
+  contact: ContactDto;
+  applicationId: string;
+  onDone: () => void;
+}) {
+  const { update } = useContactMutations(applicationId);
+  const form = useForm<ContactFormValues>({
+    mode: 'controlled',
+    initialValues: {
+      name: contact.name,
+      role: contact.role ?? '',
+      email: contact.email ?? '',
+      phone: contact.phone ?? '',
+      linkedinUrl: contact.linkedinUrl ?? '',
+    },
+    validate: (values) => zodErrors(ContactUpdateSchema, values),
+  });
+  return (
+    <form
+      noValidate
+      onSubmit={form.onSubmit((values) =>
+        update.mutate(
+          { id: contact.id, patch: ContactUpdateSchema.parse(values) },
+          { onSuccess: onDone },
+        ),
+      )}
+    >
+      <Stack gap="xs">
+        <ContactFields form={form} prefix="" />
+        <Group justify="flex-end">
+          <Button variant="default" size="xs" onClick={onDone}>
+            Cancel
+          </Button>
+          <Button type="submit" size="xs" loading={update.isPending}>
+            Save changes
+          </Button>
+        </Group>
+      </Stack>
+    </form>
+  );
+}
+
+function ContactRow({
+  contact,
+  onEdit,
+  onDelete,
+}: {
+  contact: ContactDto;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   return (
     <Group justify="space-between" align="flex-start" wrap="nowrap">
       <Stack gap={2}>
@@ -49,14 +110,19 @@ function ContactRow({ contact, onDelete }: { contact: ContactDto; onDelete: () =
           )}
         </Group>
       </Stack>
-      <ActionIcon
-        variant="subtle"
-        color="red"
-        aria-label={`Delete contact ${contact.name}`}
-        onClick={onDelete}
-      >
-        <IconTrash size={16} />
-      </ActionIcon>
+      <Group gap={4} wrap="nowrap">
+        <ActionIcon variant="subtle" aria-label={`Edit contact ${contact.name}`} onClick={onEdit}>
+          <IconPencil size={16} />
+        </ActionIcon>
+        <ActionIcon
+          variant="subtle"
+          color="red"
+          aria-label={`Delete contact ${contact.name}`}
+          onClick={onDelete}
+        >
+          <IconTrash size={16} />
+        </ActionIcon>
+      </Group>
     </Group>
   );
 }
@@ -69,6 +135,7 @@ export function ContactsSection({
   contacts: ContactDto[];
 }) {
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const { create, remove } = useContactMutations(applicationId);
   const form = useForm<ContactFormValues>({
     mode: 'controlled',
@@ -97,9 +164,23 @@ export function ContactsSection({
             No contacts yet.
           </Text>
         )}
-        {contacts.map((c) => (
-          <ContactRow key={c.id} contact={c} onDelete={() => remove.mutate(c.id)} />
-        ))}
+        {contacts.map((c) =>
+          editingId === c.id ? (
+            <EditContactForm
+              key={c.id}
+              contact={c}
+              applicationId={applicationId}
+              onDone={() => setEditingId(null)}
+            />
+          ) : (
+            <ContactRow
+              key={c.id}
+              contact={c}
+              onEdit={() => setEditingId(c.id)}
+              onDelete={() => remove.mutate(c.id)}
+            />
+          ),
+        )}
         {adding && (
           <form
             noValidate
