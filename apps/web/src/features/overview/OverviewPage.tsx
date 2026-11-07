@@ -1,10 +1,16 @@
-import { INTERVIEW_TYPE_LABELS, type OverviewDto, STATUS_LABELS } from '@job-tracker/shared';
+import {
+  APPLICATION_METHOD_LABELS,
+  INTERVIEW_TYPE_LABELS,
+  type OverviewDto,
+  STATUS_LABELS,
+} from '@job-tracker/shared';
 import { BarChart } from '@mantine/charts';
 import { Anchor, Card, Group, SimpleGrid, Stack, Table, Text, Title } from '@mantine/core';
 import { IconCalendarEvent } from '@tabler/icons-react';
 import { Link } from 'react-router';
 import { useOverview } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
+import { Slot } from '../../lib/extensions';
 import { formatDateTime, formatIls, formatPercent } from '../../lib/format';
 
 function Kpi({ label, value, testId }: { label: string; value: string | number; testId: string }) {
@@ -13,7 +19,7 @@ function Kpi({ label, value, testId }: { label: string; value: string | number; 
       <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
         {label}
       </Text>
-      <Text fz={32} fw={700} data-testid={testId}>
+      <Text fz={32} fw={700} lh={1.2} className="tabular-nums" data-testid={testId}>
         {value}
       </Text>
     </Card>
@@ -63,6 +69,7 @@ export function OverviewPage() {
   return (
     <Stack>
       <Title order={2}>Overview</Title>
+      <Slot name="overview.top" />
       <SimpleGrid cols={{ base: 2, md: 5 }}>
         <Kpi label="Active" value={data.activeApplications} testId="kpi-active" />
         <Kpi label="Total" value={data.totalApplications} testId="kpi-total" />
@@ -85,7 +92,7 @@ export function OverviewPage() {
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
             Avg. expected salary (active)
           </Text>
-          <Text fz={32} fw={700}>
+          <Text fz={32} fw={700} lh={1.2} className="tabular-nums">
             {formatIls(data.averageExpectedSalaryIls)}
           </Text>
           <Text size="sm" c="dimmed">
@@ -127,6 +134,40 @@ export function OverviewPage() {
           />
         </Card>
       </SimpleGrid>
+
+      <Card withBorder padding="lg" data-testid="method-breakdown">
+        <Text fw={600} mb="md">
+          How you applied
+        </Text>
+        {data.methodBreakdown.length > 0 ? (
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Method</Table.Th>
+                <Table.Th ta="right">Applications</Table.Th>
+                <Table.Th ta="right">Responses</Table.Th>
+                <Table.Th ta="right">Interviews</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {data.methodBreakdown.map((m) => (
+                <Table.Tr key={m.method}>
+                  <Table.Td>{APPLICATION_METHOD_LABELS[m.method]}</Table.Td>
+                  <Table.Td ta="right">{m.applications}</Table.Td>
+                  <Table.Td ta="right">
+                    {m.responses} ({formatPercent(m.responses / m.applications)})
+                  </Table.Td>
+                  <Table.Td ta="right">
+                    {m.interviews} ({formatPercent(m.interviews / m.applications)})
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        ) : (
+          <Text c="dimmed">Set an application method on your applications to see what works.</Text>
+        )}
+      </Card>
 
       <Card withBorder padding="lg">
         <Text fw={600} mb="md">

@@ -1,0 +1,56 @@
+# Dormant until the project lives in a GitHub repository (see infra-plan.yml for the one-time setup).
+# Mirrors scripts/deploy.sh; the `production` environment should require a manual approval.
+name: deploy
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      dynamodb:
+        image: amazon/dynamodb-local:latest
+        ports: ["8000:8000"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check && pnpm typecheck && pnpm test
+        env:
+          TEST_DYNAMODB_ENDPOINT: http://localhost:8000
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version-file: .nvmrc, cache: pnpm }
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.x
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - run: pnpm install --frozen-lockfile
+      - name: Write tfvars
+        run: echo 'owner_email = "${{ vars.OWNER_EMAIL }}"' > infra/envs/prod/terraform.tfvars
+      # Tests already ran in the `test` job; --yes because the `production` environment approval is the gate.
+      - run: scripts/deploy.sh --skip-tests --yes

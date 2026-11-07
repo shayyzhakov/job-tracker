@@ -1,36 +1,69 @@
+import { randomUUID } from 'node:crypto';
+import { DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import type { InterviewDto, InterviewInput, InterviewUpdate } from '@job-tracker/shared';
-import { and, eq } from 'drizzle-orm';
-import type { Db } from '../../db/client.js';
-import { toInterviewDto } from '../../db/mappers.js';
-import { interviews } from '../../db/schema.js';
+import { type Db, isConditionFailed, iso, key, updateExisting } from '../../db/dynamo.js';
+import { type InterviewItem, nul, toInterviewDto } from '../../db/mappers.js';
+import { interviewIndexKeys } from '../applications/applications.repository.js';
 
-export class DrizzleInterviewsRepository {
+export class DynamoInterviewsRepository {
   constructor(private readonly db: Db) {}
 
   async create(applicationId: string, input: InterviewInput): Promise<InterviewDto> {
-    const [row] = await this.db
-      .insert(interviews)
-      .values({ ...input, applicationId })
-      .returning();
-    if (!row) throw new Error('Failed to insert interview');
-    return toInterviewDto(row);
+    const now = iso(new Date());
+    const item: InterviewItem = {
+      id: randomUUID(),
+      applicationId,
+      type: input.type,
+      scheduledAt: iso(input.scheduledAt),
+      durationMinutes: nul(input.durationMinutes),
+      location: nul(input.location),
+      notes: nul(input.notes),
+      createdAt: now,
+      updatedAt: now,
+    };
+    await this.db.doc.send(
+      new PutCommand({
+        TableName: this.db.table,
+        Item: {
+          ...key.interview(applicationId, item.id),
+          ...interviewIndexKeys(item.id, item.scheduledAt),
+          ...item,
+        },
+      }),
+    );
+    return toInterviewDto(item);
   }
 
   /** Returns null when the interview doesn't exist under this application. */
   async update(applicationId: string, id: string, patch: InterviewUpdate) {
-    const owned = and(eq(interviews.id, id), eq(interviews.applicationId, applicationId));
-    const [row] =
-      Object.keys(patch).length > 0
-        ? await this.db.update(interviews).set(patch).where(owned).returning()
-        : await this.db.select().from(interviews).where(owned);
-    return row ? toInterviewDto(row) : null;
+    const { scheduledAt, ...rest } = patch;
+    const set: Record<string, unknown> = { ...rest };
+    if (scheduledAt) {
+      set.scheduledAt = iso(scheduledAt);
+      set.GSI1SK = interviewIndexKeys(id, iso(scheduledAt)).GSI1SK;
+    }
+    if (Object.keys(set).length > 0) set.updatedAt = iso(new Date());
+    const item = await updateExisting<InterviewItem>(
+      this.db,
+      key.interview(applicationId, id),
+      set,
+    );
+    return item ? toInterviewDto(item) : null;
   }
 
   async delete(applicationId: string, id: string) {
-    const rows = await this.db
-      .delete(interviews)
-      .where(and(eq(interviews.id, id), eq(interviews.applicationId, applicationId)))
-      .returning({ id: interviews.id });
-    return rows.length > 0;
+    try {
+      await this.db.doc.send(
+        new DeleteCommand({
+          TableName: this.db.table,
+          Key: key.interview(applicationId, id),
+          ConditionExpression: 'attribute_exists(PK)',
+        }),
+      );
+      return true;
+    } catch (err) {
+      if (isConditionFailed(err)) return false;
+      throw err;
+    }
   }
 }

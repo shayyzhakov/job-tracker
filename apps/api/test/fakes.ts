@@ -6,8 +6,12 @@ import type {
   CompanyDto,
   CompanyInput,
   ContactInput,
+  OpportunityDto,
+  OpportunityListQuery,
+  ScoutCriteria,
+  ScoutCriteriaDto,
 } from '@job-tracker/shared';
-import { isActiveStatus } from '@job-tracker/shared';
+import { DEFAULT_SCOUT_CRITERIA, isActiveStatus } from '@job-tracker/shared';
 import type {
   ApplicationFieldsPatch,
   ApplicationsRepository,
@@ -18,6 +22,12 @@ import type {
   CompaniesRepository,
   CompanyPatch,
 } from '../src/modules/companies/companies.repository.js';
+import type {
+  NewOpportunity,
+  OpportunitiesRepository,
+  StatusChange,
+} from '../src/modules/opportunities/opportunities.repository.js';
+import type { ScoutCriteriaRepository } from '../src/modules/scout-criteria/scout-criteria.repository.js';
 
 export class FakeCompaniesRepository implements CompaniesRepository {
   rows: CompanyDto[] = [];
@@ -66,6 +76,10 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       listingUrl: app.listingUrl ?? null,
       expectedSalaryIls: app.expectedSalaryIls ?? null,
       source: app.source ?? null,
+      applicationMethod: app.applicationMethod ?? null,
+      referrerName: app.referrerName ?? null,
+      referrerChannel: app.referrerChannel ?? null,
+      methodDetails: app.methodDetails ?? null,
       notes: app.notes ?? null,
       appliedAt: app.appliedAt?.toISOString() ?? null,
       createdAt: at.toISOString(),
@@ -78,6 +92,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
         role: c.role ?? null,
         email: c.email ?? null,
         phone: c.phone ?? null,
+        linkedinUrl: c.linkedinUrl ?? null,
         notes: c.notes ?? null,
       })),
       interviews: [],
@@ -148,5 +163,80 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     const before = this.rows.length;
     this.rows = this.rows.filter((r) => r.id !== id);
     return this.rows.length < before;
+  }
+}
+
+/** A scored listing ready to insert; override any field. */
+export const newOpportunity = (overrides: Partial<NewOpportunity> = {}): NewOpportunity => ({
+  listingUrl: `https://jobs.example.com/${randomUUID()}`,
+  source: 'fixture',
+  companyName: 'Acme',
+  title: 'Backend Engineer',
+  location: 'Tel Aviv',
+  description: 'Build APIs in Node.js.',
+  postedAt: null,
+  score: 80,
+  summary: 'Good match',
+  reasons: ['Matches role'],
+  isManagement: false,
+  companySize: null,
+  status: 'new',
+  ...overrides,
+});
+
+export class FakeOpportunitiesRepository implements OpportunitiesRepository {
+  rows: OpportunityDto[] = [];
+
+  async list({ status }: OpportunityListQuery) {
+    return this.rows
+      .filter((o) => o.status === status)
+      .sort((a, b) => b.score - a.score)
+      .map((o) => structuredClone(o));
+  }
+  async findById(id: string) {
+    const row = this.rows.find((o) => o.id === id);
+    return row ? structuredClone(row) : null;
+  }
+  async findByUrl(listingUrl: string) {
+    const row = this.rows.find((o) => o.listingUrl === listingUrl);
+    return row ? structuredClone(row) : null;
+  }
+  async existingUrls(urls: string[]) {
+    return new Set(this.rows.map((o) => o.listingUrl).filter((u) => urls.includes(u)));
+  }
+  async insertMany(rows: NewOpportunity[]) {
+    let inserted = 0;
+    for (const r of rows) {
+      if (this.rows.some((o) => o.listingUrl === r.listingUrl)) continue;
+      const { description: _description, postedAt, ...rest } = r;
+      this.rows.push({
+        ...rest,
+        id: randomUUID(),
+        postedAt: postedAt?.toISOString() ?? null,
+        applicationId: null,
+        createdAt: new Date().toISOString(),
+      });
+      inserted++;
+    }
+    return inserted;
+  }
+  async changeStatus(id: string, { from, to, applicationId }: StatusChange) {
+    const row = this.rows.find((o) => o.id === id);
+    if (!row || row.status !== from) return false;
+    row.status = to;
+    if (applicationId !== undefined) row.applicationId = applicationId;
+    return true;
+  }
+}
+
+export class FakeScoutCriteriaRepository implements ScoutCriteriaRepository {
+  current: ScoutCriteriaDto = { ...DEFAULT_SCOUT_CRITERIA, updatedAt: null };
+
+  async get() {
+    return structuredClone(this.current);
+  }
+  async save(criteria: ScoutCriteria) {
+    this.current = { ...criteria, updatedAt: new Date().toISOString() };
+    return this.get();
   }
 }

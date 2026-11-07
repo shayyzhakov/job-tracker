@@ -6,7 +6,11 @@ export default defineConfig({
   server: {
     port: 5173,
     // In dev the API runs separately; in production the API serves this build (same origin).
-    proxy: { '/api': 'http://localhost:3000', '/health': 'http://localhost:3000' },
+    proxy: {
+      '/api': 'http://localhost:3000',
+      '/health': 'http://localhost:3000',
+      '/mcp': 'http://localhost:3000',
+    },
   },
   test: {
     environment: 'jsdom',

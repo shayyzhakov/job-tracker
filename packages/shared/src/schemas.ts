@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { APPLICATION_STATUSES, COMPANY_SIZES, INTERVIEW_TYPES } from './enums.js';
+import {
+  APPLICATION_METHODS,
+  APPLICATION_STATUSES,
+  COMPANY_SIZES,
+  INTERVIEW_TYPES,
+  REFERRAL_CHANNELS,
+} from './enums.js';
 
 /** Blank form fields ('' or whitespace) become undefined before validation. */
 const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
@@ -7,9 +13,15 @@ const blankToNull = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? 
 const optional = <T extends z.ZodType>(schema: T) =>
   z.preprocess(blankToUndefined, schema.optional());
 const optionalText = optional(z.string().trim());
+/** http(s) only: the value is rendered as a link, so `javascript:` and friends are rejected. */
+const httpUrl = z
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), 'Must start with http:// or https://');
 
 export const ApplicationStatusSchema = z.enum(APPLICATION_STATUSES);
 export const CompanySizeSchema = z.enum(COMPANY_SIZES);
+export const ApplicationMethodSchema = z.enum(APPLICATION_METHODS);
+export const ReferralChannelSchema = z.enum(REFERRAL_CHANNELS);
 export const InterviewTypeSchema = z.enum(INTERVIEW_TYPES);
 
 export const CompanyInputSchema = z.object({
@@ -26,6 +38,7 @@ export const ContactInputSchema = z.object({
   role: optionalText,
   email: optional(z.email()),
   phone: optionalText,
+  linkedinUrl: optional(httpUrl),
   notes: optionalText,
 });
 export type ContactInput = z.infer<typeof ContactInputSchema>;
@@ -37,6 +50,10 @@ const applicationFields = {
   listingUrl: optional(z.url()),
   expectedSalaryIls: z.number().int().nonnegative().optional(),
   source: optionalText,
+  applicationMethod: optional(ApplicationMethodSchema),
+  referrerName: optionalText,
+  referrerChannel: optional(ReferralChannelSchema),
+  methodDetails: optionalText,
   notes: optionalText,
   appliedAt: optional(z.coerce.date()),
 };
@@ -61,6 +78,10 @@ export const ApplicationUpdateSchema = z
     listingUrl: z.preprocess(blankToNull, z.url().nullable()),
     expectedSalaryIls: z.number().int().nonnegative().nullable(),
     source: z.preprocess(blankToNull, z.string().trim().nullable()),
+    applicationMethod: z.preprocess(blankToNull, ApplicationMethodSchema.nullable()),
+    referrerName: z.preprocess(blankToNull, z.string().trim().nullable()),
+    referrerChannel: z.preprocess(blankToNull, ReferralChannelSchema.nullable()),
+    methodDetails: z.preprocess(blankToNull, z.string().trim().nullable()),
     notes: z.preprocess(blankToNull, z.string().trim().nullable()),
     appliedAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
     company: z
@@ -77,7 +98,11 @@ export const ApplicationUpdateSchema = z
 export type ApplicationUpdate = z.infer<typeof ApplicationUpdateSchema>;
 export type ApplicationUpdateInput = z.input<typeof ApplicationUpdateSchema>;
 
-export const StatusChangeSchema = z.object({ status: ApplicationStatusSchema });
+export const StatusChangeSchema = z.object({
+  status: ApplicationStatusSchema,
+  /** Record a new step even when the status is unchanged (e.g. a second phone interview). */
+  repeat: z.boolean().optional(),
+});
 export type StatusChange = z.infer<typeof StatusChangeSchema>;
 
 export const InterviewInputSchema = z.object({
@@ -108,6 +133,7 @@ export const ContactUpdateSchema = z
     role: nullableText,
     email: z.preprocess(blankToNull, z.email().nullable()),
     phone: nullableText,
+    linkedinUrl: z.preprocess(blankToNull, httpUrl.nullable()),
     notes: nullableText,
   })
   .partial();

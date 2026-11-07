@@ -1,5 +1,11 @@
 // Wire-format types returned by the API (dates are ISO strings).
-import type { ApplicationStatus, CompanySize, InterviewType } from './enums.js';
+import type {
+  ApplicationMethod,
+  ApplicationStatus,
+  CompanySize,
+  InterviewType,
+  ReferralChannel,
+} from './enums.js';
 
 export interface CompanyDto {
   id: string;
@@ -17,6 +23,7 @@ export interface ContactDto {
   role: string | null;
   email: string | null;
   phone: string | null;
+  linkedinUrl: string | null;
   notes: string | null;
 }
 
@@ -47,6 +54,14 @@ export interface ApplicationDto {
   listingUrl: string | null;
   expectedSalaryIls: number | null;
   source: string | null;
+  /** How the user applied; null for applications created before this was tracked. */
+  applicationMethod: ApplicationMethod | null;
+  /** Who referred the user (only meaningful for the referral method). */
+  referrerName: string | null;
+  /** How the user and the referrer spoke. */
+  referrerChannel: ReferralChannel | null;
+  /** Anything else relevant to the method (job-board name, recruiter, event, …). */
+  methodDetails: string | null;
   notes: string | null;
   appliedAt: string | null;
   createdAt: string;
@@ -66,6 +81,16 @@ export interface UpcomingInterviewDto extends InterviewDto {
   roleName: string;
 }
 
+export interface MethodStatDto {
+  method: ApplicationMethod;
+  /** Applications submitted via this method (status past to_apply). */
+  applications: number;
+  /** Of those, how many got any response (reached a stage beyond applied). */
+  responses: number;
+  /** Of those, how many reached an interview stage or beyond (offer included). */
+  interviews: number;
+}
+
 export interface OverviewDto {
   totalApplications: number;
   activeApplications: number;
@@ -83,6 +108,8 @@ export interface OverviewDto {
   upcomingInterviews: UpcomingInterviewDto[];
   /** Applications submitted per week (weeks start Sunday, UTC, YYYY-MM-DD), last 8 weeks, oldest first. */
   weeklyApplied: { weekStart: string; count: number }[];
+  /** Applications grouped by how the user applied, most used first. Applications without a method are not counted. */
+  methodBreakdown: MethodStatDto[];
   /** Mean expected monthly salary across active applications that have one. */
   averageExpectedSalaryIls: number | null;
 }

@@ -1,7 +1,7 @@
 import { type ContactDto, ContactInputSchema } from '@job-tracker/shared';
 import { ActionIcon, Anchor, Button, Card, Group, Stack, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconMail, IconPhone, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconBrandLinkedin, IconMail, IconPhone, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useContactMutations } from '../../api/hooks';
 import { zodErrors } from '../../lib/zod-form';
@@ -31,6 +31,19 @@ function ContactRow({ contact, onDelete }: { contact: ContactDto; onDelete: () =
               <IconPhone size={14} />
               <Anchor size="sm" href={`tel:${contact.phone}`}>
                 {contact.phone}
+              </Anchor>
+            </Group>
+          )}
+          {contact.linkedinUrl && (
+            <Group gap={4}>
+              <IconBrandLinkedin size={14} />
+              <Anchor
+                size="sm"
+                href={contact.linkedinUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                LinkedIn
               </Anchor>
             </Group>
           )}

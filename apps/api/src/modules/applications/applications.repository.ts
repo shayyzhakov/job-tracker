@@ -1,16 +1,42 @@
+import { randomUUID } from 'node:crypto';
+import { GetCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type {
   ApplicationDetailDto,
   ApplicationDto,
   ApplicationListQuery,
+  ApplicationMethod,
   ApplicationStatus,
   ApplicationUpdate,
   ContactInput,
+  ReferralChannel,
 } from '@job-tracker/shared';
 import { CLOSED_STATUSES } from '@job-tracker/shared';
-import { and, asc, desc, eq, ilike, inArray, notInArray, or, type SQL, sql } from 'drizzle-orm';
-import type { Db } from '../../db/client.js';
-import { toApplicationDto, toContactDto, toHistoryDto, toInterviewDto } from '../../db/mappers.js';
-import { applications, companies, contacts, interviews, statusHistory } from '../../db/schema.js';
+import {
+  batchDelete,
+  buildUpdate,
+  type Db,
+  dateOrNull,
+  GSI2,
+  isConditionFailed,
+  iso,
+  isoOrNull,
+  key,
+  queryAll,
+  queryGsi1,
+  queryPartition,
+} from '../../db/dynamo.js';
+import {
+  type ApplicationItem,
+  type CompanyItem,
+  type ContactItem,
+  type HistoryItem,
+  type InterviewItem,
+  nul,
+  toApplicationDto,
+  toContactDto,
+  toHistoryDto,
+  toInterviewDto,
+} from '../../db/mappers.js';
 
 export interface NewApplication {
   companyId: string;
@@ -20,6 +46,10 @@ export interface NewApplication {
   listingUrl?: string;
   expectedSalaryIls?: number;
   source?: string;
+  applicationMethod?: ApplicationMethod;
+  referrerName?: string;
+  referrerChannel?: ReferralChannel;
+  methodDetails?: string;
   notes?: string;
   appliedAt: Date | null;
 }
@@ -51,123 +81,249 @@ export interface ApplicationsRepository {
   delete(id: string): Promise<boolean>;
 }
 
-const nextInterviewAt = sql<Date | null>`(
-  select min(${interviews.scheduledAt}) from ${interviews}
-  where ${interviews.applicationId} = ${applications.id} and ${interviews.scheduledAt} > now()
-)`.mapWith((v: string | Date | null) => (v ? new Date(v) : null));
+/** Applications are listed newest-updated first through GSI1. */
+export const appIndexKeys = (id: string, updatedAt: string) => ({
+  GSI1PK: 'APPS',
+  GSI1SK: `${updatedAt}#${id}`,
+});
 
-export class DrizzleApplicationsRepository implements ApplicationsRepository {
+/** Interviews are indexed by time through GSI1 (upcoming interviews, next interview per application). */
+export const interviewIndexKeys = (id: string, scheduledAt: string) => ({
+  GSI1PK: 'INTERVIEWS',
+  GSI1SK: `${scheduledAt}#${id}`,
+});
+
+/** Sort-key bound strictly after `at`: '~' sorts after the '#' that separates the id. */
+export const afterTime = (at: Date) => `${iso(at)}~`;
+
+const historyItem = (
+  applicationId: string,
+  fromStatus: ApplicationStatus | null,
+  toStatus: ApplicationStatus,
+  changedAt: string,
+): HistoryItem => ({ id: randomUUID(), applicationId, fromStatus, toStatus, changedAt });
+
+const byCreated = (a: { createdAt: string; id: string }, b: { createdAt: string; id: string }) =>
+  a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+
+export class DynamoApplicationsRepository implements ApplicationsRepository {
   constructor(private readonly db: Db) {}
 
   async insert(app: NewApplication, contactInputs: ContactInput[], at: Date) {
-    return this.db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(applications)
-        .values({ ...app, createdAt: at, updatedAt: at })
-        .returning({ id: applications.id });
-      if (!row) throw new Error('Failed to insert application');
-      if (contactInputs.length > 0) {
-        await tx.insert(contacts).values(
-          contactInputs.map((c, i) => ({
-            ...c,
-            applicationId: row.id,
-            // Same-statement rows share now(); offset by 1ms to keep input order stable.
-            createdAt: new Date(at.getTime() + i),
-          })),
-        );
-      }
-      await tx
-        .insert(statusHistory)
-        .values({ applicationId: row.id, fromStatus: null, toStatus: app.status, changedAt: at });
-      return row.id;
+    const id = randomUUID();
+    const now = iso(at);
+    const item: ApplicationItem = {
+      id,
+      companyId: app.companyId,
+      roleName: app.roleName,
+      isManagement: app.isManagement,
+      status: app.status,
+      listingUrl: nul(app.listingUrl),
+      expectedSalaryIls: nul(app.expectedSalaryIls),
+      source: nul(app.source),
+      applicationMethod: nul(app.applicationMethod),
+      referrerName: nul(app.referrerName),
+      referrerChannel: nul(app.referrerChannel),
+      methodDetails: nul(app.methodDetails),
+      notes: nul(app.notes),
+      appliedAt: isoOrNull(app.appliedAt),
+      reachedStatuses: [app.status],
+      createdAt: now,
+      updatedAt: now,
+    };
+    const history = historyItem(id, null, app.status, now);
+    const contactItems = contactInputs.map((c, i): ContactItem => {
+      // Offset by 1ms per contact to keep input order stable.
+      const createdAt = iso(new Date(at.getTime() + i));
+      return {
+        id: randomUUID(),
+        applicationId: id,
+        name: c.name,
+        role: nul(c.role),
+        email: nul(c.email),
+        phone: nul(c.phone),
+        linkedinUrl: nul(c.linkedinUrl),
+        notes: nul(c.notes),
+        createdAt,
+        updatedAt: createdAt,
+      };
     });
+    const put = (Item: Record<string, unknown>) => ({ Put: { TableName: this.db.table, Item } });
+    await this.db.doc.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          put({ ...key.app(id), ...appIndexKeys(id, now), ...item }),
+          ...contactItems.map((c) => put({ ...key.contact(id, c.id), ...c })),
+          put({ ...key.history(id, now, history.id), ...history }),
+        ],
+      }),
+    );
+    return id;
   }
 
-  private baseQuery(where?: SQL) {
-    return this.db
-      .select({ application: applications, company: companies, nextInterviewAt })
-      .from(applications)
-      .innerJoin(companies, eq(applications.companyId, companies.id))
-      .where(where);
+  /** Earliest interview strictly after `now` per application id. */
+  private async nextInterviews(now: Date): Promise<Map<string, string>> {
+    const upcoming = await queryGsi1<InterviewItem>(this.db, 'INTERVIEWS', {
+      skCondition: 'GSI1SK > :after',
+      values: { ':after': afterTime(now) },
+    });
+    const next = new Map<string, string>();
+    for (const i of upcoming)
+      if (!next.has(i.applicationId)) next.set(i.applicationId, i.scheduledAt);
+    return next;
   }
 
   async findById(id: string): Promise<ApplicationDetailDto | null> {
-    const [row] = await this.baseQuery(eq(applications.id, id));
-    if (!row) return null;
-    const [contactRows, interviewRows, historyRows] = await Promise.all([
-      this.db
-        .select()
-        .from(contacts)
-        .where(eq(contacts.applicationId, id))
-        .orderBy(asc(contacts.createdAt), asc(contacts.id)),
-      this.db
-        .select()
-        .from(interviews)
-        .where(eq(interviews.applicationId, id))
-        .orderBy(asc(interviews.scheduledAt)),
-      this.db
-        .select()
-        .from(statusHistory)
-        .where(eq(statusHistory.applicationId, id))
-        .orderBy(asc(statusHistory.changedAt), asc(statusHistory.id)),
-    ]);
+    const items = await queryPartition(this.db, key.app(id).PK);
+    const app = items.find((i) => i.SK === 'META') as ApplicationItem | undefined;
+    if (!app) return null;
+    const company = (
+      await this.db.doc.send(
+        new GetCommand({ TableName: this.db.table, Key: key.company(app.companyId) }),
+      )
+    ).Item as CompanyItem;
+    const ofKind = <T>(prefix: string) =>
+      items.filter((i) => (i.SK as string).startsWith(prefix)) as unknown as T[];
+    const contacts = ofKind<ContactItem>('CONTACT#').sort(byCreated);
+    const interviews = ofKind<InterviewItem>('INTERVIEW#').sort((a, b) =>
+      a.scheduledAt.localeCompare(b.scheduledAt),
+    );
+    const history = ofKind<HistoryItem>('HISTORY#'); // sort key already orders by time then id
+    const nowIso = iso(new Date());
+    const next = interviews.find((i) => i.scheduledAt > nowIso)?.scheduledAt ?? null;
     return {
-      ...toApplicationDto(row.application, row.company, row.nextInterviewAt),
-      contacts: contactRows.map(toContactDto),
-      interviews: interviewRows.map(toInterviewDto),
-      history: historyRows.map(toHistoryDto),
+      ...toApplicationDto(app, company, next),
+      contacts: contacts.map(toContactDto),
+      interviews: interviews.map(toInterviewDto),
+      history: history.map(toHistoryDto),
     };
   }
 
   async list(query: ApplicationListQuery) {
-    const conditions: SQL[] = [];
-    if (query.status) conditions.push(eq(applications.status, query.status));
-    if (query.active === true)
-      conditions.push(notInArray(applications.status, [...CLOSED_STATUSES]));
-    if (query.active === false) conditions.push(inArray(applications.status, [...CLOSED_STATUSES]));
-    if (query.q) {
-      const pattern = `%${query.q}%`;
-      const match = or(ilike(companies.name, pattern), ilike(applications.roleName, pattern));
-      if (match) conditions.push(match);
-    }
-    const rows = await this.baseQuery(and(...conditions)).orderBy(desc(applications.updatedAt));
-    return rows.map((r) => toApplicationDto(r.application, r.company, r.nextInterviewAt));
+    const [apps, companies, next] = await Promise.all([
+      queryGsi1<ApplicationItem>(this.db, 'APPS', { desc: true }),
+      queryGsi1<CompanyItem>(this.db, 'COMPANIES'),
+      this.nextInterviews(new Date()),
+    ]);
+    const companyById = new Map(companies.map((c) => [c.id, c]));
+    const needle = query.q?.toLowerCase();
+    const closed: readonly ApplicationStatus[] = CLOSED_STATUSES;
+    return apps
+      .filter((a) => {
+        if (query.status && a.status !== query.status) return false;
+        if (query.active === true && closed.includes(a.status)) return false;
+        if (query.active === false && !closed.includes(a.status)) return false;
+        if (needle) {
+          const company = companyById.get(a.companyId);
+          const hit =
+            a.roleName.toLowerCase().includes(needle) ||
+            company?.name.toLowerCase().includes(needle);
+          if (!hit) return false;
+        }
+        return true;
+      })
+      .flatMap((a): ApplicationDto[] => {
+        const company = companyById.get(a.companyId);
+        return company ? [toApplicationDto(a, company, next.get(a.id) ?? null)] : [];
+      });
   }
 
   async getState(id: string) {
-    const [row] = await this.db
-      .select({
-        companyId: applications.companyId,
-        status: applications.status,
-        appliedAt: applications.appliedAt,
-      })
-      .from(applications)
-      .where(eq(applications.id, id));
-    return row ?? null;
+    const res = await this.db.doc.send(
+      new GetCommand({ TableName: this.db.table, Key: key.app(id) }),
+    );
+    const a = res.Item as ApplicationItem | undefined;
+    return a
+      ? { companyId: a.companyId, status: a.status, appliedAt: dateOrNull(a.appliedAt) }
+      : null;
   }
 
   async update(id: string, patch: ApplicationFieldsPatch) {
     if (Object.keys(patch).length === 0) return;
-    await this.db.update(applications).set(patch).where(eq(applications.id, id));
+    const { appliedAt, ...rest } = patch;
+    const updatedAt = iso(new Date());
+    try {
+      await this.db.doc.send(
+        new UpdateCommand({
+          TableName: this.db.table,
+          Key: key.app(id),
+          ConditionExpression: 'attribute_exists(PK)',
+          ...buildUpdate({
+            ...rest,
+            ...(appliedAt !== undefined && { appliedAt: isoOrNull(appliedAt) }),
+            updatedAt,
+            GSI1SK: appIndexKeys(id, updatedAt).GSI1SK,
+          }),
+        }),
+      );
+    } catch (err) {
+      if (!isConditionFailed(err)) throw err;
+    }
   }
 
   async changeStatus(id: string, { from, to, appliedAt, at }: StatusTransition) {
-    await this.db.transaction(async (tx) => {
-      await tx
-        .update(applications)
-        .set({ status: to, appliedAt, updatedAt: at })
-        .where(eq(applications.id, id));
-      await tx
-        .insert(statusHistory)
-        .values({ applicationId: id, fromStatus: from, toStatus: to, changedAt: at });
-    });
+    const current = (
+      await this.db.doc.send(new GetCommand({ TableName: this.db.table, Key: key.app(id) }))
+    ).Item as ApplicationItem | undefined;
+    if (!current) return;
+    const changedAt = iso(at);
+    const history = historyItem(id, from, to, changedAt);
+    const reached = [...new Set([...current.reachedStatuses, to])];
+    await this.db.doc.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          {
+            Update: {
+              TableName: this.db.table,
+              Key: key.app(id),
+              ConditionExpression: 'attribute_exists(PK)',
+              ...buildUpdate({
+                status: to,
+                appliedAt: isoOrNull(appliedAt),
+                reachedStatuses: reached,
+                updatedAt: changedAt,
+                GSI1SK: appIndexKeys(id, changedAt).GSI1SK,
+              }),
+            },
+          },
+          {
+            Put: {
+              TableName: this.db.table,
+              Item: { ...key.history(id, changedAt, history.id), ...history },
+            },
+          },
+        ],
+      }),
+    );
   }
 
   async delete(id: string) {
-    const deleted = await this.db
-      .delete(applications)
-      .where(eq(applications.id, id))
-      .returning({ id: applications.id });
-    return deleted.length > 0;
+    const items = await queryPartition(this.db, key.app(id).PK);
+    if (!items.some((i) => i.SK === 'META')) return false;
+    await batchDelete(
+      this.db,
+      items.map((i) => ({ PK: i.PK as string, SK: i.SK as string })),
+    );
+    // Suggestions promoted into this application keep existing but lose the link.
+    const linked = await queryAll<{ id: string }>(this.db, {
+      IndexName: GSI2,
+      KeyConditionExpression: 'GSI2PK = :pk',
+      ExpressionAttributeValues: { ':pk': `APPOPP#${id}` },
+    });
+    await Promise.all(
+      linked.map((o) =>
+        this.db.doc.send(
+          new UpdateCommand({
+            TableName: this.db.table,
+            Key: key.opportunity(o.id),
+            ...buildUpdate({ applicationId: null, updatedAt: iso(new Date()) }, [
+              'GSI2PK',
+              'GSI2SK',
+            ]),
+          }),
+        ),
+      ),
+    );
+    return true;
   }
 }

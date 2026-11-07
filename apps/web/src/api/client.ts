@@ -1,3 +1,5 @@
+import { getAccessToken, handleUnauthorized } from '../auth/token';
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -16,12 +18,18 @@ export async function api<T>(
   init: RequestInit & { json?: unknown } = {},
 ): Promise<T> {
   const { json, headers, ...rest } = init;
+  const token = getAccessToken();
   const res = await fetch(`${BASE_URL}/api/v1${path}`, {
     ...rest,
-    headers: { ...(json !== undefined && { 'Content-Type': 'application/json' }), ...headers },
+    headers: {
+      ...(json !== undefined && { 'Content-Type': 'application/json' }),
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...headers,
+    },
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   });
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized();
     const payload = (await res.json().catch(() => null)) as { message?: string } | null;
     throw new ApiError(res.status, payload?.message ?? res.statusText);
   }

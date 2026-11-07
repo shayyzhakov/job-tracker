@@ -33,7 +33,8 @@ describe('NewApplicationPage', () => {
 
     await user.type(await screen.findByRole('combobox', { name: /company name/i }), 'Acme');
     await user.type(screen.getByLabelText(/role name/i), 'Engineering Manager');
-    await user.click(screen.getByLabelText(/management role/i));
+    await user.click(screen.getByRole('radio', { name: 'Public' }));
+    await user.click(screen.getByRole('radio', { name: 'Management' }));
     await user.type(screen.getByLabelText(/expected salary/i), '45000');
     await user.type(screen.getByLabelText(/listing url/i), 'https://jobs.acme.com/1');
     await user.click(screen.getByRole('button', { name: /add contact/i }));
@@ -43,7 +44,7 @@ describe('NewApplicationPage', () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/applications/new-id'));
     expect(body).toMatchObject({
-      company: { name: 'Acme' },
+      company: { name: 'Acme', isPublic: true },
       roleName: 'Engineering Manager',
       isManagement: true,
       expectedSalaryIls: 45000,
@@ -51,5 +52,25 @@ describe('NewApplicationPage', () => {
       status: 'to_apply',
       contacts: [{ name: 'Dana', email: 'dana@acme.com' }],
     });
+  });
+
+  it('defaults to a private company and an individual-contributor role', async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.post('/api/v1/applications', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(applicationDetail({ id: 'new-id' }), { status: 201 });
+      }),
+    );
+    const { user, router } = renderRoute(<NewApplicationPage />, { path: '/applications/new' });
+
+    expect(screen.getByRole('radio', { name: 'Private' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Individual contributor' })).toBeChecked();
+    await user.type(await screen.findByRole('combobox', { name: /company name/i }), 'Acme');
+    await user.type(screen.getByLabelText(/role name/i), 'Engineer');
+    await user.click(screen.getByRole('button', { name: /save application/i }));
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/applications/new-id'));
+    expect(body).toMatchObject({ company: { isPublic: false }, isManagement: false });
   });
 });

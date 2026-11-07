@@ -76,3 +76,45 @@ export const INTERVIEW_TYPE_LABELS: Record<InterviewType, string> = {
   final: 'Final',
   other: 'Other',
 };
+
+/** How the user applied to / got into the process for a role. */
+export const APPLICATION_METHODS = [
+  'referral',
+  'linkedin',
+  'company_site',
+  'job_board',
+  'recruiter_outreach',
+  'networking_event',
+  'other',
+] as const;
+export type ApplicationMethod = (typeof APPLICATION_METHODS)[number];
+
+export const APPLICATION_METHOD_LABELS: Record<ApplicationMethod, string> = {
+  referral: 'Referral',
+  linkedin: 'Self-applied via LinkedIn',
+  company_site: 'Self-applied via company site',
+  job_board: 'Job board (Drushim, AllJobs, …)',
+  recruiter_outreach: 'Recruiter reached out',
+  networking_event: 'Networking / event',
+  other: 'Other',
+};
+
+/** How the user and a referrer got in touch about the role. */
+export const REFERRAL_CHANNELS = [
+  'in_person',
+  'phone',
+  'whatsapp',
+  'linkedin',
+  'email',
+  'other',
+] as const;
+export type ReferralChannel = (typeof REFERRAL_CHANNELS)[number];
+
+export const REFERRAL_CHANNEL_LABELS: Record<ReferralChannel, string> = {
+  in_person: 'In person',
+  phone: 'Phone call',
+  whatsapp: 'WhatsApp',
+  linkedin: 'LinkedIn message',
+  email: 'Email',
+  other: 'Other',
+};

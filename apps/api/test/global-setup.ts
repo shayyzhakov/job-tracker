@@ -1,7 +1,7 @@
-import { runMigrations } from '../src/db/migrate.js';
-import { TEST_DATABASE_URL } from './db-url.js';
+import { ensureTable } from '../src/db/table.js';
+import { TEST_DB_CONFIG } from './db-config.js';
 
-// Runs once before the API test suite: brings the test DB schema up to date.
+// Runs once before the API test suite: makes sure the test table exists in DynamoDB Local.
 export default async function setup() {
-  await runMigrations(TEST_DATABASE_URL);
+  await ensureTable(TEST_DB_CONFIG);
 }

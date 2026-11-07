@@ -1,21 +1,28 @@
 import {
+  APPLICATION_METHOD_LABELS,
+  APPLICATION_METHODS,
   ApplicationCreateSchema,
   type ApplicationDetailDto,
+  type ApplicationMethod,
   type ApplicationStatus,
   ApplicationUpdateSchema,
   COMPANY_SIZE_LABELS,
   COMPANY_SIZES,
   type CompanySize,
+  REFERRAL_CHANNEL_LABELS,
+  REFERRAL_CHANNELS,
+  type ReferralChannel,
 } from '@job-tracker/shared';
 import {
   ActionIcon,
   Autocomplete,
   Button,
   Card,
-  Checkbox,
   Divider,
   Group,
+  Input,
   NumberInput,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -45,7 +52,10 @@ export interface ApplicationFormValues {
   status: ApplicationStatus;
   listingUrl: string;
   expectedSalaryIls: number | string;
-  source: string;
+  applicationMethod: ApplicationMethod | null;
+  referrerName: string;
+  referrerChannel: ReferralChannel | null;
+  methodDetails: string;
   appliedAt: string | null;
   notes: string;
   contacts: ContactFormValues[];
@@ -58,7 +68,10 @@ const blankValues: ApplicationFormValues = {
   status: 'to_apply',
   listingUrl: '',
   expectedSalaryIls: '',
-  source: '',
+  applicationMethod: null,
+  referrerName: '',
+  referrerChannel: null,
+  methodDetails: '',
   appliedAt: null,
   notes: '',
   contacts: [],
@@ -77,7 +90,10 @@ export const valuesFromApplication = (a: ApplicationDetailDto): ApplicationFormV
   status: a.status,
   listingUrl: a.listingUrl ?? '',
   expectedSalaryIls: a.expectedSalaryIls ?? '',
-  source: a.source ?? '',
+  applicationMethod: a.applicationMethod,
+  referrerName: a.referrerName ?? '',
+  referrerChannel: a.referrerChannel,
+  methodDetails: a.methodDetails ?? '',
   appliedAt: a.appliedAt ? a.appliedAt.slice(0, 10) : null,
   notes: a.notes ?? '',
   contacts: [],
@@ -88,6 +104,8 @@ const salary = (v: number | string) => (typeof v === 'number' ? v : undefined);
 /** Form values -> create payload (blank optional fields are dropped by the schema). */
 export const toCreatePayload = (v: ApplicationFormValues) => ({
   ...v,
+  applicationMethod: v.applicationMethod ?? undefined,
+  referrerChannel: v.referrerChannel ?? undefined,
   company: { ...v.company, size: v.company.size ?? undefined },
   expectedSalaryIls: salary(v.expectedSalaryIls),
   appliedAt: v.appliedAt ?? undefined,
@@ -159,10 +177,18 @@ export function ApplicationForm({
               {...form.getInputProps('company.location')}
             />
             <TextInput label="Company website" {...form.getInputProps('company.website')} />
-            <Checkbox
-              label="Public company"
-              {...form.getInputProps('company.isPublic', { type: 'checkbox' })}
-            />
+            <Input.Wrapper label="Company type">
+              <SegmentedControl
+                fullWidth
+                aria-label="Company type"
+                value={form.values.company.isPublic ? 'public' : 'private'}
+                onChange={(v) => form.setFieldValue('company.isPublic', v === 'public')}
+                data={[
+                  { value: 'private', label: 'Private' },
+                  { value: 'public', label: 'Public' },
+                ]}
+              />
+            </Input.Wrapper>
           </SimpleGrid>
         </Card>
 
@@ -192,23 +218,71 @@ export function ApplicationForm({
               allowDecimal={false}
               {...form.getInputProps('expectedSalaryIls')}
             />
-            <TextInput
-              label="Source"
-              placeholder="LinkedIn, referral…"
-              {...form.getInputProps('source')}
-            />
             <DateInput
               label="Applied on"
               clearable
               valueFormat="DD MMM YYYY"
               {...form.getInputProps('appliedAt')}
             />
-            <Checkbox
-              label="Management role"
-              {...form.getInputProps('isManagement', { type: 'checkbox' })}
-            />
+            <Input.Wrapper label="Role type">
+              <SegmentedControl
+                fullWidth
+                aria-label="Role type"
+                value={form.values.isManagement ? 'management' : 'ic'}
+                onChange={(v) => form.setFieldValue('isManagement', v === 'management')}
+                data={[
+                  { value: 'ic', label: 'Individual contributor' },
+                  { value: 'management', label: 'Management' },
+                ]}
+              />
+            </Input.Wrapper>
           </SimpleGrid>
           <Textarea label="Notes" autosize minRows={3} mt="sm" {...form.getInputProps('notes')} />
+        </Card>
+
+        <Card withBorder padding="lg">
+          <Text fw={600} mb="sm">
+            How you applied
+          </Text>
+          <SimpleGrid cols={{ base: 1, sm: 2 }}>
+            <Select
+              label="Application method"
+              placeholder="Select…"
+              clearable
+              data={APPLICATION_METHODS.map((m) => ({
+                value: m,
+                label: APPLICATION_METHOD_LABELS[m],
+              }))}
+              {...form.getInputProps('applicationMethod')}
+            />
+            {form.values.applicationMethod === 'referral' && (
+              <>
+                <TextInput
+                  label="Referred by"
+                  placeholder="Name of the person"
+                  {...form.getInputProps('referrerName')}
+                />
+                <Select
+                  label="How did you speak?"
+                  placeholder="Select…"
+                  clearable
+                  data={REFERRAL_CHANNELS.map((c) => ({
+                    value: c,
+                    label: REFERRAL_CHANNEL_LABELS[c],
+                  }))}
+                  {...form.getInputProps('referrerChannel')}
+                />
+              </>
+            )}
+          </SimpleGrid>
+          <Textarea
+            label="Method details"
+            description="Job board name, recruiter, event, how it came up…"
+            autosize
+            minRows={2}
+            mt="sm"
+            {...form.getInputProps('methodDetails')}
+          />
         </Card>
 
         {mode === 'create' && (

@@ -42,7 +42,11 @@ describe('interviews API', () => {
   it('reschedules and deletes an interview', async () => {
     const { id } = await createApplication(t.app);
     const created = (
-      await t.app.inject({ method: 'POST', url: url(id), payload: { scheduledAt: inDays(1) } })
+      await t.app.inject({
+        method: 'POST',
+        url: url(id),
+        payload: { scheduledAt: inDays(1) },
+      })
     ).json<InterviewDto>();
 
     const newDate = inDays(3);
@@ -51,7 +55,10 @@ describe('interviews API', () => {
       url: url(id, created.id),
       payload: { scheduledAt: newDate, notes: 'Bring laptop' },
     });
-    expect(patched.json()).toMatchObject({ scheduledAt: newDate, notes: 'Bring laptop' });
+    expect(patched.json()).toMatchObject({
+      scheduledAt: newDate,
+      notes: 'Bring laptop',
+    });
 
     expect((await t.app.inject({ method: 'DELETE', url: url(id, created.id) })).statusCode).toBe(
       204,

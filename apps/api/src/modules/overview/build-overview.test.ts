@@ -14,6 +14,7 @@ const app = (
   id: `app-${++seq}`,
   status,
   appliedAt: status === 'to_apply' ? null : daysAgo(1),
+  applicationMethod: null,
   expectedSalaryIls: null,
   reachedStatuses: [status],
   ...opts,
@@ -53,7 +54,12 @@ describe('buildOverview', () => {
     );
     expect(o.totalApplications).toBe(4);
     expect(o.activeApplications).toBe(3);
-    expect(o.countsByStatus).toMatchObject({ to_apply: 1, applied: 2, rejected: 1, offer: 0 });
+    expect(o.countsByStatus).toMatchObject({
+      to_apply: 1,
+      applied: 2,
+      rejected: 1,
+      offer: 0,
+    });
   });
 
   it('computes response rate over submitted applications, counting rejections as responses', () => {
@@ -80,7 +86,9 @@ describe('buildOverview', () => {
       {
         applications: [
           app('offer'),
-          app('withdrawn', { reachedStatuses: ['applied', 'offer', 'withdrawn'] }),
+          app('withdrawn', {
+            reachedStatuses: ['applied', 'offer', 'withdrawn'],
+          }),
           app('applied'),
         ],
         upcomingInterviews: [],
@@ -111,10 +119,41 @@ describe('buildOverview', () => {
       },
       NOW,
     );
-    expect(o.weeklyApplied.at(-1)).toEqual({ weekStart: '2026-11-01', count: 2 });
-    expect(o.weeklyApplied.at(-2)).toEqual({ weekStart: '2026-10-25', count: 1 });
+    expect(o.weeklyApplied.at(-1)).toEqual({
+      weekStart: '2026-11-01',
+      count: 2,
+    });
+    expect(o.weeklyApplied.at(-2)).toEqual({
+      weekStart: '2026-10-25',
+      count: 1,
+    });
     expect(o.weeklyApplied[0]?.weekStart).toBe('2026-09-13');
     expect(o.weeklyApplied.reduce((s, w) => s + w.count, 0)).toBe(3);
+  });
+
+  it('breaks submitted applications down by method with response and interview counts', () => {
+    const o = buildOverview(
+      {
+        applications: [
+          app('phone_interview', { applicationMethod: 'referral' }),
+          app('rejected', {
+            applicationMethod: 'referral',
+            reachedStatuses: ['applied', 'rejected'],
+          }),
+          app('applied', { applicationMethod: 'linkedin' }),
+          app('applied', { applicationMethod: 'linkedin' }),
+          app('applied', { applicationMethod: 'linkedin' }),
+          app('to_apply', { applicationMethod: 'company_site' }), // not submitted yet
+          app('applied'), // no method recorded
+        ],
+        upcomingInterviews: [],
+      },
+      NOW,
+    );
+    expect(o.methodBreakdown).toEqual([
+      { method: 'linkedin', applications: 3, responses: 0, interviews: 0 },
+      { method: 'referral', applications: 2, responses: 2, interviews: 1 },
+    ]);
   });
 
   it('averages expected salary over active applications only, rounded', () => {

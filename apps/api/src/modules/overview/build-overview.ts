@@ -1,7 +1,9 @@
 import {
   APPLICATION_STATUSES,
+  type ApplicationMethod,
   type ApplicationStatus,
   isActiveStatus,
+  type MethodStatDto,
   type OverviewDto,
   type UpcomingInterviewDto,
 } from '@job-tracker/shared';
@@ -10,6 +12,7 @@ export interface OverviewApplicationRow {
   id: string;
   status: ApplicationStatus;
   appliedAt: Date | null;
+  applicationMethod: ApplicationMethod | null;
   expectedSalaryIls: number | null;
   /** Every status this application has ever had (from status history). */
   reachedStatuses: ApplicationStatus[];
@@ -30,6 +33,38 @@ const NO_RESPONSE: ReadonlySet<ApplicationStatus> = new Set([
   'ghosted',
   'withdrawn',
 ]);
+
+/** Statuses that mean the process got as far as an interview (or beyond). */
+const INTERVIEW_STAGE: ReadonlySet<ApplicationStatus> = new Set([
+  'hr_screening',
+  'phone_interview',
+  'technical_interview',
+  'home_assignment',
+  'onsite_interview',
+  'final_interview',
+  'offer',
+  'accepted',
+]);
+
+function buildMethodBreakdown(submitted: OverviewApplicationRow[]): MethodStatDto[] {
+  const byMethod = new Map<ApplicationMethod, MethodStatDto>();
+  for (const a of submitted) {
+    if (!a.applicationMethod) continue;
+    const stat = byMethod.get(a.applicationMethod) ?? {
+      method: a.applicationMethod,
+      applications: 0,
+      responses: 0,
+      interviews: 0,
+    };
+    stat.applications++;
+    if (a.reachedStatuses.some((s) => !NO_RESPONSE.has(s))) stat.responses++;
+    if (a.reachedStatuses.some((s) => INTERVIEW_STAGE.has(s))) stat.interviews++;
+    byMethod.set(a.applicationMethod, stat);
+  }
+  return [...byMethod.values()].sort(
+    (a, b) => b.applications - a.applications || a.method.localeCompare(b.method),
+  );
+}
 
 /** Sunday 00:00 UTC of the week containing `d` (Israeli work week starts Sunday). */
 function weekStartUtc(d: Date): Date {
@@ -81,6 +116,7 @@ export function buildOverview(input: OverviewInput, now: Date): OverviewDto {
     nextInterview: upcomingInterviews[0] ?? null,
     upcomingInterviews,
     weeklyApplied,
+    methodBreakdown: buildMethodBreakdown(submitted),
     averageExpectedSalaryIls:
       salaries.length > 0
         ? Math.round(salaries.reduce((sum, s) => sum + s, 0) / salaries.length)

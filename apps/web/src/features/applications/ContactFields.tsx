@@ -6,9 +6,16 @@ export interface ContactFormValues {
   role: string;
   email: string;
   phone: string;
+  linkedinUrl: string;
 }
 
-export const emptyContact = (): ContactFormValues => ({ name: '', role: '', email: '', phone: '' });
+export const emptyContact = (): ContactFormValues => ({
+  name: '',
+  role: '',
+  email: '',
+  phone: '',
+  linkedinUrl: '',
+});
 
 /** Contact inputs bound to `form` at `prefix` (e.g. "contacts.0" or "" for a flat form). */
 // biome-ignore lint/suspicious/noExplicitAny: shared between differently-shaped forms
@@ -24,6 +31,11 @@ export function ContactFields({ form, prefix }: { form: UseFormReturnType<any>; 
       />
       <TextInput label="Contact email" type="email" {...form.getInputProps(path('email'))} />
       <TextInput label="Contact phone" {...form.getInputProps(path('phone'))} />
+      <TextInput
+        label="Contact LinkedIn"
+        placeholder="https://www.linkedin.com/in/…"
+        {...form.getInputProps(path('linkedinUrl'))}
+      />
     </SimpleGrid>
   );
 }

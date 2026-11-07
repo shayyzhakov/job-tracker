@@ -4,7 +4,12 @@ import { createTestApp, resetDb, type TestApp } from '../../../test/helpers.js';
 
 const BASE = '/api/v1/applications';
 const body = {
-  company: { name: 'Acme', size: 'unicorn', isPublic: false, location: 'Tel Aviv' },
+  company: {
+    name: 'Acme',
+    size: 'unicorn',
+    isPublic: false,
+    location: 'Tel Aviv',
+  },
   roleName: 'Engineering Manager',
   isManagement: true,
   status: 'applied',
@@ -12,7 +17,12 @@ const body = {
   expectedSalaryIls: 45000,
   notes: 'Referral from Dana',
   contacts: [
-    { name: 'Dana', role: 'Recruiter', email: 'dana@acme.com', phone: '+972-50-0000000' },
+    {
+      name: 'Dana',
+      role: 'Recruiter',
+      email: 'dana@acme.com',
+      phone: '+972-50-0000000',
+    },
     { name: 'Avi', role: 'Hiring manager' },
   ],
 };
@@ -60,7 +70,10 @@ describe('applications API', () => {
 
   it('POST reuses an existing company by name', async () => {
     const a = await create();
-    const b = await create({ company: { name: 'acme' }, roleName: 'Staff Engineer' });
+    const b = await create({
+      company: { name: 'acme' },
+      roleName: 'Staff Engineer',
+    });
     expect(b.company.id).toBe(a.company.id);
   });
 
@@ -70,13 +83,20 @@ describe('applications API', () => {
       url: `${BASE}/00000000-0000-4000-8000-000000000000`,
     });
     expect(missing.statusCode).toBe(404);
-    const malformed = await t.app.inject({ method: 'GET', url: `${BASE}/nope` });
+    const malformed = await t.app.inject({
+      method: 'GET',
+      url: `${BASE}/nope`,
+    });
     expect(malformed.statusCode).toBe(400);
   });
 
   it('GET lists applications filtered by active, status and search', async () => {
     await create();
-    await create({ company: { name: 'Globex' }, roleName: 'Backend Dev', status: 'rejected' });
+    await create({
+      company: { name: 'Globex' },
+      roleName: 'Backend Dev',
+      status: 'rejected',
+    });
     const list = async (qs: string) =>
       (await t.app.inject({ method: 'GET', url: `${BASE}?${qs}` })).json<ApplicationDto[]>();
 
@@ -118,7 +138,11 @@ describe('applications API', () => {
     const res = await t.app.inject({
       method: 'PATCH',
       url: `${BASE}/${id}`,
-      payload: { notes: 'Second round next week', listingUrl: '', company: { isPublic: true } },
+      payload: {
+        notes: 'Second round next week',
+        listingUrl: '',
+        company: { isPublic: true },
+      },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
@@ -129,6 +153,42 @@ describe('applications API', () => {
     });
   });
 
+  it('stores and updates the application method with referral details', async () => {
+    const created = await create({
+      applicationMethod: 'referral',
+      referrerName: 'Dana Levi',
+      referrerChannel: 'whatsapp',
+      methodDetails: 'Met at a meetup',
+    });
+    expect(created).toMatchObject({
+      applicationMethod: 'referral',
+      referrerName: 'Dana Levi',
+      referrerChannel: 'whatsapp',
+      methodDetails: 'Met at a meetup',
+    });
+    const res = await t.app.inject({
+      method: 'PATCH',
+      url: `${BASE}/${created.id}`,
+      payload: { applicationMethod: 'linkedin', referrerName: '', referrerChannel: null },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      applicationMethod: 'linkedin',
+      referrerName: null,
+      referrerChannel: null,
+      methodDetails: 'Met at a meetup',
+    });
+  });
+
+  it('rejects an unknown application method', async () => {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: BASE,
+      payload: { company: { name: 'Acme' }, roleName: 'Eng', applicationMethod: 'telepathy' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
   it('DELETE /:id removes the application', async () => {
     const { id } = await create();
     expect((await t.app.inject({ method: 'DELETE', url: `${BASE}/${id}` })).statusCode).toBe(204);
@@ -137,7 +197,10 @@ describe('applications API', () => {
 
   it('GET /api/v1/companies searches companies', async () => {
     await create();
-    const res = await t.app.inject({ method: 'GET', url: '/api/v1/companies?q=ac' });
+    const res = await t.app.inject({
+      method: 'GET',
+      url: '/api/v1/companies?q=ac',
+    });
     expect(res.json()).toEqual([expect.objectContaining({ name: 'Acme' })]);
   });
 });

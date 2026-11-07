@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
-    // Integration tests share one Postgres test DB, so files run serially.
+    // Integration tests share one DynamoDB Local test table, so files run serially.
     fileParallelism: false,
     globalSetup: ['./test/global-setup.ts'],
     env: { NODE_ENV: 'test' },

@@ -5,3 +5,13 @@ coverage/
 .env.*.local
 *.log
 .DS_Store
+
+# OpenTofu
+.terraform/
+*.tfstate
+*.tfstate.*
+tfplan
+terraform.tfvars
+crash.log
+dist-lambda/
+.build/

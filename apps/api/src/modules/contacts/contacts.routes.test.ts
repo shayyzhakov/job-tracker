@@ -31,11 +31,18 @@ describe('contacts API', () => {
     const patched = await t.app.inject({
       method: 'PATCH',
       url: url(id, contact.id),
-      payload: { phone: '+972-52-1111111' },
+      payload: { phone: '+972-52-1111111', linkedinUrl: 'https://www.linkedin.com/in/dana' },
     });
-    expect(patched.json()).toMatchObject({ name: 'Dana', phone: '+972-52-1111111' });
+    expect(patched.json()).toMatchObject({
+      name: 'Dana',
+      phone: '+972-52-1111111',
+      linkedinUrl: 'https://www.linkedin.com/in/dana',
+    });
 
-    const del = await t.app.inject({ method: 'DELETE', url: url(id, contact.id) });
+    const del = await t.app.inject({
+      method: 'DELETE',
+      url: url(id, contact.id),
+    });
     expect(del.statusCode).toBe(204);
     const detail = (
       await t.app.inject({ method: 'GET', url: `/api/v1/applications/${id}` })
@@ -44,7 +51,11 @@ describe('contacts API', () => {
   });
 
   it('returns 404 when the application does not exist', async () => {
-    const res = await t.app.inject({ method: 'POST', url: url(MISSING), payload: { name: 'X' } });
+    const res = await t.app.inject({
+      method: 'POST',
+      url: url(MISSING),
+      payload: { name: 'X' },
+    });
     expect(res.statusCode).toBe(404);
   });
 

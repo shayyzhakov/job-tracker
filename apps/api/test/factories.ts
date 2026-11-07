@@ -8,7 +8,12 @@ export async function createApplication(
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/applications',
-    payload: { company: { name: 'Acme' }, roleName: 'Engineer', status: 'applied', ...overrides },
+    payload: {
+      company: { name: 'Acme' },
+      roleName: 'Engineer',
+      status: 'applied',
+      ...overrides,
+    },
   });
   if (res.statusCode !== 201) throw new Error(`createApplication failed: ${res.body}`);
   return res.json();

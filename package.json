@@ -7,20 +7,22 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "docker compose up -d --wait db && pnpm db:migrate && pnpm --parallel --filter \"./apps/*\" dev",
+    "dev": "docker compose up -d --wait dynamodb && pnpm db:setup && pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm -r build",
     "test": "pnpm -r --workspace-concurrency=1 test",
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck",
     "check": "biome check .",
     "check:fix": "biome check --write .",
-    "db:generate": "pnpm --filter @job-tracker/api db:generate",
-    "db:migrate": "pnpm --filter @job-tracker/api db:migrate",
-    "db:seed": "pnpm --filter @job-tracker/api db:seed"
+    "db:setup": "pnpm --filter @job-tracker/api db:setup",
+    "db:seed": "pnpm --filter @job-tracker/api db:seed",
+    "deploy:aws": "scripts/deploy.sh",
+    "infra:init": "scripts/infra-init.sh"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
     "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   }

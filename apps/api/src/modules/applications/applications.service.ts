@@ -61,9 +61,13 @@ export class ApplicationsService {
     return this.get(id);
   }
 
-  async changeStatus(id: string, status: ApplicationStatus): Promise<ApplicationDetailDto> {
+  async changeStatus(
+    id: string,
+    status: ApplicationStatus,
+    repeat = false,
+  ): Promise<ApplicationDetailDto> {
     const state = await this.requireState(id);
-    if (state.status !== status) {
+    if (state.status !== status || repeat) {
       const now = this.now();
       await this.apps.changeStatus(id, {
         from: state.status,

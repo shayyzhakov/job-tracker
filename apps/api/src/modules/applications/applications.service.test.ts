@@ -20,7 +20,11 @@ describe('ApplicationsService', () => {
   beforeEach(() => {
     companies = new FakeCompaniesRepository();
     apps = new FakeApplicationsRepository(companies);
-    service = new ApplicationsService({ applications: apps, companies, now: () => NOW });
+    service = new ApplicationsService({
+      applications: apps,
+      companies,
+      now: () => NOW,
+    });
   });
 
   describe('create', () => {
@@ -34,7 +38,10 @@ describe('ApplicationsService', () => {
     });
 
     it('reuses an existing company with the same name (case-insensitive)', async () => {
-      const existing = await companies.create({ name: 'ACME', isPublic: false });
+      const existing = await companies.create({
+        name: 'ACME',
+        isPublic: false,
+      });
       const created = await service.create(input());
       expect(created.company.id).toBe(existing.id);
       expect(companies.rows).toHaveLength(1);
@@ -58,7 +65,9 @@ describe('ApplicationsService', () => {
 
     it('saves contacts', async () => {
       const created = await service.create(
-        input({ contacts: [{ name: 'Dana' }, { name: 'Avi', email: 'avi@acme.com' }] }),
+        input({
+          contacts: [{ name: 'Dana' }, { name: 'Avi', email: 'avi@acme.com' }],
+        }),
       );
       expect(created.contacts.map((c) => c.name)).toEqual(['Dana', 'Avi']);
     });
@@ -70,7 +79,10 @@ describe('ApplicationsService', () => {
       const updated = await service.changeStatus(id, 'hr_screening');
       expect(updated.status).toBe('hr_screening');
       expect(updated.history.at(-1)).toEqual(
-        expect.objectContaining({ fromStatus: 'applied', toStatus: 'hr_screening' }),
+        expect.objectContaining({
+          fromStatus: 'applied',
+          toStatus: 'hr_screening',
+        }),
       );
     });
 
@@ -78,6 +90,15 @@ describe('ApplicationsService', () => {
       const { id } = await service.create(input({ status: 'applied' }));
       const updated = await service.changeStatus(id, 'applied');
       expect(updated.history).toHaveLength(1);
+    });
+
+    it('records another history step when the same status is repeated explicitly', async () => {
+      const { id } = await service.create(input({ status: 'phone_interview' }));
+      const updated = await service.changeStatus(id, 'phone_interview', true);
+      expect(updated.history).toHaveLength(2);
+      expect(updated.history.at(-1)).toEqual(
+        expect.objectContaining({ fromStatus: 'phone_interview', toStatus: 'phone_interview' }),
+      );
     });
 
     it('sets appliedAt when moving out of to_apply for the first time', async () => {
@@ -88,7 +109,10 @@ describe('ApplicationsService', () => {
 
     it('does not overwrite an existing appliedAt', async () => {
       const { id } = await service.create(
-        input({ status: 'applied', appliedAt: new Date('2026-10-01T00:00:00.000Z') }),
+        input({
+          status: 'applied',
+          appliedAt: new Date('2026-10-01T00:00:00.000Z'),
+        }),
       );
       const updated = await service.changeStatus(id, 'phone_interview');
       expect(updated.appliedAt).toBe('2026-10-01T00:00:00.000Z');

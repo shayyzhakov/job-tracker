@@ -88,8 +88,19 @@ describe('ContactInputSchema', () => {
     expect(ContactInputSchema.safeParse({ name: 'Dana', email: 'not-email' }).success).toBe(false);
   });
 
+  it('accepts an http(s) LinkedIn url and rejects other schemes', () => {
+    const url = 'https://www.linkedin.com/in/dana';
+    expect(ContactInputSchema.parse({ name: 'Dana', linkedinUrl: url }).linkedinUrl).toBe(url);
+    expect(
+      ContactInputSchema.safeParse({ name: 'Dana', linkedinUrl: 'javascript:alert(1)' }).success,
+    ).toBe(false);
+    expect(ContactInputSchema.safeParse({ name: 'Dana', linkedinUrl: 'nope' }).success).toBe(false);
+  });
+
   it('turns empty optional strings into undefined (blank form fields)', () => {
-    expect(ContactInputSchema.parse({ name: 'Dana', email: '', phone: '' })).toEqual({
+    expect(
+      ContactInputSchema.parse({ name: 'Dana', email: '', phone: '', linkedinUrl: '' }),
+    ).toEqual({
       name: 'Dana',
     });
   });

@@ -1,6 +1,14 @@
-import { type ApplicationDetailDto, COMPANY_SIZE_LABELS, STATUS_LABELS } from '@job-tracker/shared';
+import {
+  APPLICATION_METHOD_LABELS,
+  type ApplicationDetailDto,
+  COMPANY_SIZE_LABELS,
+  INTERVIEW_TYPE_LABELS,
+  REFERRAL_CHANNEL_LABELS,
+  STATUS_LABELS,
+} from '@job-tracker/shared';
 import {
   Anchor,
+  Badge,
   Button,
   Card,
   Grid,
@@ -14,7 +22,7 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconArrowLeft, IconExternalLink, IconPencil, IconTrash } from '@tabler/icons-react';
+import { IconArrowLeft, IconExternalLink, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
@@ -26,6 +34,7 @@ import {
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StatusSelect } from '../../components/StatusSelect';
+import { Slot } from '../../lib/extensions';
 import { formatDate, formatDateTime, formatIls } from '../../lib/format';
 import { ApplicationForm, toUpdatePayload, valuesFromApplication } from './ApplicationForm';
 import { ContactsSection } from './ContactsSection';
@@ -54,7 +63,18 @@ function Details({ app }: { app: ApplicationDetailDto }) {
         <Field label="Management role">{app.isManagement ? 'Yes' : 'No'}</Field>
         <Field label="Expected salary">{formatIls(app.expectedSalaryIls)}</Field>
         <Field label="Applied on">{formatDate(app.appliedAt)}</Field>
-        <Field label="Source">{app.source}</Field>
+        <Field label="Application method">
+          {app.applicationMethod ? APPLICATION_METHOD_LABELS[app.applicationMethod] : null}
+        </Field>
+        {app.applicationMethod === 'referral' && (
+          <>
+            <Field label="Referred by">{app.referrerName}</Field>
+            <Field label="Spoke via">
+              {app.referrerChannel ? REFERRAL_CHANNEL_LABELS[app.referrerChannel] : null}
+            </Field>
+          </>
+        )}
+        {app.source && <Field label="Source">{app.source}</Field>}
         <Field label="Listing">
           {app.listingUrl ? (
             <Anchor href={app.listingUrl} target="_blank" rel="noreferrer">
@@ -70,6 +90,14 @@ function Details({ app }: { app: ApplicationDetailDto }) {
           ) : null}
         </Field>
       </SimpleGrid>
+      {app.methodDetails && (
+        <Stack gap={0} mt="md">
+          <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
+            Method details
+          </Text>
+          <Text style={{ whiteSpace: 'pre-wrap' }}>{app.methodDetails}</Text>
+        </Stack>
+      )}
       {app.notes && (
         <Stack gap={0} mt="md">
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
@@ -95,6 +123,11 @@ export function ApplicationDetailPage() {
   if (isPending) return <PageLoader />;
   if (error) return <ErrorAlert error={error} what="application" />;
 
+  const now = Date.now();
+  const upcoming = app.interviews
+    .filter((i) => new Date(i.scheduledAt).getTime() > now)
+    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+
   return (
     <Stack>
       <Anchor component={Link} to="/applications" size="sm">
@@ -118,6 +151,13 @@ export function ApplicationDetailPage() {
             onChange={(status) => changeStatus.mutate({ id: app.id, status })}
             w={200}
           />
+          <Button
+            variant="light"
+            leftSection={<IconPlus size={16} />}
+            onClick={() => changeStatus.mutate({ id: app.id, status: app.status, repeat: true })}
+          >
+            Add another {STATUS_LABELS[app.status]} step
+          </Button>
           {!editing && (
             <Button
               variant="default"
@@ -137,6 +177,8 @@ export function ApplicationDetailPage() {
           </Button>
         </Group>
       </Group>
+
+      <Slot name="application.detail.top" applicationId={app.id} status={app.status} />
 
       <Grid>
         <Grid.Col span={{ base: 12, md: 8 }}>
@@ -182,6 +224,27 @@ export function ApplicationDetailPage() {
                 <Timeline.Item key={h.id} title={STATUS_LABELS[h.toStatus]}>
                   <Text size="xs" c="dimmed">
                     {formatDateTime(h.changedAt)}
+                  </Text>
+                </Timeline.Item>
+              ))}
+              {upcoming.map((i) => (
+                <Timeline.Item
+                  key={i.id}
+                  lineVariant="dashed"
+                  title={
+                    <Text span fs="italic" c="dimmed" size="sm" fw={500}>
+                      {INTERVIEW_TYPE_LABELS[i.type]} interview
+                    </Text>
+                  }
+                  data-testid="upcoming-step"
+                >
+                  <Group gap={6}>
+                    <Badge size="xs" variant="outline" color="gray">
+                      Scheduled
+                    </Badge>
+                  </Group>
+                  <Text size="xs" c="dimmed" mt={4}>
+                    {formatDateTime(i.scheduledAt)}
                   </Text>
                 </Timeline.Item>
               ))}

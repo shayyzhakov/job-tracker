@@ -1,0 +1,9 @@
+# Deliberate trade-offs for a single-user, cost-sensitive stack (all LOW severity).
+# Log groups use the default CloudWatch encryption; a CMK adds cost and no real protection here.
+AWS-0017
+# Container Insights costs extra; the plain CloudWatch logs are enough.
+AWS-0034
+# S3 access logging on the state bucket is not worth another bucket for one user.
+AWS-0089
+# Secrets use the AWS-managed Secrets Manager key.
+AWS-0098

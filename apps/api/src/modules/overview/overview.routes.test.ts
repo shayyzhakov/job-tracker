@@ -15,7 +15,10 @@ describe('GET /api/v1/overview', () => {
 
   it('aggregates applications, history and upcoming interviews from the DB', async () => {
     const a = await createApplication(t.app, { expectedSalaryIls: 40000 });
-    await createApplication(t.app, { company: { name: 'Globex' }, status: 'to_apply' });
+    await createApplication(t.app, {
+      company: { name: 'Globex' },
+      status: 'to_apply',
+    });
     const c = await createApplication(t.app, { company: { name: 'Initech' } });
 
     await t.app.inject({
@@ -47,9 +50,16 @@ describe('GET /api/v1/overview', () => {
       interviewsNext7Days: 1,
       averageExpectedSalaryIls: 40000,
     });
-    expect(o.countsByStatus).toMatchObject({ applied: 1, to_apply: 1, rejected: 1 });
+    expect(o.countsByStatus).toMatchObject({
+      applied: 1,
+      to_apply: 1,
+      rejected: 1,
+    });
     expect(o.upcomingInterviews).toHaveLength(2);
-    expect(o.nextInterview).toMatchObject({ companyName: 'Acme', roleName: 'Engineer' });
+    expect(o.nextInterview).toMatchObject({
+      companyName: 'Acme',
+      roleName: 'Engineer',
+    });
     expect(o.weeklyApplied.at(-1)?.count).toBe(2);
   });
 });

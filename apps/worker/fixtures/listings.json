@@ -1,0 +1,66 @@
+[
+  {
+    "url": "https://boards.example.com/nimbus/jobs/1001?utm_source=fixture",
+    "title": "Senior Backend Engineer",
+    "companyName": "Nimbus Data",
+    "location": "Tel Aviv, Israel (Hybrid)",
+    "description": "Nimbus Data is a 120-person Series C startup building a real-time analytics platform. You'll design Node.js and TypeScript services on Postgres and Kafka, own them in production on AWS, and mentor two engineers.",
+    "postedAt": "2026-11-04T07:30:00.000Z"
+  },
+  {
+    "url": "https://boards.example.com/orbitpay/jobs/2042",
+    "title": "Engineering Manager, Payments",
+    "companyName": "OrbitPay",
+    "location": "Tel Aviv, Israel",
+    "description": "OrbitPay, a fintech unicorn, is hiring an engineering manager to lead a team of seven backend engineers working on card issuing and ledgering. Hands-on architecture work and hiring are part of the role.",
+    "postedAt": "2026-11-03T12:00:00.000Z"
+  },
+  {
+    "url": "https://boards.example.com/cyberloom/jobs/77",
+    "title": "Staff Software Engineer, Platform",
+    "companyName": "CyberLoom",
+    "location": "Herzliya, Israel",
+    "description": "CyberLoom (cloud security, ~400 employees) is looking for a staff engineer to own the internal developer platform: Kubernetes, Terraform, CI/CD and service templates in Go and TypeScript.",
+    "postedAt": "2026-11-02T09:15:00.000Z"
+  },
+  {
+    "url": "https://boards.example.com/medisense/jobs/3",
+    "title": "Junior Full Stack Developer",
+    "companyName": "MediSense",
+    "location": "Haifa, Israel",
+    "description": "An eight-person seed-stage health-tech startup is looking for a junior full stack developer (React, Node.js). Great for someone with 1–2 years of experience.",
+    "postedAt": "2026-11-04T15:00:00.000Z"
+  },
+  {
+    "url": "https://boards.example.com/globex/jobs/558",
+    "title": "Senior Backend Engineer, Search",
+    "companyName": "Globex",
+    "location": "Petah Tikva, Israel",
+    "description": "Globex, a public enterprise software company with 9,000 employees worldwide, is expanding its Israel R&D center. Work on Elasticsearch-based search services in Java and Kotlin.",
+    "postedAt": "2026-11-01T10:00:00.000Z"
+  },
+  {
+    "url": "https://boards.example.com/tidal/jobs/12",
+    "title": "Tech Lead, Data Infrastructure",
+    "companyName": "Tidal Robotics",
+    "location": "Remote (Israel)",
+    "description": "Tidal Robotics (Series B, 60 people) needs a tech lead for its data infrastructure team: Python, Spark and Airflow pipelines feeding ML training. Leads three engineers while staying hands-on.",
+    "postedAt": "2026-11-03T08:45:00.000Z"
+  },
+  {
+    "url": "https://boards.example.com/brightads/jobs/909",
+    "title": "Account Executive",
+    "companyName": "BrightAds",
+    "location": "Tel Aviv, Israel",
+    "description": "Sales role selling ad-tech solutions to mid-market customers in EMEA.",
+    "postedAt": "2026-11-04T06:00:00.000Z"
+  },
+  {
+    "url": "https://boards.example.com/nimbus/jobs/1001#apply",
+    "title": "Senior Backend Engineer",
+    "companyName": "Nimbus Data",
+    "location": "Tel Aviv, Israel (Hybrid)",
+    "description": "Duplicate of the first listing under a different URL fragment; the scout should store it once.",
+    "postedAt": "2026-11-04T07:30:00.000Z"
+  }
+]

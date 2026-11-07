@@ -1,0 +1,201 @@
+/*
+ * Global UI refinements on top of Mantine.
+ * Mantine already ships the reset, focus rings and color-scheme tokens; this file
+ * covers what it does not: text selection policy, touch behaviour, numeric
+ * alignment, motion preferences and scrolling polish.
+ */
+
+html {
+  /* Keep iOS from inflating text after rotation. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Reserve scrollbar space so content does not shift between short/long pages. */
+  scrollbar-gutter: stable;
+  /* Anchored/focused elements should not hide under the sticky 56px header. */
+  scroll-padding-top: 72px;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Don't rubber-band the whole app on overscroll; the AppShell scrolls itself. */
+  overscroll-behavior-y: none;
+}
+
+/* ---------- Text selection policy ----------
+ * Chrome (navigation, buttons, tabs, labels, badges) is *interface*: dragging
+ * across it should not highlight text or leave a stray selection after a
+ * double-click. Content (table cells, notes, emails, phone numbers, job
+ * summaries) is *data* that people copy, so it stays selectable (the default).
+ */
+.mantine-AppShell-header,
+.mantine-AppShell-navbar,
+.mantine-Button-root,
+.mantine-ActionIcon-root,
+.mantine-Burger-root,
+.mantine-SegmentedControl-root,
+.mantine-Tabs-tab,
+.mantine-Badge-root,
+.mantine-Table-th,
+.mantine-Tooltip-tooltip,
+.mantine-Avatar-root,
+.mantine-Loader-root,
+.mantine-Select-input,
+.mantine-Select-option,
+.mantine-Pagination-control,
+.user-select-none {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ...but never block selection inside text entry, even if nested in chrome. */
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Explicit opt-in helpers for content. `all` makes one click select the whole
+ * value (IDs, URLs) which is what people want when copying them. */
+.user-select-text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+.user-select-all {
+  -webkit-user-select: all;
+  user-select: all;
+}
+
+/* Icons and images are decoration: no drag ghosts, no selection highlight. */
+svg,
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* ---------- Touch & pointer ----------
+ * `manipulation` removes the 300ms tap delay and double-tap-to-zoom on
+ * interactive controls while keeping pinch zoom (important for accessibility).
+ * The default tap flash is replaced by our own :active/hover states.
+ */
+a,
+button,
+[role="button"],
+[role="tab"],
+[role="option"],
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Disabled controls should read as disabled to the pointer as well. */
+button:disabled,
+[data-disabled="true"],
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* ---------- Typography ---------- */
+h1,
+h2,
+h3,
+h4 {
+  /* Avoid orphans / lopsided wraps in headings. */
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Digits that line up in columns and don't jitter when values update. */
+table,
+.tabular-nums,
+.mantine-Badge-label {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Long unbroken strings (URLs, emails) must not blow out cards on mobile. */
+.mantine-Card-root,
+.mantine-Table-td {
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Selection color ---------- */
+::selection {
+  background: color-mix(in srgb, var(--mantine-color-indigo-5) 35%, transparent);
+}
+
+/* ---------- Focus ----------
+ * Keyboard users get a clear ring; mouse users don't get one on click.
+ * Mantine applies its ring on :focus-visible via `focusRing: 'auto'`; this is
+ * the fallback for the raw elements it does not style (e.g. the skip link).
+ */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 1000;
+  padding: 8px 14px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  border: 1px solid var(--mantine-color-default-border);
+  box-shadow: var(--mantine-shadow-md);
+  font-weight: 600;
+  text-decoration: none;
+  /* Visually hidden until focused via keyboard. */
+  transform: translateY(-200%);
+  transition: transform 120ms ease;
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* ---------- Scrolling ---------- */
+.mantine-AppShell-navbar {
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ---------- Motion ----------
+ * Honour the OS "reduce motion" setting for everything, including third-party
+ * animations (Mantine transitions, Recharts) that ignore it.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Print ---------- */
+@media print {
+  .mantine-AppShell-header,
+  .mantine-AppShell-navbar,
+  .skip-link {
+    display: none !important;
+  }
+  .mantine-AppShell-main {
+    padding: 0 !important;
+  }
+}

@@ -11,9 +11,14 @@ import type {
   InterviewCreateInput,
   InterviewDto,
   InterviewUpdateInput,
+  OpportunityDto,
+  OpportunityStatus,
   OverviewDto,
+  ScoutCriteriaDto,
+  ScoutCriteriaInput,
 } from '@job-tracker/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { emitAppEvent } from '../lib/app-events';
 import { api } from './client';
 
 export interface ApplicationFilters {
@@ -28,6 +33,9 @@ export const queryKeys = {
   applicationList: (f: ApplicationFilters) => ['applications', 'list', f] as const,
   application: (id: string) => ['applications', 'detail', id] as const,
   companies: (q: string) => ['companies', q] as const,
+  opportunities: ['opportunities'] as const,
+  opportunityList: (status: OpportunityStatus) => ['opportunities', status] as const,
+  scoutCriteria: ['scout-criteria'] as const,
 };
 
 const toSearch = (f: ApplicationFilters) => {
@@ -77,7 +85,10 @@ export function useCreateApplication() {
   return useMutation({
     mutationFn: (input: ApplicationCreateInput) =>
       api<ApplicationDetailDto>('/applications', { method: 'POST', json: input }),
-    onSuccess: invalidate,
+    onSuccess: async (created) => {
+      await invalidate();
+      emitAppEvent({ type: 'application.created', applicationId: created.id });
+    },
   });
 }
 
@@ -93,12 +104,15 @@ export function useUpdateApplication(id: string) {
 export function useChangeStatus() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ApplicationStatus }) =>
+    mutationFn: ({ id, status, repeat }: { id: string; status: ApplicationStatus; repeat?: boolean }) =>
       api<ApplicationDetailDto>(`/applications/${id}/status`, {
         method: 'PATCH',
-        json: { status },
+        json: { status, repeat },
       }),
-    onSuccess: invalidate,
+    onSuccess: async (_updated, { id, status }) => {
+      await invalidate();
+      emitAppEvent({ type: 'status.changed', applicationId: id, status });
+    },
   });
 }
 
@@ -106,7 +120,10 @@ export function useDeleteApplication() {
   const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (id: string) => api<void>(`/applications/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: async (_void, id) => {
+      await invalidate();
+      emitAppEvent({ type: 'application.deleted', applicationId: id });
+    },
   });
 }
 
@@ -116,7 +133,13 @@ function useChildMutations<TInput, TUpdate, TDto>(applicationId: string, resourc
   return {
     create: useMutation({
       mutationFn: (input: TInput) => api<TDto>(base, { method: 'POST', json: input }),
-      onSuccess: invalidate,
+      onSuccess: async () => {
+        await invalidate();
+        emitAppEvent({
+          type: `${resource.slice(0, -1)}.created` as 'contact.created',
+          applicationId,
+        });
+      },
     }),
     update: useMutation({
       mutationFn: ({ id, patch }: { id: string; patch: TUpdate }) =>
@@ -138,3 +161,50 @@ export const useInterviewMutations = (applicationId: string) =>
     applicationId,
     'interviews',
   );
+
+export const useOpportunities = (status: OpportunityStatus = 'new') =>
+  useQuery({
+    queryKey: queryKeys.opportunityList(status),
+    queryFn: () => api<OpportunityDto[]>(`/opportunities?status=${status}`),
+  });
+
+/** Creates an application from a suggestion; refreshes suggestions and everything applications feed. */
+export function usePromoteOpportunity() {
+  const invalidate = useInvalidateAll();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<ApplicationDetailDto>(`/opportunities/${id}/promote`, { method: 'POST' }),
+    onSuccess: async (created) => {
+      await Promise.all([
+        invalidate(),
+        qc.invalidateQueries({ queryKey: queryKeys.opportunities }),
+      ]);
+      emitAppEvent({ type: 'application.created', applicationId: created.id });
+    },
+  });
+}
+
+export function useDismissOpportunity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<OpportunityDto>(`/opportunities/${id}/dismiss`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.opportunities }),
+  });
+}
+
+export const useScoutCriteria = () =>
+  useQuery({
+    queryKey: queryKeys.scoutCriteria,
+    queryFn: () => api<ScoutCriteriaDto>('/scout/criteria'),
+  });
+
+export function useSaveScoutCriteria() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (criteria: ScoutCriteriaInput) =>
+      api<ScoutCriteriaDto>('/scout/criteria', { method: 'PUT', json: criteria }),
+    onSuccess: (saved) => qc.setQueryData(queryKeys.scoutCriteria, saved),
+  });
+}

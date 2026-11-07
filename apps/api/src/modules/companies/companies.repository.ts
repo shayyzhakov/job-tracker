@@ -1,8 +1,9 @@
+import { randomUUID } from 'node:crypto';
+import { GetCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type { ApplicationUpdate, CompanyDto, CompanyInput } from '@job-tracker/shared';
-import { asc, eq, ilike, sql } from 'drizzle-orm';
-import type { Db } from '../../db/client.js';
-import { toCompanyDto } from '../../db/mappers.js';
-import { companies } from '../../db/schema.js';
+import { buildUpdate, type Db, isTransactionCancelled, key, queryGsi1 } from '../../db/dynamo.js';
+import { type CompanyItem, nul, toCompanyDto } from '../../db/mappers.js';
+import { ConflictError } from '../../errors.js';
 
 export type CompanyPatch = NonNullable<ApplicationUpdate['company']>;
 
@@ -15,40 +16,133 @@ export interface CompaniesRepository {
   search(q?: string): Promise<CompanyDto[]>;
 }
 
-export class DrizzleCompaniesRepository implements CompaniesRepository {
+const SEARCH_LIMIT = 50;
+const gsiSortKey = (name: string, id: string) => `${name.toLowerCase()}#${id}`;
+
+export class DynamoCompaniesRepository implements CompaniesRepository {
   constructor(private readonly db: Db) {}
 
+  private async getItem(id: string): Promise<CompanyItem | null> {
+    const res = await this.db.doc.send(
+      new GetCommand({ TableName: this.db.table, Key: key.company(id) }),
+    );
+    return (res.Item as CompanyItem | undefined) ?? null;
+  }
+
   async findById(id: string) {
-    const [row] = await this.db.select().from(companies).where(eq(companies.id, id));
-    return row ? toCompanyDto(row) : null;
+    const item = await this.getItem(id);
+    return item ? toCompanyDto(item) : null;
   }
 
   async findByName(name: string) {
-    const [row] = await this.db
-      .select()
-      .from(companies)
-      .where(sql`lower(${companies.name}) = lower(${name})`);
-    return row ? toCompanyDto(row) : null;
+    const res = await this.db.doc.send(
+      new GetCommand({ TableName: this.db.table, Key: key.companyName(name) }),
+    );
+    const companyId = res.Item?.companyId as string | undefined;
+    return companyId ? this.findById(companyId) : null;
   }
 
   async create(input: CompanyInput) {
-    const [row] = await this.db.insert(companies).values(input).returning();
-    if (!row) throw new Error('Failed to insert company');
-    return toCompanyDto(row);
+    const now = new Date().toISOString();
+    const item: CompanyItem = {
+      id: randomUUID(),
+      name: input.name,
+      size: nul(input.size),
+      isPublic: input.isPublic ?? false,
+      website: nul(input.website),
+      location: nul(input.location),
+      createdAt: now,
+      updatedAt: now,
+    };
+    try {
+      await this.db.doc.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: this.db.table,
+                Item: {
+                  ...key.company(item.id),
+                  GSI1PK: 'COMPANIES',
+                  GSI1SK: gsiSortKey(item.name, item.id),
+                  ...item,
+                },
+              },
+            },
+            {
+              // Unique, case-insensitive company name.
+              Put: {
+                TableName: this.db.table,
+                Item: { ...key.companyName(item.name), companyId: item.id },
+                ConditionExpression: 'attribute_not_exists(PK)',
+              },
+            },
+          ],
+        }),
+      );
+    } catch (err) {
+      if (isTransactionCancelled(err)) {
+        throw new ConflictError(`Company "${item.name}" already exists`);
+      }
+      throw err;
+    }
+    return toCompanyDto(item);
   }
 
   async update(id: string, patch: CompanyPatch) {
     if (Object.keys(patch).length === 0) return;
-    await this.db.update(companies).set(patch).where(eq(companies.id, id));
+    const current = await this.getItem(id);
+    if (!current) return;
+    const updatedAt = new Date().toISOString();
+    const renamed =
+      patch.name !== undefined && patch.name.toLowerCase() !== current.name.toLowerCase();
+    const set = {
+      ...patch,
+      updatedAt,
+      ...(patch.name !== undefined && { GSI1SK: gsiSortKey(patch.name, id) }),
+    };
+    const update = {
+      TableName: this.db.table,
+      Key: key.company(id),
+      ConditionExpression: 'attribute_exists(PK)',
+      ...buildUpdate(set),
+    };
+    if (!renamed) {
+      await this.db.doc.send(new UpdateCommand(update));
+      return;
+    }
+    const newName = patch.name as string;
+    try {
+      await this.db.doc.send(
+        new TransactWriteCommand({
+          TransactItems: [
+            { Update: update },
+            {
+              Put: {
+                TableName: this.db.table,
+                Item: { ...key.companyName(newName), companyId: id },
+                ConditionExpression: 'attribute_not_exists(PK)',
+              },
+            },
+            { Delete: { TableName: this.db.table, Key: key.companyName(current.name) } },
+          ],
+        }),
+      );
+    } catch (err) {
+      if (isTransactionCancelled(err)) {
+        throw new ConflictError(`Company "${newName}" already exists`);
+      }
+      throw err;
+    }
   }
 
   async search(q?: string) {
-    const rows = await this.db
-      .select()
-      .from(companies)
-      .where(q ? ilike(companies.name, `%${q}%`) : undefined)
-      .orderBy(asc(companies.name))
-      .limit(50);
-    return rows.map(toCompanyDto);
+    // Personal-scale data: read the name-sorted index and filter in memory.
+    const items = await queryGsi1<CompanyItem>(this.db, 'COMPANIES');
+    const needle = q?.toLowerCase();
+    return items
+      .filter((c) => !needle || c.name.toLowerCase().includes(needle))
+      .slice(0, SEARCH_LIMIT)
+      .map(toCompanyDto);
   }
 }

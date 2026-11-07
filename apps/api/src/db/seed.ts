@@ -1,22 +1,24 @@
-// Dev-only sample data: `pnpm db:seed` (wipes the dev DB first).
+// Dev-only sample data: `pnpm db:seed` (wipes the dev table first; DynamoDB Local only).
 import { type ApplicationCreateInput, ApplicationCreateSchema } from '@job-tracker/shared';
-import { sql } from 'drizzle-orm';
-import { DrizzleApplicationsRepository } from '../modules/applications/applications.repository.js';
+import { DynamoApplicationsRepository } from '../modules/applications/applications.repository.js';
 import { ApplicationsService } from '../modules/applications/applications.service.js';
-import { DrizzleCompaniesRepository } from '../modules/companies/companies.repository.js';
-import { DrizzleInterviewsRepository } from '../modules/interviews/interviews.repository.js';
-import { createDb } from './client.js';
+import { DynamoCompaniesRepository } from '../modules/companies/companies.repository.js';
+import { DynamoInterviewsRepository } from '../modules/interviews/interviews.repository.js';
+import { clearTable } from './clear.js';
+import { createDb, resolveDbConfig } from './dynamo.js';
+import { ensureTable } from './table.js';
 
-const url = process.env.DATABASE_URL;
-if (!url) throw new Error('DATABASE_URL is required');
-if (process.env.NODE_ENV === 'production') throw new Error('Refusing to seed in production');
-
-const { db, close } = createDb(url);
+const config = resolveDbConfig();
+if (process.env.NODE_ENV === 'production' || !config.endpoint) {
+  throw new Error('Refusing to seed: only DynamoDB Local (DYNAMODB_ENDPOINT) can be seeded');
+}
+await ensureTable(config);
+const { db, close } = createDb(config);
 const service = new ApplicationsService({
-  applications: new DrizzleApplicationsRepository(db),
-  companies: new DrizzleCompaniesRepository(db),
+  applications: new DynamoApplicationsRepository(db),
+  companies: new DynamoCompaniesRepository(db),
 });
-const interviews = new DrizzleInterviewsRepository(db);
+const interviews = new DynamoInterviewsRepository(db);
 const day = 86_400_000;
 const at = (days: number, hour = 10) => {
   const d = new Date(Date.now() + days * day);
@@ -31,20 +33,36 @@ const samples: Array<{
 }> = [
   {
     input: {
-      company: { name: 'Nimbus Data', size: 'unicorn', isPublic: false, location: 'Tel Aviv' },
+      company: {
+        name: 'Nimbus Data',
+        size: 'unicorn',
+        isPublic: false,
+        location: 'Tel Aviv',
+      },
       roleName: 'Senior Backend Engineer',
       status: 'applied',
       appliedAt: at(-20),
       expectedSalaryIls: 42000,
       listingUrl: 'https://example.com/jobs/nimbus-1',
-      contacts: [{ name: 'Noa Levi', role: 'Recruiter', email: 'noa@nimbus.example' }],
+      contacts: [
+        {
+          name: 'Noa Levi',
+          role: 'Recruiter',
+          email: 'noa@nimbus.example',
+          linkedinUrl: 'https://www.linkedin.com/in/noa-levi-example',
+        },
+      ],
     },
     path: ['hr_screening', 'technical_interview'],
     interviewInDays: 2,
   },
   {
     input: {
-      company: { name: 'Orbit Payments', size: 'startup', location: 'Herzliya' },
+      company: {
+        name: 'Orbit Payments',
+        size: 'startup',
+        location: 'Herzliya',
+      },
       roleName: 'Engineering Team Lead',
       isManagement: true,
       status: 'applied',
@@ -52,7 +70,11 @@ const samples: Array<{
       expectedSalaryIls: 48000,
       contacts: [
         { name: 'Yoni Cohen', role: 'VP R&D', phone: '+972-50-0000001' },
-        { name: 'Maya Bar', role: 'Talent partner', email: 'maya@orbit.example' },
+        {
+          name: 'Maya Bar',
+          role: 'Talent partner',
+          email: 'maya@orbit.example',
+        },
       ],
     },
     path: ['phone_interview'],
@@ -60,7 +82,12 @@ const samples: Array<{
   },
   {
     input: {
-      company: { name: 'Megacorp Systems', size: 'corporate', isPublic: true, location: 'Haifa' },
+      company: {
+        name: 'Megacorp Systems',
+        size: 'corporate',
+        isPublic: true,
+        location: 'Haifa',
+      },
       roleName: 'Staff Software Engineer',
       status: 'applied',
       appliedAt: at(-30),
@@ -70,7 +97,11 @@ const samples: Array<{
   },
   {
     input: {
-      company: { name: 'Seedling AI', size: 'early_stage_startup', location: 'Remote' },
+      company: {
+        name: 'Seedling AI',
+        size: 'early_stage_startup',
+        location: 'Remote',
+      },
       roleName: 'Founding Engineer',
       status: 'to_apply',
       notes: 'Ask about equity and runway',
@@ -87,14 +118,15 @@ const samples: Array<{
   },
 ];
 
-await db.execute(
-  sql`truncate table status_history, interviews, contacts, applications, companies cascade`,
-);
+await clearTable(db);
 for (const { input, path = [], interviewInDays } of samples) {
   const { id } = await service.create(ApplicationCreateSchema.parse(input));
   for (const status of path) await service.changeStatus(id, status);
   if (interviewInDays !== undefined) {
-    await interviews.create(id, { type: 'technical', scheduledAt: at(interviewInDays, 14) });
+    await interviews.create(id, {
+      type: 'technical',
+      scheduledAt: at(interviewInDays, 14),
+    });
   }
 }
 console.log(`Seeded ${samples.length} applications`);

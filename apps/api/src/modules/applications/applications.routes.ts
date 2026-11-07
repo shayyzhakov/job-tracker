@@ -10,10 +10,9 @@ import type { ApplicationsService } from './applications.service.js';
 
 export const IdParams = z.object({ id: z.uuid() });
 
-export const applicationsRoutes: FastifyPluginAsyncZod<{ service: ApplicationsService }> = async (
-  app,
-  { service },
-) => {
+export const applicationsRoutes: FastifyPluginAsyncZod<{
+  service: ApplicationsService;
+}> = async (app, { service }) => {
   app.get('/', { schema: { querystring: ApplicationListQuerySchema } }, (req) =>
     service.list(req.query),
   );
@@ -29,7 +28,7 @@ export const applicationsRoutes: FastifyPluginAsyncZod<{ service: ApplicationsSe
   );
 
   app.patch('/:id/status', { schema: { params: IdParams, body: StatusChangeSchema } }, (req) =>
-    service.changeStatus(req.params.id, req.body.status),
+    service.changeStatus(req.params.id, req.body.status, req.body.repeat),
   );
 
   app.delete('/:id', { schema: { params: IdParams } }, async (req, reply) => {

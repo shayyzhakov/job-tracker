@@ -1,4 +1,8 @@
-import type { ApplicationStatus } from '@job-tracker/shared';
+import {
+  APPLICATION_STATUSES,
+  type ApplicationDto,
+  type ApplicationStatus,
+} from '@job-tracker/shared';
 import {
   Anchor,
   Button,
@@ -16,9 +20,19 @@ import { IconPlus, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { type ApplicationFilters, useApplications, useChangeStatus } from '../../api/hooks';
+import {
+  ApplicationFilterBar,
+  applyLocalFilters,
+  isFiltering,
+  useLocalFilters,
+} from '../../components/ApplicationFilterBar';
+import { CorporateBadge } from '../../components/CompanyName';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
+import { RoleTitle } from '../../components/RoleTitle';
+import { SortableTh, useSortedRows } from '../../components/SortableTh';
 import { StatusSelect } from '../../components/StatusSelect';
-import { formatDate, formatDateTime, formatIls } from '../../lib/format';
+import { Slot } from '../../lib/extensions';
+import { formatDate, formatDateTime } from '../../lib/format';
 
 type Scope = 'active' | 'closed' | 'all';
 const scopeToActive: Record<Scope, boolean | undefined> = {
@@ -27,18 +41,32 @@ const scopeToActive: Record<Scope, boolean | undefined> = {
   all: undefined,
 };
 
+type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview';
+
 export function ApplicationsPage() {
   const [search, setSearch] = useState('');
   const [q] = useDebouncedValue(search.trim(), 250);
   const [scope, setScope] = useState<Scope>('active');
   const filters: ApplicationFilters = { q: q || undefined, active: scopeToActive[scope] };
   const { data, isPending, error } = useApplications(filters);
+  const [local] = useLocalFilters();
+  const rows = applyLocalFilters(data ?? [], local);
   const changeStatus = useChangeStatus();
+  const { sorted, sort, toggle } = useSortedRows<ApplicationDto, SortKey>(rows, {
+    company: (a) => a.company.name,
+    role: (a) => a.roleName,
+    status: (a) => APPLICATION_STATUSES.indexOf(a.status),
+    applied: (a) => a.appliedAt,
+    interview: (a) => a.nextInterviewAt,
+  });
 
   return (
     <Stack>
       <Group justify="space-between">
-        <Title order={2}>Applications</Title>
+        <Group>
+          <Title order={2}>Applications</Title>
+          <Slot name="applications.views" />
+        </Group>
         <Button component={Link} to="/applications/new" leftSection={<IconPlus size={16} />}>
           New application
         </Button>
@@ -61,19 +89,24 @@ export function ApplicationsPage() {
             { value: 'all', label: 'All' },
           ]}
         />
+        <ApplicationFilterBar />
       </Group>
 
       {isPending ? (
         <PageLoader />
       ) : error ? (
         <ErrorAlert error={error} what="applications" />
-      ) : data.length === 0 ? (
+      ) : rows.length === 0 ? (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
             No applications found.{' '}
-            <Anchor component={Link} to="/applications/new">
-              Add one
-            </Anchor>
+            {isFiltering(local) ? (
+              'Try clearing the filters.'
+            ) : (
+              <Anchor component={Link} to="/applications/new">
+                Add one
+              </Anchor>
+            )}
           </Text>
         </Card>
       ) : (
@@ -82,21 +115,31 @@ export function ApplicationsPage() {
             <Table highlightOnHover verticalSpacing="sm">
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Company</Table.Th>
-                  <Table.Th>Role</Table.Th>
-                  <Table.Th w={210}>Status</Table.Th>
-                  <Table.Th>Expected salary</Table.Th>
-                  <Table.Th>Applied</Table.Th>
-                  <Table.Th>Next interview</Table.Th>
+                  <SortableTh columnKey="company" sort={sort} onSort={toggle}>
+                    Company
+                  </SortableTh>
+                  <SortableTh columnKey="role" sort={sort} onSort={toggle}>
+                    Role
+                  </SortableTh>
+                  <SortableTh columnKey="status" sort={sort} onSort={toggle} w={210}>
+                    Status
+                  </SortableTh>
+                  <SortableTh columnKey="applied" sort={sort} onSort={toggle}>
+                    Applied
+                  </SortableTh>
+                  <SortableTh columnKey="interview" sort={sort} onSort={toggle}>
+                    Next interview
+                  </SortableTh>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {data.map((a) => (
+                {sorted.map((a) => (
                   <Table.Tr key={a.id}>
                     <Table.Td>
                       <Anchor component={Link} to={`/applications/${a.id}`} fw={600}>
                         {a.company.name}
                       </Anchor>
+                      <CorporateBadge company={a.company} />
                       {a.company.location && (
                         <Text size="xs" c="dimmed">
                           {a.company.location}
@@ -104,12 +147,7 @@ export function ApplicationsPage() {
                       )}
                     </Table.Td>
                     <Table.Td>
-                      {a.roleName}
-                      {a.isManagement && (
-                        <Text size="xs" c="dimmed">
-                          Management
-                        </Text>
-                      )}
+                      <RoleTitle name={a.roleName} isManagement={a.isManagement} />
                     </Table.Td>
                     <Table.Td>
                       <StatusSelect
@@ -121,7 +159,6 @@ export function ApplicationsPage() {
                         }
                       />
                     </Table.Td>
-                    <Table.Td>{formatIls(a.expectedSalaryIls)}</Table.Td>
                     <Table.Td>{formatDate(a.appliedAt)}</Table.Td>
                     <Table.Td>{formatDateTime(a.nextInterviewAt)}</Table.Td>
                   </Table.Tr>

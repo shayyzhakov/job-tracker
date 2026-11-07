@@ -2,10 +2,12 @@ import type {
   ApplicationDetailDto,
   ApplicationDto,
   CompanyDto,
+  OpportunityDto,
   OverviewDto,
+  ScoutCriteriaDto,
   UpcomingInterviewDto,
 } from '@job-tracker/shared';
-import { APPLICATION_STATUSES } from '@job-tracker/shared';
+import { APPLICATION_STATUSES, DEFAULT_SCOUT_CRITERIA } from '@job-tracker/shared';
 
 export const acme: CompanyDto = {
   id: 'c1',
@@ -25,6 +27,10 @@ export const application = (overrides: Partial<ApplicationDto> = {}): Applicatio
   listingUrl: 'https://jobs.acme.com/1',
   expectedSalaryIls: 42000,
   source: null,
+  applicationMethod: null,
+  referrerName: null,
+  referrerChannel: null,
+  methodDetails: null,
   notes: null,
   appliedAt: '2026-11-01T10:00:00.000Z',
   createdAt: '2026-11-01T10:00:00.000Z',
@@ -45,6 +51,7 @@ export const applicationDetail = (
       role: 'Recruiter',
       email: 'dana@acme.com',
       phone: null,
+      linkedinUrl: null,
       notes: null,
     },
   ],
@@ -90,6 +97,38 @@ export const overview = (overrides: Partial<OverviewDto> = {}): OverviewDto => (
   nextInterview: upcomingInterview,
   upcomingInterviews: [upcomingInterview],
   weeklyApplied: [{ weekStart: '2026-11-01', count: 3 }],
+  methodBreakdown: [
+    { method: 'referral', applications: 2, responses: 2, interviews: 1 },
+    { method: 'linkedin', applications: 3, responses: 1, interviews: 0 },
+  ],
   averageExpectedSalaryIls: 42000,
+  ...overrides,
+});
+
+export const opportunity = (overrides: Partial<OpportunityDto> = {}): OpportunityDto => ({
+  id: 'o1',
+  listingUrl: 'https://boards.example.com/nimbus/jobs/1001',
+  source: 'fixture',
+  companyName: 'Nimbus Data',
+  title: 'Senior Backend Engineer',
+  location: 'Tel Aviv',
+  postedAt: '2026-11-04T07:30:00.000Z',
+  score: 88,
+  summary: 'Node.js services on Postgres and Kafka.',
+  reasons: ['Senior backend role', 'Tel Aviv hybrid'],
+  isManagement: false,
+  companySize: 'startup',
+  status: 'new',
+  applicationId: null,
+  createdAt: '2026-11-05T07:00:00.000Z',
+  ...overrides,
+});
+
+export const scoutCriteria = (overrides: Partial<ScoutCriteriaDto> = {}): ScoutCriteriaDto => ({
+  ...DEFAULT_SCOUT_CRITERIA,
+  roles: ['Backend Engineer'],
+  seniorities: ['senior'],
+  locations: ['Tel Aviv'],
+  updatedAt: '2026-11-01T10:00:00.000Z',
   ...overrides,
 });

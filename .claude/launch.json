@@ -7,6 +7,13 @@
       "runtimeArgs": ["-c", "source \"$HOME/.nvm/nvm.sh\" && pnpm dev"],
       "port": 5173,
       "autoPort": false
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "source \"$HOME/.nvm/nvm.sh\" && pnpm --filter @job-tracker/api dev"],
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }
