@@ -5,13 +5,13 @@ import {
   type CompanyInput,
   type CompanyUpdate,
   type CompanyWithCountsDto,
-  isActiveStatus,
+  isOpenStatus,
 } from '@job-tracker/shared';
 import { ConflictError, NotFoundError } from '../../errors.js';
 import type { CompaniesRepository } from './companies.repository.js';
 
 const counts = (apps: CompanyApplicationDto[] = []) => ({
-  activeApplications: apps.filter((a) => isActiveStatus(a.status)).length,
+  openApplications: apps.filter((a) => isOpenStatus(a.status)).length,
   totalApplications: apps.length,
 });
 

@@ -9,7 +9,8 @@ import { OverviewPage } from './OverviewPage';
 describe('OverviewPage', () => {
   it('shows KPIs from the overview endpoint', async () => {
     renderRoute(<OverviewPage />);
-    expect(await screen.findByTestId('kpi-active')).toHaveTextContent('4');
+    expect(await screen.findByTestId('kpi-open')).toHaveTextContent('4');
+    expect(screen.getByTestId('kpi-open-hint')).toHaveTextContent('2 active');
     expect(screen.getByTestId('kpi-response-rate')).toHaveTextContent('60%');
     expect(screen.getByTestId('kpi-interviews-week')).toHaveTextContent('1');
     expect(screen.getByTestId('kpi-offers')).toHaveTextContent('0');

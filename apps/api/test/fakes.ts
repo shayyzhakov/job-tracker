@@ -15,7 +15,7 @@ import type {
   ScoutCriteria,
   ScoutCriteriaDto,
 } from '@job-tracker/shared';
-import { DEFAULT_SCOUT_CRITERIA, isActiveStatus } from '@job-tracker/shared';
+import { DEFAULT_SCOUT_CRITERIA, statusGroup } from '@job-tracker/shared';
 import type {
   ApplicationFieldsPatch,
   ApplicationsRepository,
@@ -149,7 +149,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     return all
       .filter((a): a is ApplicationDetailDto => a !== null)
       .filter((a) => !query.status || a.status === query.status)
-      .filter((a) => query.active === undefined || isActiveStatus(a.status) === query.active);
+      .filter((a) => !query.groups || query.groups.includes(statusGroup(a.status)));
   }
 
   async getState(id: string) {

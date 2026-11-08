@@ -32,8 +32,37 @@ export const CLOSED_STATUSES = [
   'ghosted',
 ] as const satisfies readonly ApplicationStatus[];
 
-export function isActiveStatus(status: ApplicationStatus): boolean {
-  return !(CLOSED_STATUSES as readonly ApplicationStatus[]).includes(status);
+/** Nothing has happened with the employer yet: not applied, or applied with no interview. */
+export const INITIAL_STATUSES = [
+  'to_apply',
+  'applied',
+] as const satisfies readonly ApplicationStatus[];
+
+/** The process is moving: an interview round or an offer. */
+export const ACTIVE_STATUSES = [
+  ...INTERVIEW_ROUND_STATUSES,
+  'offer',
+] as const satisfies readonly ApplicationStatus[];
+
+/** How far an application got. Every status belongs to exactly one group. */
+export const STATUS_GROUPS = ['initial', 'active', 'closed'] as const;
+export type StatusGroup = (typeof STATUS_GROUPS)[number];
+
+export const STATUS_GROUP_LABELS: Record<StatusGroup, string> = {
+  initial: 'Initial',
+  active: 'Active',
+  closed: 'Closed',
+};
+
+export function statusGroup(status: ApplicationStatus): StatusGroup {
+  if ((CLOSED_STATUSES as readonly ApplicationStatus[]).includes(status)) return 'closed';
+  if ((INITIAL_STATUSES as readonly ApplicationStatus[]).includes(status)) return 'initial';
+  return 'active';
+}
+
+/** Open = still in play (initial or active), i.e. not closed. */
+export function isOpenStatus(status: ApplicationStatus): boolean {
+  return statusGroup(status) !== 'closed';
 }
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {

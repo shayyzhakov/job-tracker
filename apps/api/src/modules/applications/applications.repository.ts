@@ -11,7 +11,7 @@ import type {
   HandOverReason,
   ReferralChannel,
 } from '@job-tracker/shared';
-import { CLOSED_STATUSES } from '@job-tracker/shared';
+import { statusGroup } from '@job-tracker/shared';
 import {
   batchDelete,
   buildUpdate,
@@ -252,12 +252,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     ]);
     const companyById = new Map(companies.map((c) => [c.id, c]));
     const needle = query.q?.toLowerCase();
-    const closed: readonly ApplicationStatus[] = CLOSED_STATUSES;
     return apps
       .filter((a) => {
         if (query.status && a.status !== query.status) return false;
-        if (query.active === true && closed.includes(a.status)) return false;
-        if (query.active === false && !closed.includes(a.status)) return false;
+        if (query.groups && !query.groups.includes(statusGroup(a.status))) return false;
         if (needle) {
           const company = companyById.get(a.companyId);
           const hit =

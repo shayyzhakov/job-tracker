@@ -243,7 +243,7 @@ describe('MCP server', () => {
         updatedAt: expect.any(String),
       },
     ]);
-    expect(await call('list_applications', { active: false })).toEqual([]);
+    expect(await call('list_applications', { groups: ['closed'] })).toEqual([]);
     expect(await call('search_companies', { q: 'orb' })).toEqual([
       expect.objectContaining({ name: 'OrbitPay' }),
     ]);
@@ -260,7 +260,7 @@ describe('MCP server', () => {
     });
     expect(await callError('create_company', { name: 'wix' })).toMatch(/already exists/);
     expect(await call('list_companies')).toEqual([
-      expect.objectContaining({ name: 'Wix', activeApplications: 0, totalApplications: 0 }),
+      expect.objectContaining({ name: 'Wix', openApplications: 0, totalApplications: 0 }),
     ]);
 
     const app = await call<ApplicationDetailDto>('create_application', {
@@ -276,7 +276,7 @@ describe('MCP server', () => {
       location: 'Tel Aviv',
     });
     expect(await call('get_company', { id: wix.id })).toMatchObject({
-      activeApplications: 1,
+      openApplications: 1,
       totalApplications: 1,
       applications: [expect.objectContaining({ id: app.id, status: 'applied' })],
     });

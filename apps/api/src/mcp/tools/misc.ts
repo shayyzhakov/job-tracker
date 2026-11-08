@@ -16,7 +16,7 @@ export function registerMiscTools(server: McpServer, s: Services, logger?: ToolL
     {
       title: 'Get overview',
       description:
-        'Dashboard figures: active applications, counts by status, response rate, offers, upcoming interviews, applications per week and average expected salary (monthly ILS).',
+        'Dashboard figures: open applications (not closed), how many of them are active (interviewing or at offer), counts by status, response rate, offers, upcoming interviews, applications per week and average expected salary (monthly ILS).',
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },

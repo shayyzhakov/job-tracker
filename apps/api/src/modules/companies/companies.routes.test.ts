@@ -34,7 +34,7 @@ describe('companies API', () => {
       isPublic: true,
     });
     expect(await list()).toEqual([
-      expect.objectContaining({ name: 'Wix', activeApplications: 0, totalApplications: 0 }),
+      expect.objectContaining({ name: 'Wix', openApplications: 0, totalApplications: 0 }),
     ]);
   });
 
@@ -51,11 +51,11 @@ describe('companies API', () => {
 
     const rows = await list();
     expect(rows.find((c) => c.name === 'Acme')).toMatchObject({
-      activeApplications: 2,
+      openApplications: 2,
       totalApplications: 3,
     });
     expect(rows.find((c) => c.name === 'Other')).toMatchObject({
-      activeApplications: 1,
+      openApplications: 1,
       totalApplications: 1,
     });
   });
@@ -122,7 +122,7 @@ describe('companies API', () => {
     const res = await t.app.inject({ method: 'GET', url: `/api/v1/companies/${a.company.id}` });
     expect(res.json<CompanyDetailDto>()).toMatchObject({
       name: 'Acme',
-      activeApplications: 0,
+      openApplications: 0,
       totalApplications: 1,
       applications: [{ id: a.id, roleName: 'Engineer', status: 'rejected' }],
     });

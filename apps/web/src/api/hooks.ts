@@ -23,6 +23,7 @@ import type {
   OverviewDto,
   ScoutCriteriaDto,
   ScoutCriteriaInput,
+  StatusGroup,
 } from '@job-tracker/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { emitAppEvent } from '../lib/app-events';
@@ -31,7 +32,7 @@ import { api } from './client';
 export interface ApplicationFilters {
   q?: string;
   status?: ApplicationStatus;
-  active?: boolean;
+  groups?: StatusGroup[];
 }
 
 export const queryKeys = {
@@ -51,7 +52,7 @@ const toSearch = (f: ApplicationFilters) => {
   const params = new URLSearchParams();
   if (f.q) params.set('q', f.q);
   if (f.status) params.set('status', f.status);
-  if (f.active !== undefined) params.set('active', String(f.active));
+  if (f.groups) params.set('groups', f.groups.join(','));
   const s = params.toString();
   return s ? `?${s}` : '';
 };

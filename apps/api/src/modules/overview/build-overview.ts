@@ -2,9 +2,10 @@ import {
   APPLICATION_STATUSES,
   type ApplicationMethod,
   type ApplicationStatus,
-  isActiveStatus,
+  isOpenStatus,
   type MethodStatDto,
   type OverviewDto,
+  statusGroup,
   type UpcomingInterviewDto,
 } from '@job-tracker/shared';
 
@@ -82,11 +83,11 @@ export function buildOverview(input: OverviewInput, now: Date): OverviewDto {
   >;
   for (const a of applications) countsByStatus[a.status]++;
 
-  const active = applications.filter((a) => isActiveStatus(a.status));
+  const open = applications.filter((a) => isOpenStatus(a.status));
   const submitted = applications.filter((a) => a.status !== 'to_apply');
   const responded = submitted.filter((a) => a.reachedStatuses.some((s) => !NO_RESPONSE.has(s)));
 
-  const salaries = active.map((a) => a.expectedSalaryIls).filter((s): s is number => s !== null);
+  const salaries = open.map((a) => a.expectedSalaryIls).filter((s): s is number => s !== null);
 
   const currentWeek = weekStartUtc(now).getTime();
   const weeklyApplied = Array.from({ length: WEEKS }, (_, i) => ({
@@ -106,7 +107,8 @@ export function buildOverview(input: OverviewInput, now: Date): OverviewDto {
 
   return {
     totalApplications: applications.length,
-    activeApplications: active.length,
+    openApplications: open.length,
+    inProgressApplications: applications.filter((a) => statusGroup(a.status) === 'active').length,
     countsByStatus,
     responseRate: submitted.length > 0 ? responded.length / submitted.length : null,
     offers: applications.filter((a) => a.reachedStatuses.includes('offer')).length,

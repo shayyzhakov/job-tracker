@@ -101,7 +101,7 @@ describe('applications API', () => {
       (await t.app.inject({ method: 'GET', url: `${BASE}?${qs}` })).json<ApplicationDto[]>();
 
     expect(await list('')).toHaveLength(2);
-    expect((await list('active=true')).map((a) => a.company.name)).toEqual(['Acme']);
+    expect((await list('groups=initial,active')).map((a) => a.company.name)).toEqual(['Acme']);
     expect((await list('status=rejected')).map((a) => a.company.name)).toEqual(['Globex']);
     expect((await list('q=backend')).map((a) => a.roleName)).toEqual(['Backend Dev']);
     expect((await list('q=glob')).map((a) => a.roleName)).toEqual(['Backend Dev']);

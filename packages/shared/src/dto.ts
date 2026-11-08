@@ -18,7 +18,7 @@ export interface CompanyDto {
 
 /** A company with its application counts (derived on read, never stored). */
 export interface CompanyWithCountsDto extends CompanyDto {
-  activeApplications: number;
+  openApplications: number;
   totalApplications: number;
 }
 
@@ -142,7 +142,10 @@ export interface MethodStatDto {
 
 export interface OverviewDto {
   totalApplications: number;
-  activeApplications: number;
+  /** Not closed: initial + active. */
+  openApplications: number;
+  /** Applications in the Active group (interviewing or at offer). */
+  inProgressApplications: number;
   countsByStatus: Record<ApplicationStatus, number>;
   /**
    * Share of submitted applications (status past to_apply) that got any response —

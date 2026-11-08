@@ -37,7 +37,7 @@ describe('unplugged (nothing registered)', () => {
       }),
     );
     const overview = renderRoute(<OverviewPage />);
-    expect(await screen.findByTestId('kpi-active')).toBeInTheDocument();
+    expect(await screen.findByTestId('kpi-open')).toBeInTheDocument();
     expect(screen.queryByTestId('gm-hero')).not.toBeInTheDocument();
     overview.unmount();
 
@@ -55,7 +55,7 @@ describe('plugged', () => {
 
     renderRoute(<OverviewPage />);
     expect(await screen.findByTestId('gm-hero')).toBeInTheDocument();
-    expect(screen.getByTestId('kpi-active')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-open')).toBeInTheDocument();
 
     renderRoute(<ApplicationsPage />);
     expect(await screen.findByLabelText('Applications view')).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('plugged', () => {
     unplug = registerGamification();
 
     renderRoute(<OverviewPage />);
-    expect(await screen.findByTestId('kpi-active')).toBeInTheDocument();
+    expect(await screen.findByTestId('kpi-open')).toBeInTheDocument();
     expect(screen.queryByTestId('gm-hero')).not.toBeInTheDocument();
     expect(hit).not.toHaveBeenCalled();
   });
@@ -82,7 +82,7 @@ describe('plugged', () => {
     server.use(http.get('/api/v1/progress', () => HttpResponse.json(progress)));
     registerGamification()();
     renderRoute(<OverviewPage />);
-    expect(await screen.findByTestId('kpi-active')).toBeInTheDocument();
+    expect(await screen.findByTestId('kpi-open')).toBeInTheDocument();
     expect(screen.queryByTestId('gm-hero')).not.toBeInTheDocument();
   });
 });

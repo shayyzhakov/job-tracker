@@ -8,6 +8,7 @@ import {
   HandOverSchema,
   REFERRAL_CHANNELS,
   SnoozeSchema,
+  STATUS_GROUPS,
   StatusChangeSchema,
 } from '@job-tracker/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -50,11 +51,11 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         'List job applications, most recently updated first. Returns a compact row per application; use get_application for contacts, interviews, interview notes and history.',
       inputSchema: {
         status: status.optional().describe('Only applications in this status'),
-        active: z
-          .boolean()
+        groups: z
+          .array(z.enum(STATUS_GROUPS))
           .optional()
           .describe(
-            'true: only open applications; false: only closed ones (accepted, rejected, withdrawn, ghosted)',
+            'Only applications in these status groups. initial: to apply, applied (no interview yet). active: HR screening through final, and offer. closed: accepted, rejected, withdrawn, ghosted. Omit for all.',
           ),
         q: z.string().optional().describe('Search company name or role name'),
       },

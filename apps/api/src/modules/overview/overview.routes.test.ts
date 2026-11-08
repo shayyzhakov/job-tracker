@@ -44,7 +44,8 @@ describe('GET /api/v1/overview', () => {
     const o = res.json<OverviewDto>();
     expect(o).toMatchObject({
       totalApplications: 3,
-      activeApplications: 2,
+      openApplications: 2,
+      inProgressApplications: 1,
       offers: 1,
       responseRate: 1,
       interviewsNext7Days: 1,

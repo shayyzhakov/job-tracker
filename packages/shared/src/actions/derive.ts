@@ -1,5 +1,5 @@
 import type { ApplicationDto, InterviewDto } from '../dto.js';
-import { type ApplicationStatus, isActiveStatus, isRoundStatus } from '../enums.js';
+import { type ApplicationStatus, isOpenStatus, isRoundStatus } from '../enums.js';
 import { dayKey } from '../gamification/engine.js';
 import {
   ACTION_URGENCIES,
@@ -70,7 +70,7 @@ export function deriveActions(input: DeriveActionsInput): ActionsDto {
   const waiting: WaitingDto[] = [];
 
   for (const app of applications) {
-    if (!isActiveStatus(app.status)) continue;
+    if (!isOpenStatus(app.status)) continue;
     const out = evaluate(app, byApp.get(app.id) ?? [], now, tz);
     if (!out) continue;
     if ('action' in out) {

@@ -37,7 +37,8 @@ describe('buildOverview', () => {
   it('returns zeroed stats for no data', () => {
     const o = buildOverview({ applications: [], upcomingInterviews: [] }, NOW);
     expect(o.totalApplications).toBe(0);
-    expect(o.activeApplications).toBe(0);
+    expect(o.openApplications).toBe(0);
+    expect(o.inProgressApplications).toBe(0);
     expect(o.responseRate).toBeNull();
     expect(o.nextInterview).toBeNull();
     expect(o.averageExpectedSalaryIls).toBeNull();
@@ -45,16 +46,23 @@ describe('buildOverview', () => {
     expect(o.weeklyApplied).toHaveLength(8);
   });
 
-  it('counts totals, active applications and counts by status', () => {
+  it('counts totals, open and in-progress applications and counts by status', () => {
     const o = buildOverview(
       {
-        applications: [app('to_apply'), app('applied'), app('applied'), app('rejected')],
+        applications: [
+          app('to_apply'),
+          app('applied'),
+          app('applied'),
+          app('phone_interview'),
+          app('rejected'),
+        ],
         upcomingInterviews: [],
       },
       NOW,
     );
-    expect(o.totalApplications).toBe(4);
-    expect(o.activeApplications).toBe(3);
+    expect(o.totalApplications).toBe(5);
+    expect(o.openApplications).toBe(4);
+    expect(o.inProgressApplications).toBe(1);
     expect(o.countsByStatus).toMatchObject({
       to_apply: 1,
       applied: 2,

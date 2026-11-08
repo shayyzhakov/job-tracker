@@ -29,7 +29,7 @@ export function registerCompanyTools(server: McpServer, s: Services, logger?: To
     {
       title: 'List companies',
       description:
-        'List the companies the user tracks (including ones with no application yet), by name, with activeApplications and totalApplications. Active means not accepted, rejected, withdrawn or ghosted.',
+        'List the companies the user tracks (including ones with no application yet), by name, with openApplications and totalApplications. Open means not accepted, rejected, withdrawn or ghosted (initial or active status group).',
       inputSchema: { q: z.string().optional().describe('Filter by name (substring)') },
       annotations: { readOnlyHint: true },
     },

@@ -124,7 +124,7 @@ describe('ApplicationsPage', () => {
       path: '/applications',
     });
     await screen.findByText('Acme');
-    expect(seen[0]).toContain('active=true');
+    expect(seen[0]).toContain('groups=initial%2Cactive');
 
     await user.type(screen.getByPlaceholderText(/search/i), 'acme');
     await waitFor(() => expect(seen.at(-1)).toContain('q=acme'));

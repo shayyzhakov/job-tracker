@@ -118,7 +118,8 @@ export const actions = (overrides: Partial<ActionsDto> = {}): ActionsDto => ({
 
 export const overview = (overrides: Partial<OverviewDto> = {}): OverviewDto => ({
   totalApplications: 5,
-  activeApplications: 4,
+  openApplications: 4,
+  inProgressApplications: 2,
   countsByStatus: {
     ...(Object.fromEntries(
       APPLICATION_STATUSES.map((s) => [s, 0]),

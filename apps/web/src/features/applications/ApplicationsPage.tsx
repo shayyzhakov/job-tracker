@@ -2,6 +2,9 @@ import {
   APPLICATION_STATUSES,
   type ApplicationDto,
   type ApplicationStatus,
+  STATUS_GROUP_LABELS,
+  STATUS_GROUPS,
+  type StatusGroup,
 } from '@job-tracker/shared';
 import {
   Anchor,
@@ -46,10 +49,9 @@ import { StatusSelect } from '../../components/StatusSelect';
 import { Slot } from '../../lib/extensions';
 import { formatDate, formatDateTime } from '../../lib/format';
 
-type Scope = 'active' | 'closed';
-// Nothing selected, or both, means no restriction on whether an application is still open.
-const scopesToActive = (scopes: Scope[]): boolean | undefined =>
-  scopes.length === 1 ? scopes[0] === 'active' : undefined;
+// Nothing selected, or every group, means no restriction.
+const groupsFilter = (groups: StatusGroup[]): StatusGroup[] | undefined =>
+  groups.length === 0 || groups.length === STATUS_GROUPS.length ? undefined : groups;
 
 type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview' | 'done';
 
@@ -58,12 +60,16 @@ export function ApplicationsPage() {
   const [params] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [q] = useDebouncedValue(search.trim(), 250);
-  const [scopes, setScopes] = useState<Scope[]>(
-    params.get('scope') === 'all' ? [] : params.get('scope') === 'closed' ? ['closed'] : ['active'],
+  const [groups, setGroups] = useState<StatusGroup[]>(
+    params.get('scope') === 'all'
+      ? []
+      : params.get('scope') === 'closed'
+        ? ['closed']
+        : ['initial', 'active'],
   );
   const filters: ApplicationFilters = {
     q: q || undefined,
-    active: scopesToActive(scopes),
+    groups: groupsFilter(groups),
   };
   const { data, isPending, error } = useApplications(filters);
   const [local] = useLocalFilters();
@@ -104,15 +110,12 @@ export function ApplicationsPage() {
           onChange={(e) => setSearch(e.currentTarget.value)}
           w={300}
         />
-        <MultiFilter<Scope>
+        <MultiFilter<StatusGroup>
           label="Status"
           allLabel="All statuses"
-          value={scopes}
-          onChange={setScopes}
-          options={[
-            { value: 'active', label: 'Active' },
-            { value: 'closed', label: 'Closed' },
-          ]}
+          value={groups}
+          onChange={setGroups}
+          options={STATUS_GROUPS.map((g) => ({ value: g, label: STATUS_GROUP_LABELS[g] }))}
         />
         <ApplicationFilterBar />
       </Group>

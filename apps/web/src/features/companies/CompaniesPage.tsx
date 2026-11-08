@@ -52,7 +52,7 @@ export function CompaniesPage() {
       // Order by the size scale (smallest first); companies without a size sort last.
       size: (c) => (c.size ? COMPANY_SIZES.indexOf(c.size) : null),
       type: (c) => (c.isPublic ? 'Public' : 'Private'),
-      applications: (c) => c.totalApplications * 1000 + c.activeApplications,
+      applications: (c) => c.totalApplications * 1000 + c.openApplications,
     },
     { key: 'name', direction: 'asc' },
   );
@@ -162,9 +162,9 @@ export function CompaniesPage() {
                         <Anchor
                           component={Link}
                           to={`/applications?q=${encodeURIComponent(c.name)}&scope=all`}
-                          aria-label={`${c.activeApplications} active of ${c.totalApplications} applications at ${c.name}`}
+                          aria-label={`${c.openApplications} open of ${c.totalApplications} applications at ${c.name}`}
                         >
-                          {c.activeApplications} / {c.totalApplications}
+                          {c.openApplications} / {c.totalApplications}
                         </Anchor>
                       ) : (
                         <Text span c="dimmed">

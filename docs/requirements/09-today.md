@@ -2,11 +2,11 @@
 
 Status: **Built**
 
-The app answers "whose move is it?" for every active application, and puts what the user owes first.
+The app answers "whose move is it?" for every open application, and puts what the user owes first.
 
 ## States
 
-Each active application is in one state: **your move**, **scheduled** (an interview is on the calendar), **their move** (waiting on the employer) or **stale** (their move, but the wait ran out, so it turns into a follow-up for the user). Closed applications are never shown.
+Each open application is in one state: **your move**, **scheduled** (an interview is on the calendar), **their move** (waiting on the employer) or **stale** (their move, but the wait ran out, so it turns into a follow-up for the user). Closed applications are never shown.
 
 ## Rules (defaults live in `packages/shared/src/actions/rules.ts`)
 

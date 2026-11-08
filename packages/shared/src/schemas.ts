@@ -5,6 +5,7 @@ import {
   COMPANY_SIZES,
   INTERVIEW_TYPES,
   REFERRAL_CHANNELS,
+  STATUS_GROUPS,
 } from './enums.js';
 
 /** Blank form fields ('' or whitespace) become undefined before validation. */
@@ -19,6 +20,7 @@ const httpUrl = z
   .refine((u) => /^https?:\/\//i.test(u), 'Must start with http:// or https://');
 
 export const ApplicationStatusSchema = z.enum(APPLICATION_STATUSES);
+export const StatusGroupSchema = z.enum(STATUS_GROUPS);
 export const CompanySizeSchema = z.enum(COMPANY_SIZES);
 export const ApplicationMethodSchema = z.enum(APPLICATION_METHODS);
 export const ReferralChannelSchema = z.enum(REFERRAL_CHANNELS);
@@ -139,10 +141,13 @@ export type InterviewCreateInput = z.input<typeof InterviewInputSchema>;
 
 export const ApplicationListQuerySchema = z.object({
   status: ApplicationStatusSchema.optional(),
-  active: z
-    .enum(['true', 'false'])
-    .transform((v) => v === 'true')
-    .optional(),
+  /** Comma-separated status groups (initial, active, closed); omitted means every group. */
+  groups: optional(
+    z
+      .string()
+      .transform((v) => v.split(',').map((g) => g.trim()))
+      .pipe(z.array(StatusGroupSchema)),
+  ),
   q: optionalText,
 });
 export type ApplicationListQuery = z.infer<typeof ApplicationListQuerySchema>;

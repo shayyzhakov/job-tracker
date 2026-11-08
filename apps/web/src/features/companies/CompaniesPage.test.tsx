@@ -9,7 +9,7 @@ import { CompaniesPage } from './CompaniesPage';
 
 const company = (o: Partial<CompanyWithCountsDto> = {}): CompanyWithCountsDto => ({
   ...acme,
-  activeApplications: 2,
+  openApplications: 2,
   totalApplications: 3,
   ...o,
 });
@@ -24,15 +24,15 @@ const rowOf = async (name: string) => {
 };
 
 describe('CompaniesPage', () => {
-  it('shows name, size, type and active / total applications', async () => {
+  it('shows name, size, type and open / total applications', async () => {
     listCompanies([company(), company({ id: 'c2', name: 'Wix', size: null, isPublic: true })]);
     renderRoute(<CompaniesPage />, { path: '/companies' });
 
     const acmeRow = await rowOf('Acme');
     expect(within(acmeRow).getByText('Scale-up')).toBeInTheDocument();
     expect(within(acmeRow).getByText('Private')).toBeInTheDocument();
-    expect(within(acmeRow).getByRole('link', { name: /2 active of 3/ })).toHaveTextContent('2 / 3');
-    expect(within(acmeRow).getByRole('link', { name: /2 active of 3/ })).toHaveAttribute(
+    expect(within(acmeRow).getByRole('link', { name: /2 open of 3/ })).toHaveTextContent('2 / 3');
+    expect(within(acmeRow).getByRole('link', { name: /2 open of 3/ })).toHaveAttribute(
       'href',
       '/applications?q=Acme&scope=all',
     );
@@ -40,7 +40,7 @@ describe('CompaniesPage', () => {
   });
 
   it('shows 0 / 0 for a company without applications and allows deleting it', async () => {
-    listCompanies([company({ activeApplications: 0, totalApplications: 0 })]);
+    listCompanies([company({ openApplications: 0, totalApplications: 0 })]);
     let deleted = false;
     server.use(
       http.delete('/api/v1/companies/c1', () => {
@@ -61,7 +61,7 @@ describe('CompaniesPage', () => {
   });
 
   it('does not delete a company that has applications', async () => {
-    listCompanies([company({ activeApplications: 0, totalApplications: 1 })]);
+    listCompanies([company({ openApplications: 0, totalApplications: 1 })]);
     const { user } = renderRoute(<CompaniesPage />, { path: '/companies' });
 
     const button = await screen.findByRole('button', { name: 'Delete Acme' });
@@ -119,7 +119,7 @@ describe('CompaniesPage', () => {
       company({
         id: 'c2',
         name: 'Wix',
-        activeApplications: 0,
+        openApplications: 0,
         totalApplications: 0,
       }),
     ]);

@@ -13,7 +13,17 @@ import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { Slot } from '../../lib/extensions';
 import { formatDateTime, formatIls, formatPercent } from '../../lib/format';
 
-function Kpi({ label, value, testId }: { label: string; value: string | number; testId: string }) {
+function Kpi({
+  label,
+  value,
+  testId,
+  hint,
+}: {
+  label: string;
+  value: string | number;
+  testId: string;
+  hint?: string;
+}) {
   return (
     <Card withBorder padding="lg">
       <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
@@ -22,6 +32,11 @@ function Kpi({ label, value, testId }: { label: string; value: string | number; 
       <Text fz={32} fw={700} lh={1.2} className="tabular-nums" data-testid={testId}>
         {value}
       </Text>
+      {hint && (
+        <Text size="sm" c="dimmed" data-testid={`${testId}-hint`}>
+          {hint}
+        </Text>
+      )}
     </Card>
   );
 }
@@ -71,7 +86,12 @@ export function OverviewPage() {
       <Title order={2}>Overview</Title>
       <Slot name="overview.top" />
       <SimpleGrid cols={{ base: 2, md: 5 }}>
-        <Kpi label="Active" value={data.activeApplications} testId="kpi-active" />
+        <Kpi
+          label="Open"
+          value={data.openApplications}
+          hint={`${data.inProgressApplications} active`}
+          testId="kpi-open"
+        />
         <Kpi label="Total" value={data.totalApplications} testId="kpi-total" />
         <Kpi
           label="Response rate"
@@ -90,7 +110,7 @@ export function OverviewPage() {
         <NextInterview overview={data} />
         <Card withBorder padding="lg">
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-            Avg. expected salary (active)
+            Avg. expected salary (open)
           </Text>
           <Text fz={32} fw={700} lh={1.2} className="tabular-nums">
             {formatIls(data.averageExpectedSalaryIls)}

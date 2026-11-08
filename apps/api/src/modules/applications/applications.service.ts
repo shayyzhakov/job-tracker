@@ -12,7 +12,7 @@ import type {
 import {
   APPLICATION_STATUSES,
   INTERVIEW_TYPE_ROUND_STATUS,
-  isActiveStatus,
+  isOpenStatus,
   isRoundStatus,
   ROUND_STATUS_INTERVIEW_TYPE,
 } from '@job-tracker/shared';
@@ -128,7 +128,7 @@ export class ApplicationsService {
   async advanceToInterviewStage(id: string, interview: InterviewDto): Promise<void> {
     const to = INTERVIEW_TYPE_ROUND_STATUS[interview.type];
     const state = await this.apps.getState(id);
-    if (!to || !state || !isActiveStatus(state.status)) return;
+    if (!to || !state || !isOpenStatus(state.status)) return;
     if (APPLICATION_STATUSES.indexOf(to) <= APPLICATION_STATUSES.indexOf(state.status)) return;
     const now = this.now();
     await this.apps.changeStatus(id, {

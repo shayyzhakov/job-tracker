@@ -16,7 +16,7 @@ export class DynamoActionsRepository implements ActionsSource {
 
   async load() {
     const [applications, interviews] = await Promise.all([
-      this.applications.list({ active: true }),
+      this.applications.list({ groups: ['initial', 'active'] }),
       queryGsi1<InterviewItem>(this.db, 'INTERVIEWS'),
     ]);
     return { applications, interviews: interviews.map(toInterviewDto) };
