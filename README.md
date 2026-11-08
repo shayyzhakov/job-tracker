@@ -111,7 +111,7 @@ claude mcp add --transport http job-tracker http://localhost:3000/mcp
 | Contacts        | `add_contact`, `update_contact`, `remove_contact`                                                                                     |
 | Interviews      | `schedule_interview`, `update_interview`, `remove_interview`                                                                          |
 | Interview notes | `list_notes`, `add_note`, `update_note`, `remove_note`                                                                                |
-| Companies       | `search_companies`, `list_companies`, `get_company`, `create_company`, `update_company`, `delete_company`                              |
+| Companies       | `search_companies`, `list_companies`, `get_company`, `create_company`, `update_company`, `delete_company`                             |
 | Overview        | `get_overview`                                                                                                                        |
 | Suggestions     | `list_suggestions`, `add_suggestion`, `promote_suggestion`, `dismiss_suggestion`                                                      |
 | Scout settings  | `get_scout_criteria`, `update_scout_criteria` (partial update)                                                                        |
