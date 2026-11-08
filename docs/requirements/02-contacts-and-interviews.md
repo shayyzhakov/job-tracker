@@ -2,7 +2,7 @@
 
 Status: **Built**
 
-- Each application has contacts (name, role, email, phone, LinkedIn link, notes; the LinkedIn link records where an application started when it came from a LinkedIn message) and interviews (type, date and time, duration, location, notes).
+- Each application has contacts (name, role, email, phone, LinkedIn link, notes; the LinkedIn link records where an application started when it came from a LinkedIn message) and interviews (type, date and time, duration, location, notes). *Planned:* the single interview `notes` field is replaced by separate notes attached to each interview, with a per-application Notes view (see [10 Interview notes](10-interview-notes.md)).
 - Interview types: HR, phone, technical, system design, home assignment, home assignment review, onsite, managerial, final, other.
 - An application can have several interviews of the same type, including back to back (for example two phone interviews). Interviews are independent records with no uniqueness rule on type; each is scheduled, edited and removed separately.
 - **An interview round is one record, upcoming or past.** There is no separate "scheduled" entity: an interview is upcoming when its date and time are in the future and past otherwise. The Interviews section marks each one Scheduled or Past, and the timeline on the application page shows the same interviews in date order with future ones dashed and labelled Scheduled.

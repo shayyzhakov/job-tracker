@@ -15,7 +15,8 @@ Let the user manage their job search by talking to an AI assistant such as Claud
    | Applications   | list and search (same filters as the UI), view details, create, edit, change status, delete |
    | Contacts       | add, edit, remove on an application                                                         |
    | Interviews     | schedule, edit, remove on an application                                                    |
-   | Companies      | search                                                                                      |
+   | Interview notes | *Planned:* list, add, edit, remove on an interview (see [10](10-interview-notes.md))        |
+| Companies      | search                                                                                      |
    | Overview       | see the dashboard figures and upcoming interviews                                           |
    | Suggestions    | list (by status), add to applications, dismiss                                              |
    | Scout settings | view, update (changing only the fields given)                                               |

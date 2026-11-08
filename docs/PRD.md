@@ -17,3 +17,4 @@ Status: **Built** means it's in the codebase. **Planned** means it's agreed but 
 | 07  | [Non-functional requirements](requirements/07-non-functional.md)      | Ongoing                      |
 | 08  | [Gamification](requirements/08-gamification.md)                       | Built (optional layer)       |
 | 09  | [Tasks (action queue)](requirements/09-today.md)                      | Built                        |
+| 10  | [Interview notes](requirements/10-interview-notes.md)                 | Planned                      |
