@@ -53,7 +53,9 @@ describe('CompaniesPage', () => {
     expect(within(await rowOf('Acme')).getByText('0 / 0')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Delete Acme' }));
     await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }),
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Delete',
+      }),
     );
     await waitFor(() => expect(deleted).toBe(true));
   });
@@ -74,7 +76,9 @@ describe('CompaniesPage', () => {
     server.use(
       http.post('/api/v1/companies', async ({ request }) => {
         body = await request.json();
-        return HttpResponse.json(company({ id: 'c9', name: 'Monday' }), { status: 201 });
+        return HttpResponse.json(company({ id: 'c9', name: 'Monday' }), {
+          status: 201,
+        });
       }),
     );
     const { user } = renderRoute(<CompaniesPage />, { path: '/companies' });
@@ -112,17 +116,44 @@ describe('CompaniesPage', () => {
   it('filters to companies with or without applications', async () => {
     listCompanies([
       company(),
-      company({ id: 'c2', name: 'Wix', activeApplications: 0, totalApplications: 0 }),
+      company({
+        id: 'c2',
+        name: 'Wix',
+        activeApplications: 0,
+        totalApplications: 0,
+      }),
     ]);
     const { user } = renderRoute(<CompaniesPage />, { path: '/companies' });
     await screen.findByText('Acme');
 
-    await user.click(screen.getByRole('radio', { name: 'No applications' }));
+    const filter = screen.getByRole('button', { name: 'Applications filter' });
+    await user.click(filter);
+    await user.click(await screen.findByRole('checkbox', { name: 'No applications' }));
     expect(screen.queryByText('Acme')).not.toBeInTheDocument();
     expect(screen.getByText('Wix')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('radio', { name: 'With applications' }));
+    await user.click(screen.getByRole('checkbox', { name: 'With applications' }));
     expect(screen.getByText('Acme')).toBeInTheDocument();
-    expect(screen.queryByText('Wix')).not.toBeInTheDocument();
+    expect(screen.getByText('Wix')).toBeInTheDocument();
+  });
+
+  it('filters by one or more company sizes', async () => {
+    listCompanies([
+      company({ size: 'corporate' }),
+      company({ id: 'c2', name: 'Wix', size: 'scale_up' }),
+      company({ id: 'c3', name: 'Tiny', size: 'startup' }),
+    ]);
+    const { user } = renderRoute(<CompaniesPage />, { path: '/companies' });
+    await screen.findByText('Acme');
+
+    await user.click(screen.getByRole('button', { name: 'Size filter' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Scale-up' }));
+    expect(screen.queryByText('Acme')).not.toBeInTheDocument();
+    expect(screen.getByText('Wix')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Corporate' }));
+    expect(screen.getByText('Acme')).toBeInTheDocument();
+    expect(screen.getByText('Wix')).toBeInTheDocument();
+    expect(screen.queryByText('Tiny')).not.toBeInTheDocument();
   });
 });

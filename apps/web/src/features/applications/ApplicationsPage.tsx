@@ -9,7 +9,6 @@ import {
   Button,
   Card,
   Group,
-  SegmentedControl,
   Stack,
   Table,
   Text,
@@ -39,6 +38,7 @@ import {
   useLocalFilters,
 } from '../../components/ApplicationFilterBar';
 import { CorporateBadge } from '../../components/CompanyName';
+import { MultiFilter } from '../../components/MultiFilter';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { RoleTitle } from '../../components/RoleTitle';
 import { SortableTh, useSortedRows } from '../../components/SortableTh';
@@ -46,12 +46,10 @@ import { StatusSelect } from '../../components/StatusSelect';
 import { Slot } from '../../lib/extensions';
 import { formatDate, formatDateTime } from '../../lib/format';
 
-type Scope = 'active' | 'closed' | 'all';
-const scopeToActive: Record<Scope, boolean | undefined> = {
-  active: true,
-  closed: false,
-  all: undefined,
-};
+type Scope = 'active' | 'closed';
+// Nothing selected, or both, means no restriction on whether an application is still open.
+const scopesToActive = (scopes: Scope[]): boolean | undefined =>
+  scopes.length === 1 ? scopes[0] === 'active' : undefined;
 
 type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview' | 'done';
 
@@ -60,14 +58,12 @@ export function ApplicationsPage() {
   const [params] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') ?? '');
   const [q] = useDebouncedValue(search.trim(), 250);
-  const [scope, setScope] = useState<Scope>(
-    params.get('scope') === 'all' || params.get('scope') === 'closed'
-      ? (params.get('scope') as Scope)
-      : 'active',
+  const [scopes, setScopes] = useState<Scope[]>(
+    params.get('scope') === 'all' ? [] : params.get('scope') === 'closed' ? ['closed'] : ['active'],
   );
   const filters: ApplicationFilters = {
     q: q || undefined,
-    active: scopeToActive[scope],
+    active: scopesToActive(scopes),
   };
   const { data, isPending, error } = useApplications(filters);
   const [local] = useLocalFilters();
@@ -108,13 +104,14 @@ export function ApplicationsPage() {
           onChange={(e) => setSearch(e.currentTarget.value)}
           w={300}
         />
-        <SegmentedControl
-          value={scope}
-          onChange={(v) => setScope(v as Scope)}
-          data={[
+        <MultiFilter<Scope>
+          label="Status"
+          allLabel="All statuses"
+          value={scopes}
+          onChange={setScopes}
+          options={[
             { value: 'active', label: 'Active' },
             { value: 'closed', label: 'Closed' },
-            { value: 'all', label: 'All' },
           ]}
         />
         <ApplicationFilterBar />

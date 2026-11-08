@@ -26,7 +26,7 @@ A Companies page that is the home of company records: companies the user applied
 - The user has three applications at one company, changes the company's size, and sees the new size on all three.
 - Deleting a company whose only application is closed (for example rejected) is refused. Deleting an unused company works, and the same name can be added again afterwards.
 - Renaming a company to another company's name is rejected as a conflict.
-- The user can show only companies with no applications, or only those with at least one.
+- The user can filter by applications (with applications, no applications) and by company size. Both are multi-select dropdowns: pick any combination, and an empty selection means no filtering on that field. They combine with each other and with the search.
 - The table shows, for a company with two active and one closed application, `2 / 3`.
 - From the assistant, the user can list, create, edit and delete companies and see the changes in the web UI immediately.
 

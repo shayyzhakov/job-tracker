@@ -1,4 +1,9 @@
-import { COMPANY_SIZE_LABELS, COMPANY_SIZES, type CompanyWithCountsDto } from '@job-tracker/shared';
+import {
+  COMPANY_SIZE_LABELS,
+  COMPANY_SIZES,
+  type CompanySize,
+  type CompanyWithCountsDto,
+} from '@job-tracker/shared';
 import {
   ActionIcon,
   Alert,
@@ -7,7 +12,6 @@ import {
   Card,
   Group,
   Modal,
-  SegmentedControl,
   Stack,
   Table,
   Text,
@@ -20,20 +24,26 @@ import { IconPencil, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useCompanies, useDeleteCompany } from '../../api/hooks';
+import { MultiFilter } from '../../components/MultiFilter';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { SortableTh, useSortedRows } from '../../components/SortableTh';
 import { CompanyFormModal } from './CompanyFormModal';
 
 type SortKey = 'name' | 'size' | 'type' | 'applications';
-type Scope = 'all' | 'with' | 'without';
+type AppsFilter = 'with' | 'without';
 
 export function CompaniesPage() {
   const [search, setSearch] = useState('');
   const [q] = useDebouncedValue(search.trim(), 250);
   const { data, isPending, error } = useCompanies(q);
-  const [scope, setScope] = useState<Scope>('all');
+  // Multi-select filters: nothing selected means no filtering on that field.
+  const [appsFilter, setAppsFilter] = useState<AppsFilter[]>([]);
+  const [sizeFilter, setSizeFilter] = useState<CompanySize[]>([]);
   const rows = (data ?? []).filter(
-    (c) => scope === 'all' || (scope === 'with') === c.totalApplications > 0,
+    (c) =>
+      (appsFilter.length === 0 ||
+        appsFilter.includes(c.totalApplications > 0 ? 'with' : 'without')) &&
+      (sizeFilter.length === 0 || (c.size !== null && sizeFilter.includes(c.size))),
   );
   const { sorted, sort, toggle } = useSortedRows<CompanyWithCountsDto, SortKey>(
     rows,
@@ -73,12 +83,19 @@ export function CompaniesPage() {
           onChange={(e) => setSearch(e.currentTarget.value)}
           w={300}
         />
-        <SegmentedControl
-          aria-label="Applications filter"
-          value={scope}
-          onChange={(v) => setScope(v as Scope)}
-          data={[
-            { value: 'all', label: 'All' },
+        <MultiFilter
+          label="Size"
+          allLabel="All sizes"
+          value={sizeFilter}
+          onChange={setSizeFilter}
+          options={COMPANY_SIZES.map((s) => ({ value: s, label: COMPANY_SIZE_LABELS[s] }))}
+        />
+        <MultiFilter<AppsFilter>
+          label="Applications"
+          allLabel="All applications"
+          value={appsFilter}
+          onChange={setAppsFilter}
+          options={[
             { value: 'with', label: 'With applications' },
             { value: 'without', label: 'No applications' },
           ]}
@@ -92,7 +109,7 @@ export function CompaniesPage() {
       ) : rows.length === 0 ? (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
-            {q || scope !== 'all'
+            {q || appsFilter.length > 0 || sizeFilter.length > 0
               ? 'No companies match your filters.'
               : 'No companies yet. Add one to start tracking it.'}
           </Text>
