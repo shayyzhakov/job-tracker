@@ -16,7 +16,7 @@ import { IconCheck, IconExternalLink, IconSettings, IconX } from '@tabler/icons-
 import { Link, useNavigate } from 'react-router';
 import { useDismissOpportunity, useOpportunities, usePromoteOpportunity } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
-import { formatDate } from '../../lib/format';
+import { formatDateMaybeTime, formatFullDateTime } from '../../lib/format';
 
 const scoreColor = (score: number) => (score >= 80 ? 'teal' : score >= 60 ? 'yellow' : 'gray');
 
@@ -111,10 +111,13 @@ function SuggestionCard({
             )}
             {o.postedAt && (
               <Text c="dimmed" size="sm">
-                · posted {formatDate(o.postedAt)}
+                · listed on {formatDateMaybeTime(o.postedAt)}
               </Text>
             )}
           </Group>
+          <Text c="dimmed" size="sm">
+            Suggested {formatFullDateTime(o.createdAt)}
+          </Text>
           <Group gap="xs">
             {o.companySize && <Badge variant="light">{COMPANY_SIZE_LABELS[o.companySize]}</Badge>}
             <Badge variant="light" color="grape">
