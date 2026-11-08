@@ -18,4 +18,4 @@ Status: **Built** means it's in the codebase. **Planned** means it's agreed but 
 | 08  | [Gamification](requirements/08-gamification.md)                       | Built (optional layer)       |
 | 09  | [Tasks (action queue)](requirements/09-today.md)                      | Built                        |
 | 10  | [Interview notes](requirements/10-interview-notes.md)                 | Built                        |
-| 11  | [Companies](requirements/11-companies.md)                             | Planned                      |
+| 11  | [Companies](requirements/11-companies.md)                             | Built                        |

@@ -16,6 +16,7 @@ export const handlers = [
   http.get('/api/v1/applications', () => HttpResponse.json([application()])),
   http.get('/api/v1/applications/:id', () => HttpResponse.json(applicationDetail())),
   http.get('/api/v1/companies', () => HttpResponse.json([])),
+  http.get('/api/v1/companies/with-counts', () => HttpResponse.json([])),
   http.get('/api/v1/opportunities', () => HttpResponse.json([opportunity()])),
   http.get('/api/v1/scout/criteria', () => HttpResponse.json(scoutCriteria())),
 ];

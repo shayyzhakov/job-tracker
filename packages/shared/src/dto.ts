@@ -16,6 +16,23 @@ export interface CompanyDto {
   location: string | null;
 }
 
+/** A company with its application counts (derived on read, never stored). */
+export interface CompanyWithCountsDto extends CompanyDto {
+  activeApplications: number;
+  totalApplications: number;
+}
+
+/** One application of a company, as shown on the company detail. */
+export interface CompanyApplicationDto {
+  id: string;
+  roleName: string;
+  status: ApplicationStatus;
+}
+
+export interface CompanyDetailDto extends CompanyWithCountsDto {
+  applications: CompanyApplicationDto[];
+}
+
 export interface ContactDto {
   id: string;
   applicationId: string;

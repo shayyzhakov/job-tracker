@@ -6,10 +6,8 @@ import { ActionsService } from './modules/actions/actions.service.js';
 import { DynamoApplicationsRepository } from './modules/applications/applications.repository.js';
 import { ApplicationsService } from './modules/applications/applications.service.js';
 import { ChildService } from './modules/child-service.js';
-import {
-  type CompaniesRepository,
-  DynamoCompaniesRepository,
-} from './modules/companies/companies.repository.js';
+import { DynamoCompaniesRepository } from './modules/companies/companies.repository.js';
+import { CompaniesService } from './modules/companies/companies.service.js';
 import { DynamoContactsRepository } from './modules/contacts/contacts.repository.js';
 import { DynamoInterviewsRepository } from './modules/interviews/interviews.repository.js';
 import { InterviewsService } from './modules/interviews/interviews.service.js';
@@ -27,7 +25,7 @@ import {
 export interface Services {
   actions: ActionsService;
   applications: ApplicationsService;
-  companies: CompaniesRepository;
+  companies: CompaniesService;
   contacts: ChildService<ContactInput, ContactUpdate, ContactDto>;
   interviews: InterviewsService;
   notes: NotesService;
@@ -48,7 +46,7 @@ export function createServices(db: Db): Services {
   return {
     actions: new ActionsService(new DynamoActionsRepository(db, applicationsRepo)),
     applications,
-    companies,
+    companies: new CompaniesService(companies),
     contacts: new ChildService('Contact', new DynamoContactsRepository(db), applicationsRepo),
     interviews: new InterviewsService(interviewsRepo, applicationsRepo, applications),
     notes: new NotesService(new DynamoNotesRepository(db)),

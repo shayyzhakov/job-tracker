@@ -1,8 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { GetCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import type { ApplicationUpdate, CompanyDto, CompanyInput } from '@job-tracker/shared';
+import type {
+  ApplicationUpdate,
+  CompanyApplicationDto,
+  CompanyDto,
+  CompanyInput,
+} from '@job-tracker/shared';
 import { buildUpdate, type Db, isTransactionCancelled, key, queryGsi1 } from '../../db/dynamo.js';
-import { type CompanyItem, nul, toCompanyDto } from '../../db/mappers.js';
+import { type ApplicationItem, type CompanyItem, nul, toCompanyDto } from '../../db/mappers.js';
 import { ConflictError } from '../../errors.js';
 
 export type CompanyPatch = NonNullable<ApplicationUpdate['company']>;
@@ -14,6 +19,12 @@ export interface CompaniesRepository {
   create(input: CompanyInput): Promise<CompanyDto>;
   update(id: string, patch: CompanyPatch): Promise<void>;
   search(q?: string): Promise<CompanyDto[]>;
+  /** Every company matching the name filter (no result cap), sorted by name. */
+  list(q?: string): Promise<CompanyDto[]>;
+  /** Applications grouped by company id. Companies without applications are absent. */
+  applicationsByCompany(): Promise<Map<string, CompanyApplicationDto[]>>;
+  /** Removes the company and frees its name. The caller checks that it has no applications. */
+  delete(id: string): Promise<void>;
 }
 
 const SEARCH_LIMIT = 50;
@@ -137,12 +148,37 @@ export class DynamoCompaniesRepository implements CompaniesRepository {
   }
 
   async search(q?: string) {
+    return (await this.list(q)).slice(0, SEARCH_LIMIT);
+  }
+
+  async list(q?: string) {
     // Personal-scale data: read the name-sorted index and filter in memory.
     const items = await queryGsi1<CompanyItem>(this.db, 'COMPANIES');
     const needle = q?.toLowerCase();
-    return items
-      .filter((c) => !needle || c.name.toLowerCase().includes(needle))
-      .slice(0, SEARCH_LIMIT)
-      .map(toCompanyDto);
+    return items.filter((c) => !needle || c.name.toLowerCase().includes(needle)).map(toCompanyDto);
+  }
+
+  async applicationsByCompany() {
+    const apps = await queryGsi1<ApplicationItem>(this.db, 'APPS');
+    const byCompany = new Map<string, CompanyApplicationDto[]>();
+    for (const a of apps) {
+      const rows = byCompany.get(a.companyId) ?? [];
+      rows.push({ id: a.id, roleName: a.roleName, status: a.status });
+      byCompany.set(a.companyId, rows);
+    }
+    return byCompany;
+  }
+
+  async delete(id: string) {
+    const current = await this.getItem(id);
+    if (!current) return;
+    await this.db.doc.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          { Delete: { TableName: this.db.table, Key: key.company(id) } },
+          { Delete: { TableName: this.db.table, Key: key.companyName(current.name) } },
+        ],
+      }),
+    );
   }
 }

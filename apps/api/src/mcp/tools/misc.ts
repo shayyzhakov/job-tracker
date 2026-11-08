@@ -12,19 +12,6 @@ import { defined, defineTool, type ToolLogger } from '../tool.js';
 export function registerMiscTools(server: McpServer, s: Services, logger?: ToolLogger) {
   defineTool(
     server,
-    'search_companies',
-    {
-      title: 'Search companies',
-      description: 'Find companies by name (case-insensitive substring). Omit q to list them all.',
-      inputSchema: { q: z.string().optional() },
-      annotations: { readOnlyHint: true },
-    },
-    ({ q }) => s.companies.search(q?.trim() || undefined),
-    logger,
-  );
-
-  defineTool(
-    server,
     'get_overview',
     {
       title: 'Get overview',

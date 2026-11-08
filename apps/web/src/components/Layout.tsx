@@ -15,6 +15,7 @@ import { useDisclosure } from '@mantine/hooks';
 import {
   IconBell,
   IconBriefcase,
+  IconBuilding,
   IconLayoutDashboard,
   IconList,
   IconLogout,
@@ -30,6 +31,7 @@ import { Slot } from '../lib/extensions';
 const NAV = [
   { to: '/', label: 'Overview', icon: IconLayoutDashboard, exact: true },
   { to: '/applications', label: 'Applications', icon: IconList, exact: false },
+  { to: '/companies', label: 'Companies', icon: IconBuilding, exact: false },
   { to: '/suggestions', label: 'Suggestions', icon: IconSparkles, exact: false, countsNew: true },
   { to: '/integrations', label: 'Integrations', icon: IconPlugConnected, exact: false },
 ];

@@ -18,12 +18,12 @@ import { contactFields } from './children.js';
 
 const id = z.uuid().describe('Application id');
 const status = z.enum(APPLICATION_STATUSES);
-const size = z
+export const size = z
   .enum(COMPANY_SIZES)
   .describe(
     'Company size bucket: early_stage_startup (seed/Series A, small team), startup (growth-stage), unicorn (privately held, $1B+ valuation), corporate (large established company, including big public ones like Meta or Amazon). Look it up if you do not know it; omit only if it cannot be found.',
   );
-const isPublic = z
+export const isPublic = z
   .boolean()
   .describe(
     'true if the company is publicly traded (e.g. Meta, Amazon, Google, Wix), false if private. Look it up if you do not know it; omit only if it cannot be found.',

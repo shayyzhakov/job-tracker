@@ -3,6 +3,7 @@ import type { Services } from '../services.js';
 import type { ToolLogger } from './tool.js';
 import { registerApplicationTools } from './tools/applications.js';
 import { registerChildTools } from './tools/children.js';
+import { registerCompanyTools } from './tools/companies.js';
 import { registerMiscTools } from './tools/misc.js';
 import { registerSuggestionTools } from './tools/suggestions.js';
 
@@ -30,6 +31,7 @@ export function createMcpServer(services: Services, logger?: ToolLogger): McpSer
     { instructions: INSTRUCTIONS },
   );
   registerApplicationTools(server, services, logger);
+  registerCompanyTools(server, services, logger);
   registerChildTools(server, services, logger);
   registerSuggestionTools(server, services, logger);
   registerMiscTools(server, services, logger);

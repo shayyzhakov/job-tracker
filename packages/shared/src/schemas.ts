@@ -33,6 +33,18 @@ export const CompanyInputSchema = z.object({
 });
 export type CompanyInput = z.infer<typeof CompanyInputSchema>;
 
+/** Partial company edit: only the fields sent change; `null` clears an optional field. */
+export const CompanyUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Required'),
+    size: CompanySizeSchema.nullable(),
+    isPublic: z.boolean(),
+    website: z.preprocess(blankToNull, z.url().nullable()),
+    location: z.preprocess(blankToNull, z.string().trim().nullable()),
+  })
+  .partial();
+export type CompanyUpdate = z.infer<typeof CompanyUpdateSchema>;
+
 export const ContactInputSchema = z.object({
   name: z.string().trim().min(1, 'Required'),
   role: optionalText,
@@ -90,15 +102,7 @@ export const ApplicationUpdateSchema = z
     replyBy: z.preprocess(blankToNull, z.coerce.date().nullable()),
     dueAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
     nextStep: z.preprocess(blankToNull, z.string().trim().nullable()),
-    company: z
-      .object({
-        name: z.string().trim().min(1, 'Required'),
-        size: CompanySizeSchema.nullable(),
-        isPublic: z.boolean(),
-        website: z.preprocess(blankToNull, z.url().nullable()),
-        location: z.preprocess(blankToNull, z.string().trim().nullable()),
-      })
-      .partial(),
+    company: CompanyUpdateSchema,
   })
   .partial();
 export type ApplicationUpdate = z.infer<typeof ApplicationUpdateSchema>;

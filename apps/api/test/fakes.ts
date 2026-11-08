@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   ApplicationDetailDto,
   ApplicationListQuery,
+  CompanyApplicationDto,
   CompanyDto,
   CompanyInput,
   ContactInput,
@@ -58,7 +59,16 @@ export class FakeCompaniesRepository implements CompaniesRepository {
     if (row) Object.assign(row, patch);
   }
   async search(q?: string) {
+    return this.list(q);
+  }
+  async list(q?: string) {
     return this.rows.filter((c) => !q || c.name.toLowerCase().includes(q.toLowerCase()));
+  }
+  async applicationsByCompany() {
+    return new Map<string, CompanyApplicationDto[]>();
+  }
+  async delete(id: string) {
+    this.rows = this.rows.filter((c) => c.id !== id);
   }
 }
 

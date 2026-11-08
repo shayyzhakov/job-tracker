@@ -1,6 +1,6 @@
 # 11. Companies
 
-Status: **Planned**
+Status: **Built**
 
 ## Goal
 
@@ -28,12 +28,13 @@ A Companies page that is the home of company records: companies the user applied
 - The table shows, for a company with two active and one closed application, `2 / 3`.
 - From the assistant, the user can list, create, edit and delete companies and see the changes in the web UI immediately.
 
-## Data model impact (when built)
+## Data model
 
 - No new item type. It reuses `Company` (`PK = COMPANY#<id>`, `SK = META`, `GSI1PK = COMPANIES`) and the `CNAME#<lowercased>` name marker. Applications already hold `companyId`.
 - New access pattern: applications per company, derived by grouping the application list by `companyId`. No new index is needed at one user's data volume.
 - New transaction: delete company (delete the company item and its name marker together). The "no applications" check and the delete are separate steps, so a concurrent application create could slip in between. That is accepted for a single user and documented as a limitation. If it ever matters, keep a per-company application counter updated in the application create and delete transactions.
-- On build, update [DATA-MODEL.md](../DATA-MODEL.md) (relationship note, access patterns, transactions) and [ARCHITECTURE.md](../ARCHITECTURE.md) (companies module, MCP tools), plus the tool lists in the README and the Integrations page.
+- Documented in [DATA-MODEL.md](../DATA-MODEL.md) and [ARCHITECTURE.md](../ARCHITECTURE.md). REST: `GET /companies?q=` (plain name matches for the application form), `GET /companies/with-counts?q=` (the Companies page), `POST /companies`, `GET/PATCH/DELETE /companies/:id`. Deleting a company with applications returns `409` with the count.
+- Selecting the applications cell opens `/applications?q=<name>&scope=all`; the Applications page reads those two parameters as its initial search and scope.
 
 ## Not included (v1)
 

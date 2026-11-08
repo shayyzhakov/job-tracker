@@ -5,7 +5,11 @@ import type {
   ApplicationDto,
   ApplicationStatus,
   ApplicationUpdateInput,
+  CompanyDetailDto,
   CompanyDto,
+  CompanyInput,
+  CompanyUpdate,
+  CompanyWithCountsDto,
   ContactCreateInput,
   ContactDto,
   ContactUpdateInput,
@@ -37,6 +41,7 @@ export const queryKeys = {
   applicationList: (f: ApplicationFilters) => ['applications', 'list', f] as const,
   application: (id: string) => ['applications', 'detail', id] as const,
   companies: (q: string) => ['companies', q] as const,
+  companyList: (q: string) => ['company-list', q] as const,
   opportunities: ['opportunities'] as const,
   opportunityList: (status: OpportunityStatus) => ['opportunities', status] as const,
   scoutCriteria: ['scout-criteria'] as const,
@@ -76,6 +81,52 @@ export const useCompanySearch = (q: string) =>
     queryFn: () => api<CompanyDto[]>(`/companies?q=${encodeURIComponent(q)}`),
     enabled: q.trim().length > 0,
   });
+
+export const useCompanies = (q: string) =>
+  useQuery({
+    queryKey: queryKeys.companyList(q),
+    queryFn: () => api<CompanyWithCountsDto[]>(`/companies/with-counts?q=${encodeURIComponent(q)}`),
+    placeholderData: keepPreviousData,
+  });
+
+/** A company change touches the company lists, the name suggestions and every application showing it. */
+function useInvalidateCompanies() {
+  const qc = useQueryClient();
+  return () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: ['company-list'] }),
+      qc.invalidateQueries({ queryKey: ['companies'] }),
+      qc.invalidateQueries({ queryKey: queryKeys.applications }),
+      qc.invalidateQueries({ queryKey: queryKeys.overview }),
+      qc.invalidateQueries({ queryKey: queryKeys.actions }),
+    ]);
+}
+
+export function useCreateCompany() {
+  const invalidate = useInvalidateCompanies();
+  return useMutation({
+    mutationFn: (input: CompanyInput) =>
+      api<CompanyWithCountsDto>('/companies', { method: 'POST', json: input }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateCompany() {
+  const invalidate = useInvalidateCompanies();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: CompanyUpdate }) =>
+      api<CompanyDetailDto>(`/companies/${id}`, { method: 'PATCH', json: patch }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteCompany() {
+  const invalidate = useInvalidateCompanies();
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/companies/${id}`, { method: 'DELETE' }),
+    onSuccess: invalidate,
+  });
+}
 
 /** Any write can change lists, detail and aggregates, so refresh them all. */
 function useInvalidateAll() {

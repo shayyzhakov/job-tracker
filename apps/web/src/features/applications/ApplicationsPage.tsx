@@ -25,7 +25,7 @@ import {
   IconSearch,
 } from '@tabler/icons-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import {
   type ApplicationFilters,
   useActions,
@@ -56,9 +56,15 @@ const scopeToActive: Record<Scope, boolean | undefined> = {
 type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview' | 'done';
 
 export function ApplicationsPage() {
-  const [search, setSearch] = useState('');
+  // The Companies page links here with ?q=<company>&scope=all to show all of a company's applications.
+  const [params] = useSearchParams();
+  const [search, setSearch] = useState(params.get('q') ?? '');
   const [q] = useDebouncedValue(search.trim(), 250);
-  const [scope, setScope] = useState<Scope>('active');
+  const [scope, setScope] = useState<Scope>(
+    params.get('scope') === 'all' || params.get('scope') === 'closed'
+      ? (params.get('scope') as Scope)
+      : 'active',
+  );
   const filters: ApplicationFilters = {
     q: q || undefined,
     active: scopeToActive[scope],

@@ -80,6 +80,11 @@ describe('MCP server', () => {
         'update_note',
         'remove_note',
         'search_companies',
+        'list_companies',
+        'get_company',
+        'create_company',
+        'update_company',
+        'delete_company',
         'get_overview',
         'get_actions',
         'snooze_application',
@@ -98,6 +103,8 @@ describe('MCP server', () => {
       'get_overview',
       'get_actions',
       'list_notes',
+      'list_companies',
+      'get_company',
     ]) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
@@ -106,6 +113,7 @@ describe('MCP server', () => {
       'remove_contact',
       'remove_interview',
       'remove_note',
+      'delete_company',
     ]) {
       expect(byName.get(name)?.annotations?.destructiveHint).toBe(true);
     }
@@ -242,6 +250,41 @@ describe('MCP server', () => {
 
     await call('delete_application', { id: created.id });
     expect(await callError('get_application', { id: created.id })).toMatch(/not found/i);
+  });
+
+  it('manages companies, with and without applications', async () => {
+    const wix = await call<{ id: string }>('create_company', {
+      name: 'Wix',
+      size: 'corporate',
+      isPublic: true,
+    });
+    expect(await callError('create_company', { name: 'wix' })).toMatch(/already exists/);
+    expect(await call('list_companies')).toEqual([
+      expect.objectContaining({ name: 'Wix', activeApplications: 0, totalApplications: 0 }),
+    ]);
+
+    const app = await call<ApplicationDetailDto>('create_application', {
+      company: { id: wix.id },
+      roleName: 'Backend Engineer',
+      status: 'applied',
+    });
+    await call('update_company', { id: wix.id, size: 'unicorn', location: 'Tel Aviv' });
+    expect(
+      (await call<ApplicationDetailDto>('get_application', { id: app.id })).company,
+    ).toMatchObject({
+      size: 'unicorn',
+      location: 'Tel Aviv',
+    });
+    expect(await call('get_company', { id: wix.id })).toMatchObject({
+      activeApplications: 1,
+      totalApplications: 1,
+      applications: [expect.objectContaining({ id: app.id, status: 'applied' })],
+    });
+
+    expect(await callError('delete_company', { id: wix.id })).toMatch(/1 application/);
+    await call('delete_application', { id: app.id });
+    await call('delete_company', { id: wix.id });
+    expect(await call('list_companies')).toEqual([]);
   });
 
   it('creates an application for an existing company by id', async () => {

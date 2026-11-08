@@ -83,7 +83,7 @@ One table, keys `PK`/`SK`, two indexes (`GSI1`, `GSI2`). An application and its 
 
 - **Status pipeline:** to apply → applied → HR screening → phone → technical → home assignment → onsite → final → offer → accepted. Closed outcomes are rejected, withdrawn and ghosted, and "active" means not closed.
 - Status changes go through `PATCH /api/v1/applications/:id/status`, which records `status_history`. `appliedAt` is set automatically the first time an application leaves `to_apply`.
-- Companies are deduplicated by case-insensitive name.
+- Companies are deduplicated by case-insensitive name. The **Companies** page lists them with size, type and active / total applications, and adds, edits and deletes them (delete only when a company has no applications); editing a company changes it on all of its applications.
 - **Salary** is expected monthly gross base salary in ILS.
 - **Response rate** is the share of submitted applications that reached any stage beyond "applied". Rejections count as a response; ghosted and withdrawn don't.
 - Weekly charts use Sunday-start weeks.
@@ -111,7 +111,7 @@ claude mcp add --transport http job-tracker http://localhost:3000/mcp
 | Contacts        | `add_contact`, `update_contact`, `remove_contact`                                                                                     |
 | Interviews      | `schedule_interview`, `update_interview`, `remove_interview`                                                                          |
 | Interview notes | `list_notes`, `add_note`, `update_note`, `remove_note`                                                                                |
-| Companies       | `search_companies`                                                                                                                    |
+| Companies       | `search_companies`, `list_companies`, `get_company`, `create_company`, `update_company`, `delete_company`                              |
 | Overview        | `get_overview`                                                                                                                        |
 | Suggestions     | `list_suggestions`, `add_suggestion`, `promote_suggestion`, `dismiss_suggestion`                                                      |
 | Scout settings  | `get_scout_criteria`, `update_scout_criteria` (partial update)                                                                        |
