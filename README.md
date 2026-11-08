@@ -27,15 +27,16 @@ Open http://localhost:8080. A single image runs the API, which also serves the b
 
 ## Scripts (root)
 
-| Command                         | What it does                                                  |
-| ------------------------------- | ------------------------------------------------------------- |
-| `pnpm dev`                      | DynamoDB Local up → create table → API + web with hot reload  |
-| `pnpm test`                     | All tests (shared, API unit + integration, web components)    |
-| `pnpm test:watch`               | One Vitest watcher across all workspaces                      |
-| `pnpm typecheck`                | `tsc --noEmit` everywhere                                     |
-| `pnpm check` / `pnpm check:fix` | Biome lint + format                                           |
-| `pnpm db:setup`                 | Create the DynamoDB table and indexes if missing (idempotent) |
-| `pnpm db:seed`                  | Reset the dev table with sample data                          |
+| Command                         | What it does                                                                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                      | DynamoDB Local up → create table → API + web with hot reload                                                                                                                                           |
+| `pnpm test`                     | All tests (shared, API unit + integration, web components)                                                                                                                                             |
+| `pnpm test:watch`               | One Vitest watcher across all workspaces                                                                                                                                                               |
+| `pnpm typecheck`                | `tsc --noEmit` everywhere                                                                                                                                                                              |
+| `pnpm check` / `pnpm check:fix` | Biome lint + format                                                                                                                                                                                    |
+| `pnpm db:setup`                 | Create the DynamoDB table and indexes if missing (idempotent)                                                                                                                                          |
+| `pnpm db:seed`                  | Reset the dev table with sample data                                                                                                                                                                   |
+| `pnpm db:migrate-notes`         | One-off: move legacy single-line interview notes into notes (idempotent; uses `DYNAMODB_TABLE` and the AWS credentials of the environment, so run it once per environment, including AWS after deploy) |
 
 ## Layout
 
@@ -76,7 +77,7 @@ The API tests need DynamoDB Local running (`docker compose up -d dynamodb`).
 
 ### Data model
 
-One table, keys `PK`/`SK`, two indexes (`GSI1`, `GSI2`). An application and its contacts, interviews and status history share the partition `APP#<id>`, so loading an application is a single query. Applications, interviews and companies are listed through GSI1; suggestions per status (sorted by score) through GSI1 and the link from a suggestion to its application through GSI2. Unique company names and listing URLs are enforced with marker items written in the same transaction. Data is personal-scale, so list endpoints read an index and filter in memory. The table definition lives in `apps/api/src/db/table.ts` (dev/tests) and `infra/modules/dynamodb` (AWS) — keep them in sync.
+One table, keys `PK`/`SK`, two indexes (`GSI1`, `GSI2`). An application and its contacts, interviews, interview notes and status history share the partition `APP#<id>`, so loading an application is a single query. Applications, interviews and companies are listed through GSI1; suggestions per status (sorted by score) through GSI1 and the link from a suggestion to its application through GSI2. Unique company names and listing URLs are enforced with marker items written in the same transaction. Data is personal-scale, so list endpoints read an index and filter in memory. The table definition lives in `apps/api/src/db/table.ts` (dev/tests) and `infra/modules/dynamodb` (AWS) — keep them in sync.
 
 ## Domain notes
 
@@ -104,15 +105,16 @@ claude mcp add --transport http job-tracker http://localhost:3000/mcp
 - **Claude Desktop:** its local config runs stdio servers, so bridge with `mcp-remote`: add `"job-tracker": { "command": "npx", "args": ["mcp-remote", "http://localhost:3000/mcp"] }` under `mcpServers` in `claude_desktop_config.json`.
 - **Debugging:** `npx @modelcontextprotocol/inspector`, then connect to `http://localhost:3000/mcp` with the Streamable HTTP transport.
 
-| Area           | Tools                                                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Applications   | `list_applications`, `get_application`, `create_application`, `update_application`, `change_application_status`, `delete_application` |
-| Contacts       | `add_contact`, `update_contact`, `remove_contact`                                                                                     |
-| Interviews     | `schedule_interview`, `update_interview`, `remove_interview`                                                                          |
-| Companies      | `search_companies`                                                                                                                    |
-| Overview       | `get_overview`                                                                                                                        |
-| Suggestions    | `list_suggestions`, `add_suggestion`, `promote_suggestion`, `dismiss_suggestion`                                                      |
-| Scout settings | `get_scout_criteria`, `update_scout_criteria` (partial update)                                                                        |
+| Area            | Tools                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Applications    | `list_applications`, `get_application`, `create_application`, `update_application`, `change_application_status`, `delete_application` |
+| Contacts        | `add_contact`, `update_contact`, `remove_contact`                                                                                     |
+| Interviews      | `schedule_interview`, `update_interview`, `remove_interview`                                                                          |
+| Interview notes | `list_notes`, `add_note`, `update_note`, `remove_note`                                                                                |
+| Companies       | `search_companies`                                                                                                                    |
+| Overview        | `get_overview`                                                                                                                        |
+| Suggestions     | `list_suggestions`, `add_suggestion`, `promote_suggestion`, `dismiss_suggestion`                                                      |
+| Scout settings  | `get_scout_criteria`, `update_scout_criteria` (partial update)                                                                        |
 
 Read-only tools carry `readOnlyHint` and deletes carry `destructiveHint`, so clients can ask before deleting. Errors (unknown id, invalid input, already promoted) come back as tool errors with a readable message.
 

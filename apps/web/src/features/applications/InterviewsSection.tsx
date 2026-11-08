@@ -3,6 +3,7 @@ import {
   INTERVIEW_TYPES,
   type InterviewDto,
   type InterviewType,
+  type NoteDto,
 } from '@job-tracker/shared';
 import {
   ActionIcon,
@@ -10,6 +11,7 @@ import {
   Button,
   Card,
   Group,
+  Modal,
   NumberInput,
   Select,
   SimpleGrid,
@@ -18,10 +20,11 @@ import {
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconNotes, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useInterviewMutations } from '../../api/hooks';
 import { formatDateTime } from '../../lib/format';
+import { NoteList } from './NoteList';
 
 interface InterviewFormValues {
   type: InterviewType;
@@ -29,7 +32,6 @@ interface InterviewFormValues {
   scheduledAt: string;
   durationMinutes: number | string;
   location: string;
-  notes: string;
 }
 
 /** ISO instant -> value for <input type="datetime-local"> in the user's local time. */
@@ -44,16 +46,18 @@ const EMPTY: InterviewFormValues = {
   scheduledAt: '',
   durationMinutes: 60,
   location: '',
-  notes: '',
 };
 
 export function InterviewsSection({
   applicationId,
   interviews,
+  notes,
 }: {
   applicationId: string;
   interviews: InterviewDto[];
+  notes: NoteDto[];
 }) {
+  const [notesFor, setNotesFor] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { create, update, remove } = useInterviewMutations(applicationId);
@@ -63,6 +67,8 @@ export function InterviewsSection({
     validate: { scheduledAt: (v) => (v ? null : 'Required') },
   });
   const now = Date.now();
+  const count = (interviewId: string) => notes.filter((n) => n.interviewId === interviewId).length;
+  const notesInterview = interviews.find((i) => i.id === notesFor);
 
   const close = () => {
     setAdding(false);
@@ -78,7 +84,6 @@ export function InterviewsSection({
       scheduledAt: toLocalInput(i.scheduledAt),
       durationMinutes: i.durationMinutes ?? '',
       location: i.location ?? '',
-      notes: i.notes ?? '',
     });
   };
 
@@ -88,7 +93,6 @@ export function InterviewsSection({
       scheduledAt: new Date(v.scheduledAt), // parsed as local time
       durationMinutes: typeof v.durationMinutes === 'number' ? v.durationMinutes : undefined,
       location: v.location || undefined,
-      notes: v.notes || undefined,
     };
     if (editingId) {
       update.mutate(
@@ -98,7 +102,6 @@ export function InterviewsSection({
             ...base,
             durationMinutes: base.durationMinutes ?? null,
             location: base.location ?? null,
-            notes: base.notes ?? null,
           },
         },
         { onSuccess: close },
@@ -139,7 +142,6 @@ export function InterviewsSection({
             {...form.getInputProps('location')}
           />
         </SimpleGrid>
-        <TextInput label="Interview notes" {...form.getInputProps('notes')} />
         <Group justify="flex-end">
           <Button variant="default" size="xs" onClick={close}>
             Cancel
@@ -196,13 +198,22 @@ export function InterviewsSection({
                     </Badge>
                   )}
                 </Group>
-                {(i.location || i.notes) && (
+                {i.location && (
                   <Text size="sm" c="dimmed">
-                    {[i.location, i.notes].filter(Boolean).join(' · ')}
+                    {i.location}
                   </Text>
                 )}
               </Stack>
               <Group gap={4} wrap="nowrap">
+                <Button
+                  variant="subtle"
+                  size="compact-xs"
+                  leftSection={<IconNotes size={14} />}
+                  aria-label={`Notes for ${INTERVIEW_TYPE_LABELS[i.type]} interview`}
+                  onClick={() => setNotesFor(i.id)}
+                >
+                  Notes{count(i.id) > 0 ? ` (${count(i.id)})` : ''}
+                </Button>
                 <ActionIcon
                   variant="subtle"
                   aria-label="Edit interview"
@@ -225,6 +236,25 @@ export function InterviewsSection({
         })}
         {adding && formEl}
       </Stack>
+      <Modal
+        opened={!!notesInterview}
+        onClose={() => setNotesFor(null)}
+        title={
+          notesInterview
+            ? `${INTERVIEW_TYPE_LABELS[notesInterview.type]} interview · ${formatDateTime(notesInterview.scheduledAt)}`
+            : 'Notes'
+        }
+        size="lg"
+      >
+        {notesInterview && (
+          <NoteList
+            applicationId={applicationId}
+            interviewId={notesInterview.id}
+            notes={notes.filter((n) => n.interviewId === notesInterview.id)}
+            allowAdd
+          />
+        )}
+      </Modal>
     </Card>
   );
 }

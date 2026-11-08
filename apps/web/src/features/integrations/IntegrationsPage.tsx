@@ -30,6 +30,7 @@ const TOOLS: { area: string; tools: string[] }[] = [
   },
   { area: 'Contacts', tools: ['add_contact', 'update_contact', 'remove_contact'] },
   { area: 'Interviews', tools: ['schedule_interview', 'update_interview', 'remove_interview'] },
+  { area: 'Interview notes', tools: ['list_notes', 'add_note', 'update_note', 'remove_note'] },
   { area: 'Companies', tools: ['search_companies'] },
   { area: 'Overview', tools: ['get_overview'] },
   {

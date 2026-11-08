@@ -4,12 +4,12 @@ Personal job-search tracker (pnpm monorepo: `apps/api`, `apps/web`, `apps/worker
 
 ## Keep the docs in sync with the code (mandatory)
 
-The docs are the source of truth for *why* the system is the way it is. Code that drifts from them is a bug.
+The docs are the source of truth for _why_ the system is the way it is. Code that drifts from them is a bug.
 
-| If your change affects... | Update |
-| --- | --- |
-| Product behaviour, scope, rules, user-facing flows, what is Built/Planned | `docs/requirements/NN-*.md` and the status in `docs/PRD.md` |
-| Architecture: layering, modules, auth, MCP, deployment, infra, testing, security, key decisions | `docs/ARCHITECTURE.md` |
+| If your change affects...                                                                             | Update                                                                                                |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Product behaviour, scope, rules, user-facing flows, what is Built/Planned                             | `docs/requirements/NN-*.md` and the status in `docs/PRD.md`                                           |
+| Architecture: layering, modules, auth, MCP, deployment, infra, testing, security, key decisions       | `docs/ARCHITECTURE.md`                                                                                |
 | Data model: entities, fields, enums, keys, GSIs, markers, transactions, access patterns, derived data | `docs/DATA-MODEL.md` (ERD and physical tables) and the "Item types" section of `docs/ARCHITECTURE.md` |
 
 ### Rules

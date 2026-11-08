@@ -34,11 +34,19 @@ export interface InterviewDto {
   scheduledAt: string;
   durationMinutes: number | null;
   location: string | null;
-  notes: string | null;
   /** True when the round was created from a status change without a real time; the time is a placeholder. */
   timeUnknown: boolean;
   /** When the user logged how the interview went (or dismissed the prompt); null until then. */
   debriefedAt: string | null;
+}
+
+export interface NoteDto {
+  id: string;
+  applicationId: string;
+  interviewId: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StatusHistoryDto {
@@ -95,6 +103,8 @@ export interface ApplicationDto {
 export interface ApplicationDetailDto extends ApplicationDto {
   contacts: ContactDto[];
   interviews: InterviewDto[];
+  /** Interview notes of the whole application, newest first. */
+  interviewNotes: NoteDto[];
   history: StatusHistoryDto[];
 }
 

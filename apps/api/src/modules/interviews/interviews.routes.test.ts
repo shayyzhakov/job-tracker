@@ -116,11 +116,11 @@ describe('interviews API', () => {
     const patched = await t.app.inject({
       method: 'PATCH',
       url: url(id, created.id),
-      payload: { scheduledAt: newDate, notes: 'Bring laptop' },
+      payload: { scheduledAt: newDate, location: 'Office' },
     });
     expect(patched.json()).toMatchObject({
       scheduledAt: newDate,
-      notes: 'Bring laptop',
+      location: 'Office',
     });
 
     expect((await t.app.inject({ method: 'DELETE', url: url(id, created.id) })).statusCode).toBe(

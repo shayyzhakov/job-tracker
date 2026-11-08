@@ -62,6 +62,10 @@ export const key = {
   app: (id: string) => ({ PK: `APP#${id}`, SK: 'META' }),
   contact: (appId: string, id: string) => ({ PK: `APP#${appId}`, SK: `CONTACT#${id}` }),
   interview: (appId: string, id: string) => ({ PK: `APP#${appId}`, SK: `INTERVIEW#${id}` }),
+  note: (appId: string, interviewId: string, id: string) => ({
+    PK: `APP#${appId}`,
+    SK: `NOTE#${interviewId}#${id}`,
+  }),
   history: (appId: string, at: string, id: string) => ({
     PK: `APP#${appId}`,
     SK: `HISTORY#${at}#${id}`,

@@ -1,7 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import type { InterviewDto, InterviewInput, InterviewUpdate } from '@job-tracker/shared';
-import { type Db, isConditionFailed, iso, key, updateExisting } from '../../db/dynamo.js';
+import {
+  batchDelete,
+  type Db,
+  isConditionFailed,
+  iso,
+  key,
+  queryPartition,
+  updateExisting,
+} from '../../db/dynamo.js';
 import { type InterviewItem, nul, toInterviewDto } from '../../db/mappers.js';
 import { interviewIndexKeys } from '../applications/applications.repository.js';
 
@@ -17,7 +25,6 @@ export class DynamoInterviewsRepository {
       scheduledAt: iso(input.scheduledAt),
       durationMinutes: nul(input.durationMinutes),
       location: nul(input.location),
-      notes: nul(input.notes),
       timeUnknown: input.timeUnknown ?? false,
       debriefedAt: null,
       createdAt: now,
@@ -64,10 +71,21 @@ export class DynamoInterviewsRepository {
           ConditionExpression: 'attribute_exists(PK)',
         }),
       );
-      return true;
     } catch (err) {
       if (isConditionFailed(err)) return false;
       throw err;
     }
+    // Cascade: the interview's notes go with it. Not atomic with the delete above; a note left
+    // behind by a failure here is harmless because reads drop notes of missing interviews.
+    const notes = await queryPartition<{ PK: string; SK: string }>(
+      this.db,
+      `APP#${applicationId}`,
+      `NOTE#${id}#`,
+    );
+    await batchDelete(
+      this.db,
+      notes.map(({ PK, SK }) => ({ PK, SK })),
+    );
+    return true;
   }
 }

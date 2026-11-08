@@ -8,6 +8,7 @@ import {
   INTERVIEW_ROUND_STATUSES,
   type InterviewDto,
   type InterviewType,
+  type NoteDto,
   type OpportunityDto,
   type OpportunityStatus,
   type ReferralChannel,
@@ -76,9 +77,17 @@ export interface InterviewItem {
   scheduledAt: string;
   durationMinutes: number | null;
   location: string | null;
-  notes: string | null;
   timeUnknown?: boolean;
   debriefedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteItem {
+  id: string;
+  applicationId: string;
+  interviewId: string;
+  text: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -143,9 +152,17 @@ export const toInterviewDto = (i: InterviewItem): InterviewDto => ({
   scheduledAt: i.scheduledAt,
   durationMinutes: i.durationMinutes,
   location: i.location,
-  notes: i.notes,
   timeUnknown: i.timeUnknown ?? false,
   debriefedAt: i.debriefedAt ?? null,
+});
+
+export const toNoteDto = (n: NoteItem): NoteDto => ({
+  id: n.id,
+  applicationId: n.applicationId,
+  interviewId: n.interviewId,
+  text: n.text,
+  createdAt: n.createdAt,
+  updatedAt: n.updatedAt,
 });
 
 export const toHistoryDto = (h: HistoryItem): StatusHistoryDto => ({

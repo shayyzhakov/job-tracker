@@ -32,11 +32,13 @@ import {
   type ContactItem,
   type HistoryItem,
   type InterviewItem,
+  type NoteItem,
   nul,
   toApplicationDto,
   toContactDto,
   toHistoryDto,
   toInterviewDto,
+  toNoteDto,
 } from '../../db/mappers.js';
 
 export interface NewApplication {
@@ -224,6 +226,11 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     const interviews = ofKind<InterviewItem>('INTERVIEW#').sort((a, b) =>
       a.scheduledAt.localeCompare(b.scheduledAt),
     );
+    const interviewIds = new Set(interviews.map((i) => i.id));
+    // Newest first; notes of an interview that no longer exists (failed cascade) are dropped.
+    const notes = ofKind<NoteItem>('NOTE#')
+      .filter((n) => interviewIds.has(n.interviewId))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
     const history = ofKind<HistoryItem>('HISTORY#'); // sort key already orders by time then id
     const nowIso = iso(new Date());
     const next = interviews.find((i) => i.scheduledAt > nowIso)?.scheduledAt ?? null;
@@ -232,6 +239,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       ...toApplicationDto(app, company, next, hasPast),
       contacts: contacts.map(toContactDto),
       interviews: interviews.map(toInterviewDto),
+      interviewNotes: notes.map(toNoteDto),
       history: history.map(toHistoryDto),
     };
   }

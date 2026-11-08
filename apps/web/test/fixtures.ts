@@ -66,6 +66,7 @@ export const applicationDetail = (
     },
   ],
   interviews: [],
+  interviewNotes: [],
   history: [
     {
       id: 'h1',
@@ -86,7 +87,6 @@ export const upcomingInterview: UpcomingInterviewDto = {
   scheduledAt: '2026-11-07T12:00:00.000Z',
   durationMinutes: 60,
   location: null,
-  notes: null,
   timeUnknown: false,
   debriefedAt: null,
   companyName: 'Acme',

@@ -25,6 +25,7 @@ import { companiesRoutes } from './modules/companies/companies.routes.js';
 import { DynamoProgressRepository } from './modules/gamification/progress.repository.js';
 import { progressRoutes } from './modules/gamification/progress.routes.js';
 import { healthRoutes } from './modules/health/health.routes.js';
+import { notesRoutes } from './modules/notes/notes.routes.js';
 import { opportunitiesRoutes } from './modules/opportunities/opportunities.routes.js';
 import { overviewRoutes } from './modules/overview/overview.routes.js';
 import { scoutCriteriaRoutes } from './modules/scout-criteria/scout-criteria.routes.js';
@@ -135,6 +136,10 @@ export async function buildApp({
         }),
         { prefix: '/applications/:applicationId/interviews' },
       );
+      await api.register(notesRoutes, {
+        prefix: '/applications/:applicationId/interviews/:interviewId/notes',
+        service: services.notes,
+      });
     },
     { prefix: '/api/v1' },
   );

@@ -127,7 +127,6 @@ export const InterviewInputSchema = z.object({
   scheduledAt: z.coerce.date(),
   durationMinutes: z.number().int().positive().optional(),
   location: optionalText,
-  notes: optionalText,
   /** The round exists but nobody has given a real time yet (scheduledAt is a placeholder). */
   timeUnknown: z.boolean().optional(),
 });
@@ -165,10 +164,16 @@ export const InterviewUpdateSchema = z
     scheduledAt: z.coerce.date(),
     durationMinutes: z.number().int().positive().nullable(),
     location: nullableText,
-    notes: nullableText,
     /** Set to true to mark the interview debriefed (now), or null to clear. */
     debriefed: z.boolean().nullable(),
   })
   .partial();
 export type InterviewUpdate = z.infer<typeof InterviewUpdateSchema>;
 export type InterviewUpdateInput = z.input<typeof InterviewUpdateSchema>;
+
+/** A note is multi-line plain text attached to one interview. Blank text is rejected. */
+const noteText = z.string().trim().min(1, 'Required');
+export const NoteInputSchema = z.object({ text: noteText });
+export type NoteInput = z.infer<typeof NoteInputSchema>;
+export const NoteUpdateSchema = z.object({ text: noteText });
+export type NoteUpdate = z.infer<typeof NoteUpdateSchema>;

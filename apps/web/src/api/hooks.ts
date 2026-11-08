@@ -13,6 +13,7 @@ import type {
   InterviewCreateInput,
   InterviewDto,
   InterviewUpdateInput,
+  NoteDto,
   OpportunityDto,
   OpportunityStatus,
   OverviewDto,
@@ -264,4 +265,29 @@ export function useSaveScoutCriteria() {
       api<ScoutCriteriaDto>('/scout/criteria', { method: 'PUT', json: criteria }),
     onSuccess: (saved) => qc.setQueryData(queryKeys.scoutCriteria, saved),
   });
+}
+
+/** Notes are loaded with the application; writes only refresh the application (no app event, no other queries). */
+export function useNoteMutations(applicationId: string) {
+  const qc = useQueryClient();
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.application(applicationId) });
+  const base = (interviewId: string) =>
+    `/applications/${applicationId}/interviews/${interviewId}/notes`;
+  return {
+    create: useMutation({
+      mutationFn: ({ interviewId, text }: { interviewId: string; text: string }) =>
+        api<NoteDto>(base(interviewId), { method: 'POST', json: { text } }),
+      onSuccess: refresh,
+    }),
+    update: useMutation({
+      mutationFn: ({ interviewId, id, text }: { interviewId: string; id: string; text: string }) =>
+        api<NoteDto>(`${base(interviewId)}/${id}`, { method: 'PATCH', json: { text } }),
+      onSuccess: refresh,
+    }),
+    remove: useMutation({
+      mutationFn: ({ interviewId, id }: { interviewId: string; id: string }) =>
+        api<void>(`${base(interviewId)}/${id}`, { method: 'DELETE' }),
+      onSuccess: refresh,
+    }),
+  };
 }

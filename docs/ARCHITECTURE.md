@@ -38,7 +38,7 @@ MCP tools (defineTool)               ┴─> services ─> repositories ─> Dyn
 ```
 
 - **`services.ts` is the composition root.** `createServices(db)` wires repositories into services once; both the REST routes and the MCP tools receive the same `Services` object, so business rules (status history, company de-duplication, applied-date handling, promote/dismiss conflicts) live in one place.
-- **Modules** under `src/modules/`: `actions`, `applications`, `companies`, `contacts`, `interviews`, `overview`, `opportunities`, `scout-criteria`, `integrations`, `health`. Contacts and interviews share a generic `ChildService`; `InterviewsService` extends it so scheduling an interview also advances the application's stage.
+- **Modules** under `src/modules/`: `actions`, `applications`, `companies`, `contacts`, `interviews`, `notes`, `overview`, `opportunities`, `scout-criteria`, `integrations`, `health`. Contacts and interviews share a generic `ChildService`; `InterviewsService` extends it so scheduling an interview also advances the application's stage. `notes` has its own `NotesService` and routes (`/applications/:applicationId/interviews/:interviewId/notes`) because a note is keyed on the interview as well as the application; notes are read through the application detail (`interviewNotes`), not by their own `GET`.
 - **Validation:** request and response schemas come from `packages/shared` via `fastify-type-provider-zod`. MCP handlers re-validate with the same schemas.
 - **Errors:** services throw `NotFoundError` / `ConflictError`. The Fastify error handler maps them to 404 / 409 (validation to 400); the MCP layer maps them to tool errors with readable messages.
 - **Repository interfaces** have a DynamoDB implementation and, for unit tests, an in-memory fake in `apps/api/test/fakes.ts`.
@@ -69,7 +69,7 @@ Environment variables only, parsed and validated with Zod in `config.ts` (see `.
 
 ### MCP server
 
-`src/mcp/` registers tools with `defineTool`, which wraps results as compact JSON, converts thrown errors into tool errors, and attaches `readOnlyHint` / `destructiveHint` annotations. Scope is tools only (no MCP resources or prompts). `update_scout_criteria` is a partial update (unsent fields are kept), unlike the REST `PUT`, which replaces everything. Claude Desktop connects through `mcp-remote` (it only runs stdio servers locally). `MCP_ENABLED=false` turns the endpoint off. Tools call `Services` directly; no logic is duplicated. Tools are grouped in `tools/applications.ts`, `children.ts`, `suggestions.ts` and `misc.ts`.
+`src/mcp/` registers tools with `defineTool`, which wraps results as compact JSON, converts thrown errors into tool errors, and attaches `readOnlyHint` / `destructiveHint` annotations. Scope is tools only (no MCP resources or prompts). `update_scout_criteria` is a partial update (unsent fields are kept), unlike the REST `PUT`, which replaces everything. Claude Desktop connects through `mcp-remote` (it only runs stdio servers locally). `MCP_ENABLED=false` turns the endpoint off. Tools call `Services` directly; no logic is duplicated. Interview notes are exposed as `list_notes`, `add_note`, `update_note` and `remove_note` (destructive); `get_application` includes them. Tools are grouped in `tools/applications.ts`, `children.ts`, `suggestions.ts` and `misc.ts`.
 
 ## 4. Data layer
 
@@ -79,23 +79,24 @@ DynamoDB, single table, on-demand billing, keys `PK`/`SK`, two global secondary 
 
 The full entity-relationship diagram, column types, enums, relationships and access patterns are in [DATA-MODEL.md](DATA-MODEL.md).
 
-| Item                     | PK                   | SK                  | Index keys                                                                                                       |
-| ------------------------ | -------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Application              | `APP#<id>`           | `META`              | GSI1: `APPS` / `<updatedAt>#<id>` (list, newest first)                                                           |
-| Contact                  | `APP#<id>`           | `CONTACT#<id>`      |                                                                                                                  |
-| Interview                | `APP#<id>`           | `INTERVIEW#<id>`    | GSI1: `INTERVIEWS` / `<scheduledAt>#<id>` (upcoming interviews)                                                  |
-| Status history entry     | `APP#<id>`           | `HISTORY#<at>#<id>` | Carries `interviewId` when the step created or came from an interview (absent on older rows)                     |
-| Company                  | `COMPANY#<id>`       | `META`              | GSI1 (company listing and search)                                                                                |
-| Company-name marker      | `CNAME#<lowercased>` | `META`              | Uniqueness only                                                                                                  |
-| Opportunity (suggestion) | `OPP#<id>`           | `META`              | GSI1: `OPPSTATUS#<status>` / zero-padded score + time (best first); GSI2: `APPOPP#<applicationId>` once promoted |
-| Listing-URL marker       | `OPPURL#<sha256(url)>`       | `META`              | Uniqueness only                                                                                                  |
-| Scout criteria           | `SCOUT`              | `CRITERIA`          |                                                                                                                  |
+| Item                     | PK                     | SK                        | Index keys                                                                                                       |
+| ------------------------ | ---------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Application              | `APP#<id>`             | `META`                    | GSI1: `APPS` / `<updatedAt>#<id>` (list, newest first)                                                           |
+| Contact                  | `APP#<id>`             | `CONTACT#<id>`            |                                                                                                                  |
+| Interview                | `APP#<id>`             | `INTERVIEW#<id>`          | GSI1: `INTERVIEWS` / `<scheduledAt>#<id>` (upcoming interviews)                                                  |
+| Interview note           | `APP#<id>`             | `NOTE#<interviewId>#<id>` | None. The `NOTE#<interviewId>#` prefix loads one interview's notes                                               |
+| Status history entry     | `APP#<id>`             | `HISTORY#<at>#<id>`       | Carries `interviewId` when the step created or came from an interview (absent on older rows)                     |
+| Company                  | `COMPANY#<id>`         | `META`                    | GSI1 (company listing and search)                                                                                |
+| Company-name marker      | `CNAME#<lowercased>`   | `META`                    | Uniqueness only                                                                                                  |
+| Opportunity (suggestion) | `OPP#<id>`             | `META`                    | GSI1: `OPPSTATUS#<status>` / zero-padded score + time (best first); GSI2: `APPOPP#<applicationId>` once promoted |
+| Listing-URL marker       | `OPPURL#<sha256(url)>` | `META`                    | Uniqueness only                                                                                                  |
+| Scout criteria           | `SCOUT`                | `CRITERIA`                |                                                                                                                  |
 
 ### Design notes
 
 - **The action queue is derived, not stored.** `deriveActions` (`packages/shared/src/actions`) is a pure function of the active applications and all interviews; `GET /api/v1/actions` loads them and calls it. Only the user's inputs are stored on the application item: `replyBy`, `dueAt`, `nextStep`, `snoozedUntil`, `waitingOnThemAt`, `followUps` and `statusChangedAt` (rows without it fall back to `appliedAt` while applied, else `updatedAt`). A status change resets the hand-over, snooze and timeline. Interviews carry `timeUnknown` (placeholder time from a status change) and `debriefedAt`.
 
-- **Item collections per application.** An application, its contacts, interviews and history share the partition `APP#<id>`, so loading a full application is one `Query`.
+- **Item collections per application.** An application, its contacts, interviews, interview notes and history share the partition `APP#<id>`, so loading a full application is one `Query`.
 - **Uniqueness via marker items.** Company names and listing URLs are made unique by writing a marker item in the same `TransactWriteItems` as the entity, guarded by `attribute_not_exists`.
 - **Atomic multi-item changes** (create application with history, status change, promote suggestion) use transactions.
 - **Scale assumption:** personal-scale data. List endpoints read an index and filter in memory instead of modelling every filter as a key.
@@ -216,14 +217,16 @@ Development is test-first. Quality gates: `pnpm test` (workspace packages run se
 
 ## 10. Key decisions
 
-| Decision                                           | Reason                                                                                                                                                                                     |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Lambda + DynamoDB instead of containers + RDS      | Idle cost near zero, nothing to patch or scale; data is small and access patterns known.                                                                                                   |
-| One Fastify app for Lambda and local               | Same code path everywhere; the Lambda adapter is a few lines.                                                                                                                              |
-| Shared Zod schemas across API, MCP, web and worker | One definition of every input and DTO; MCP and REST cannot drift.                                                                                                                          |
-| Services shared by REST and MCP                    | Business rules are implemented once.                                                                                                                                                       |
-| Stateless MCP over Streamable HTTP                 | Fits Lambda (no sessions to store).                                                                                                                                                        |
-| Cognito as MCP authorization server + DCR route    | Cognito has no dynamic client registration; a small route in the API creates app clients, so clients need no manual setup and no extra AWS service or Lambda.                              |
-| Discovery by well-known URLs, not the 401 header   | Lambda Function URLs rename `WWW-Authenticate`; a CloudFront Function cannot restore it on the origin's 401 (tried and removed). Lambda@Edge is the fallback if a client needs the header. |
-| OpenTofu rather than SAM / CDK / Serverless        | One source of truth for all infrastructure.                                                                                                                                                |
-| Single DynamoDB table with marker items            | Cheap transactional uniqueness and one-query aggregates without a relational DB.                                                                                                           |
+| Decision                                           | Reason                                                                                                                                                                                                                                              |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lambda + DynamoDB instead of containers + RDS      | Idle cost near zero, nothing to patch or scale; data is small and access patterns known.                                                                                                                                                            |
+| One Fastify app for Lambda and local               | Same code path everywhere; the Lambda adapter is a few lines.                                                                                                                                                                                       |
+| Shared Zod schemas across API, MCP, web and worker | One definition of every input and DTO; MCP and REST cannot drift.                                                                                                                                                                                   |
+| Services shared by REST and MCP                    | Business rules are implemented once.                                                                                                                                                                                                                |
+| Stateless MCP over Streamable HTTP                 | Fits Lambda (no sessions to store).                                                                                                                                                                                                                 |
+| Cognito as MCP authorization server + DCR route    | Cognito has no dynamic client registration; a small route in the API creates app clients, so clients need no manual setup and no extra AWS service or Lambda.                                                                                       |
+| Discovery by well-known URLs, not the 401 header   | Lambda Function URLs rename `WWW-Authenticate`; a CloudFront Function cannot restore it on the origin's 401 (tried and removed). Lambda@Edge is the fallback if a client needs the header.                                                          |
+| Interview delete cascades notes non-atomically     | A transaction caps at 100 items and notes are unbounded. The interview is deleted first, then its notes are batch-deleted; leftovers are harmless because reads drop notes whose interview is gone.                                                 |
+| Interview notes migrated by a one-off script       | `pnpm db:migrate-notes` (`src/db/migrate-interview-notes.ts`) turns the old `INTERVIEW.notes` text into one note per interview (note id = interview id, written only if absent) and removes the attribute; idempotent and run once per environment. |
+| OpenTofu rather than SAM / CDK / Serverless        | One source of truth for all infrastructure.                                                                                                                                                                                                         |
+| Single DynamoDB table with marker items            | Cheap transactional uniqueness and one-query aggregates without a relational DB.                                                                                                                                                                    |

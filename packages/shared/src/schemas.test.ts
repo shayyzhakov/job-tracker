@@ -132,6 +132,15 @@ describe('child update schemas', () => {
 
   it('InterviewUpdateSchema applies no defaults', async () => {
     const { InterviewUpdateSchema } = await import('./schemas.js');
-    expect(InterviewUpdateSchema.parse({ notes: 'x' })).toEqual({ notes: 'x' });
+    expect(InterviewUpdateSchema.parse({ location: 'x' })).toEqual({ location: 'x' });
+  });
+
+  it('note schemas trim text and reject blank text', async () => {
+    const { NoteInputSchema, NoteUpdateSchema } = await import('./schemas.js');
+    expect(NoteInputSchema.parse({ text: '  Asked about indexes\nand caching ' })).toEqual({
+      text: 'Asked about indexes\nand caching',
+    });
+    expect(NoteInputSchema.safeParse({ text: '   ' }).success).toBe(false);
+    expect(NoteUpdateSchema.safeParse({}).success).toBe(false);
   });
 });

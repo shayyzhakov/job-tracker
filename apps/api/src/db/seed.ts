@@ -4,6 +4,8 @@ import { DynamoApplicationsRepository } from '../modules/applications/applicatio
 import { ApplicationsService } from '../modules/applications/applications.service.js';
 import { DynamoCompaniesRepository } from '../modules/companies/companies.repository.js';
 import { DynamoInterviewsRepository } from '../modules/interviews/interviews.repository.js';
+import { DynamoNotesRepository } from '../modules/notes/notes.repository.js';
+import { NotesService } from '../modules/notes/notes.service.js';
 import { clearTable } from './clear.js';
 import { createDb, resolveDbConfig } from './dynamo.js';
 import { ensureTable } from './table.js';
@@ -162,6 +164,7 @@ const samples: Array<{
 ];
 
 await clearTable(db);
+const notes = new NotesService(new DynamoNotesRepository(db));
 for (const { input, path = [], interviewInDays, timeline, round } of samples) {
   const { id } = await service.create(ApplicationCreateSchema.parse(input));
   for (const [i, status] of path.entries()) {
@@ -172,6 +175,21 @@ for (const { input, path = [], interviewInDays, timeline, round } of samples) {
   // The upcoming technical round is a status step too: it creates the interview record.
   if (interviewInDays !== undefined) {
     await service.changeStatus(id, 'technical_interview', at(interviewInDays, 14));
+  }
+  // Sample notes: how a past round went, and prep for an upcoming one.
+  const { interviews } = await service.get(id);
+  const now = new Date().toISOString();
+  const past = interviews.find((i) => i.scheduledAt <= now);
+  const upcoming = interviews.find((i) => i.scheduledAt > now);
+  if (past) {
+    await notes.create(id, past.id, {
+      text: 'Asked about indexing strategy and how I would shard a hot table.\nTeam is 6 people, on-call rotation every 6 weeks.',
+    });
+  }
+  if (upcoming) {
+    await notes.create(id, upcoming.id, {
+      text: 'Prep: review caching trade-offs.\nAsk about roadmap and team growth.',
+    });
   }
 }
 console.log(`Seeded ${samples.length} applications`);

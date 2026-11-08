@@ -18,6 +18,7 @@ import {
   Modal,
   SimpleGrid,
   Stack,
+  Tabs,
   Text,
   TextInput,
   Timeline,
@@ -42,6 +43,7 @@ import { formatDate, formatDateTime, formatIls } from '../../lib/format';
 import { ApplicationForm, toUpdatePayload, valuesFromApplication } from './ApplicationForm';
 import { ContactsSection } from './ContactsSection';
 import { InterviewsSection } from './InterviewsSection';
+import { NotesTab } from './NotesTab';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -274,76 +276,98 @@ export function ApplicationDetailPage() {
 
       <Slot name="application.detail.top" applicationId={app.id} status={app.status} />
 
-      <Grid>
-        <Grid.Col span={{ base: 12, md: 8 }}>
-          <Stack>
-            {editing ? (
-              <ApplicationForm
-                mode="edit"
-                initialValues={valuesFromApplication(app)}
-                submitting={update.isPending}
-                submitLabel="Save changes"
-                onCancel={() => setEditing(false)}
-                onSubmit={(values) =>
-                  update.mutate(toUpdatePayload(values), {
-                    onSuccess: () => setEditing(false),
-                    onError: (err) =>
-                      notifications.show({
-                        color: 'red',
-                        title: 'Could not save',
-                        message: err.message,
-                      }),
-                  })
-                }
-              />
-            ) : (
-              <Details app={app} />
-            )}
-            {!editing && (
-              <>
-                <InterviewsSection applicationId={app.id} interviews={app.interviews} />
-                <ContactsSection applicationId={app.id} contacts={app.contacts} />
-              </>
-            )}
-          </Stack>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 4 }}>
-          <Card withBorder padding="lg">
-            <Text fw={600} mb="md">
-              Status history
-            </Text>
-            <Timeline active={lastDone} bulletSize={14} lineWidth={2} data-testid="status-timeline">
-              {steps.map((step) => (
-                <Timeline.Item
-                  key={step.key}
-                  lineVariant={step.scheduled ? 'dashed' : 'solid'}
-                  title={
-                    step.scheduled ? (
-                      <Text span fs="italic" c="dimmed" size="sm" fw={500}>
-                        {step.title}
-                      </Text>
-                    ) : (
-                      step.title
-                    )
-                  }
-                  data-testid={step.scheduled ? 'upcoming-step' : undefined}
+      <Tabs defaultValue="details" keepMounted={false}>
+        <Tabs.List mb="md">
+          <Tabs.Tab value="details">Details</Tabs.Tab>
+          <Tabs.Tab value="notes">
+            Notes{app.interviewNotes.length > 0 ? ` (${app.interviewNotes.length})` : ''}
+          </Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value="notes">
+          <NotesTab applicationId={app.id} interviews={app.interviews} notes={app.interviewNotes} />
+        </Tabs.Panel>
+        <Tabs.Panel value="details">
+          <Grid>
+            <Grid.Col span={{ base: 12, md: 8 }}>
+              <Stack>
+                {editing ? (
+                  <ApplicationForm
+                    mode="edit"
+                    initialValues={valuesFromApplication(app)}
+                    submitting={update.isPending}
+                    submitLabel="Save changes"
+                    onCancel={() => setEditing(false)}
+                    onSubmit={(values) =>
+                      update.mutate(toUpdatePayload(values), {
+                        onSuccess: () => setEditing(false),
+                        onError: (err) =>
+                          notifications.show({
+                            color: 'red',
+                            title: 'Could not save',
+                            message: err.message,
+                          }),
+                      })
+                    }
+                  />
+                ) : (
+                  <Details app={app} />
+                )}
+                {!editing && (
+                  <>
+                    <InterviewsSection
+                      applicationId={app.id}
+                      interviews={app.interviews}
+                      notes={app.interviewNotes}
+                    />
+                    <ContactsSection applicationId={app.id} contacts={app.contacts} />
+                  </>
+                )}
+              </Stack>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, md: 4 }}>
+              <Card withBorder padding="lg">
+                <Text fw={600} mb="md">
+                  Status history
+                </Text>
+                <Timeline
+                  active={lastDone}
+                  bulletSize={14}
+                  lineWidth={2}
+                  data-testid="status-timeline"
                 >
-                  {step.scheduled && (
-                    <Group gap={6}>
-                      <Badge size="xs" variant="outline" color="gray">
-                        Scheduled
-                      </Badge>
-                    </Group>
-                  )}
-                  <Text size="xs" c="dimmed" mt={step.scheduled ? 4 : 0}>
-                    {formatDateTime(step.at)}
-                  </Text>
-                </Timeline.Item>
-              ))}
-            </Timeline>
-          </Card>
-        </Grid.Col>
-      </Grid>
+                  {steps.map((step) => (
+                    <Timeline.Item
+                      key={step.key}
+                      lineVariant={step.scheduled ? 'dashed' : 'solid'}
+                      title={
+                        step.scheduled ? (
+                          <Text span fs="italic" c="dimmed" size="sm" fw={500}>
+                            {step.title}
+                          </Text>
+                        ) : (
+                          step.title
+                        )
+                      }
+                      data-testid={step.scheduled ? 'upcoming-step' : undefined}
+                    >
+                      {step.scheduled && (
+                        <Group gap={6}>
+                          <Badge size="xs" variant="outline" color="gray">
+                            Scheduled
+                          </Badge>
+                        </Group>
+                      )}
+                      <Text size="xs" c="dimmed" mt={step.scheduled ? 4 : 0}>
+                        {formatDateTime(step.at)}
+                      </Text>
+                    </Timeline.Item>
+                  ))}
+                </Timeline>
+              </Card>
+            </Grid.Col>
+          </Grid>
+        </Tabs.Panel>
+      </Tabs>
 
       <RoundTimeModal
         key={pendingRound?.status ?? 'none'}

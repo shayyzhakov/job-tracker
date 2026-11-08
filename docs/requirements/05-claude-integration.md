@@ -10,16 +10,16 @@ Let the user manage their job search by talking to an AI assistant such as Claud
 
 1. **Same capabilities as the web app.** The assistant can do everything the user can do in the UI:
 
-   | Area           | Capabilities                                                                                |
-   | -------------- | ------------------------------------------------------------------------------------------- |
-   | Applications   | list and search (same filters as the UI), view details, create, edit, change status, delete |
-   | Contacts       | add, edit, remove on an application                                                         |
-   | Interviews     | schedule, edit, remove on an application                                                    |
-   | Interview notes | *Planned:* list, add, edit, remove on an interview (see [10](10-interview-notes.md))        |
-| Companies      | search                                                                                      |
-   | Overview       | see the dashboard figures and upcoming interviews                                           |
-   | Suggestions    | list (by status), add to applications, dismiss                                              |
-   | Scout settings | view, update (changing only the fields given)                                               |
+   | Area            | Capabilities                                                                                |
+   | --------------- | ------------------------------------------------------------------------------------------- |
+   | Applications    | list and search (same filters as the UI), view details, create, edit, change status, delete |
+   | Contacts        | add, edit, remove on an application                                                         |
+   | Interviews      | schedule, edit, remove on an application                                                    |
+   | Interview notes | list, add, edit, remove on an interview (see [10](10-interview-notes.md))                   |
+   | Companies       | search. *Planned:* list with application counts, view, create, edit, delete (see [11](11-companies.md)) |
+   | Overview        | see the dashboard figures and upcoming interviews                                           |
+   | Suggestions     | list (by status), add to applications, dismiss                                              |
+   | Scout settings  | view, update (changing only the fields given)                                               |
 
 2. **Same behaviour as the web app.** Status history, company de-duplication, applied-date handling and suggestion conflicts work identically whichever way a change is made, and changes made through the assistant are immediately visible in the web UI.
 3. **Clear errors.** Invalid input, unknown items and conflicts are reported with a message the assistant can act on (for example "Application … not found", "Opportunity … is already promoted").

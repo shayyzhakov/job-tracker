@@ -48,7 +48,6 @@ const interview = (
   scheduledAt,
   durationMinutes: 60,
   location: null,
-  notes: null,
   timeUnknown: false,
   debriefedAt: null,
   ...over,

@@ -31,7 +31,6 @@ describe('ApplicationDetailPage', () => {
       scheduledAt,
       durationMinutes: null,
       location: null,
-      notes: null,
       timeUnknown: false,
       debriefedAt: null,
     });

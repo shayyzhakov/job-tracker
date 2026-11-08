@@ -47,7 +47,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     {
       title: 'List applications',
       description:
-        'List job applications, most recently updated first. Returns a compact row per application; use get_application for contacts, interviews and history.',
+        'List job applications, most recently updated first. Returns a compact row per application; use get_application for contacts, interviews, interview notes and history.',
       inputSchema: {
         status: status.optional().describe('Only applications in this status'),
         active: z
@@ -80,7 +80,8 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     'get_application',
     {
       title: 'Get application',
-      description: 'Get one application with its company, contacts, interviews and status history.',
+      description:
+        'Get one application with its company, contacts, interviews, interview notes and status history.',
       inputSchema: { id },
       annotations: { readOnlyHint: true },
     },
@@ -238,7 +239,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     {
       title: 'Delete application',
       description:
-        'Permanently delete an application with its contacts, interviews and history. Confirm with the user first.',
+        'Permanently delete an application with its contacts, interviews, interview notes and history. Confirm with the user first.',
       inputSchema: { id },
       annotations: { destructiveHint: true },
     },

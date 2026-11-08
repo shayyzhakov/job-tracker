@@ -1,6 +1,6 @@
 # 10. Interview notes
 
-Status: **Planned**
+Status: **Built**
 
 ## Goal
 
@@ -27,12 +27,13 @@ Remember how each interview went: the technical questions asked, new facts about
 - Deleting an interview removes its notes from the tab.
 - From the assistant, the user can add and list notes and see them in the web UI immediately.
 
-## Data model impact (when built)
+## Data model
 
-- New item type `NOTE` in the application's partition: `PK = APP#<appId>`, `SK = NOTE#<interviewId>#<noteId>`. One `begins_with(SK, 'NOTE#')` query loads the Notes tab, and `begins_with(SK, 'NOTE#<interviewId>#')` loads one interview's notes. No GSI.
+- Item type `NOTE` in the application's partition: `PK = APP#<appId>`, `SK = NOTE#<interviewId>#<noteId>`. One `begins_with(SK, 'NOTE#')` query loads the Notes tab, and `begins_with(SK, 'NOTE#<interviewId>#')` loads one interview's notes. No GSI.
 - Attributes: `id`, `applicationId`, `interviewId`, `text`, `createdAt`, `updatedAt`.
-- Deleting an interview also deletes its notes (transaction or batch). `INTERVIEW.notes` is removed, with a one-off migration.
-- When implemented, update the ERD (`INTERVIEW ||--o{ NOTE`), key layout, access patterns and transaction tables in [DATA-MODEL.md](../DATA-MODEL.md), and the item types in [ARCHITECTURE.md](../ARCHITECTURE.md).
+- Deleting an interview also deletes its notes (transaction or batch). `INTERVIEW.notes` is removed, with a one-off migration (`pnpm db:migrate-notes`).
+- Documented in [DATA-MODEL.md](../DATA-MODEL.md) and [ARCHITECTURE.md](../ARCHITECTURE.md). Notes are returned as `interviewNotes` on the application detail; REST writes are `POST/PATCH/DELETE /applications/:id/interviews/:interviewId/notes[/:noteId]`.
+- Interview delete cascades its notes non-atomically (reads ignore notes whose interview is gone). Run `pnpm db:migrate-notes` once per environment to migrate old text.
 
 ## Not included (v1)
 

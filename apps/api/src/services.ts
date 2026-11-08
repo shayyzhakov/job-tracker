@@ -13,6 +13,8 @@ import {
 import { DynamoContactsRepository } from './modules/contacts/contacts.repository.js';
 import { DynamoInterviewsRepository } from './modules/interviews/interviews.repository.js';
 import { InterviewsService } from './modules/interviews/interviews.service.js';
+import { DynamoNotesRepository } from './modules/notes/notes.repository.js';
+import { NotesService } from './modules/notes/notes.service.js';
 import { DynamoOpportunitiesRepository } from './modules/opportunities/opportunities.repository.js';
 import { OpportunitiesService } from './modules/opportunities/opportunities.service.js';
 import { DynamoOverviewRepository } from './modules/overview/overview.repository.js';
@@ -28,6 +30,7 @@ export interface Services {
   companies: CompaniesRepository;
   contacts: ChildService<ContactInput, ContactUpdate, ContactDto>;
   interviews: InterviewsService;
+  notes: NotesService;
   overview: OverviewService;
   opportunities: OpportunitiesService;
   scoutCriteria: ScoutCriteriaRepository;
@@ -48,6 +51,7 @@ export function createServices(db: Db): Services {
     companies,
     contacts: new ChildService('Contact', new DynamoContactsRepository(db), applicationsRepo),
     interviews: new InterviewsService(interviewsRepo, applicationsRepo, applications),
+    notes: new NotesService(new DynamoNotesRepository(db)),
     overview: new OverviewService(new DynamoOverviewRepository(db)),
     opportunities: new OpportunitiesService({
       opportunities: new DynamoOpportunitiesRepository(db),

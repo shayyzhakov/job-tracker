@@ -110,6 +110,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
         notes: c.notes ?? null,
       })),
       interviews: [],
+      interviewNotes: [],
       history: [
         {
           id: randomUUID(),
@@ -219,7 +220,6 @@ export class FakeInterviewsRepository {
       scheduledAt: input.scheduledAt.toISOString(),
       durationMinutes: input.durationMinutes ?? null,
       location: input.location ?? null,
-      notes: input.notes ?? null,
       timeUnknown: input.timeUnknown ?? false,
       debriefedAt: null,
     };

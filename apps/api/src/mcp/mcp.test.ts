@@ -3,6 +3,7 @@ import type {
   ApplicationDetailDto,
   ContactDto,
   InterviewDto,
+  NoteDto,
   OpportunityDto,
   OverviewDto,
   ScoutCriteriaDto,
@@ -74,6 +75,10 @@ describe('MCP server', () => {
         'schedule_interview',
         'update_interview',
         'remove_interview',
+        'list_notes',
+        'add_note',
+        'update_note',
+        'remove_note',
         'search_companies',
         'get_overview',
         'get_actions',
@@ -87,10 +92,21 @@ describe('MCP server', () => {
         'update_scout_criteria',
       ].sort(),
     );
-    for (const name of ['list_applications', 'get_application', 'get_overview', 'get_actions']) {
+    for (const name of [
+      'list_applications',
+      'get_application',
+      'get_overview',
+      'get_actions',
+      'list_notes',
+    ]) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
-    for (const name of ['delete_application', 'remove_contact', 'remove_interview']) {
+    for (const name of [
+      'delete_application',
+      'remove_contact',
+      'remove_interview',
+      'remove_note',
+    ]) {
       expect(byName.get(name)?.annotations?.destructiveHint).toBe(true);
     }
     for (const tool of tools) expect(tool.description).toBeTruthy();
@@ -139,6 +155,33 @@ describe('MCP server', () => {
       interviewId: interview.id,
       location: 'Zoom',
     });
+
+    const note = await call<NoteDto>('add_note', {
+      applicationId: created.id,
+      interviewId: interview.id,
+      text: 'Asked about caching\nTeam of 6',
+    });
+    await call('update_note', {
+      applicationId: created.id,
+      interviewId: interview.id,
+      noteId: note.id,
+      text: 'Asked about caching and sharding',
+    });
+    expect(await call('list_notes', { applicationId: created.id })).toEqual([
+      expect.objectContaining({
+        interviewId: interview.id,
+        notes: [expect.objectContaining({ text: 'Asked about caching and sharding' })],
+      }),
+    ]);
+    expect(
+      (await call<ApplicationDetailDto>('get_application', { id: created.id })).interviewNotes,
+    ).toHaveLength(1);
+    await call('remove_note', {
+      applicationId: created.id,
+      interviewId: interview.id,
+      noteId: note.id,
+    });
+    expect(await call('list_notes', { applicationId: created.id })).toEqual([]);
 
     const [dana] = created.contacts;
     if (!dana) throw new Error('missing contact');
