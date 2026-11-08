@@ -14,7 +14,7 @@ import { APPLICATION_STATUSES, DEFAULT_SCOUT_CRITERIA } from '@job-tracker/share
 export const acme: CompanyDto = {
   id: 'c1',
   name: 'Acme',
-  size: 'unicorn',
+  size: 'scale_up',
   isPublic: false,
   website: null,
   location: 'Tel Aviv',

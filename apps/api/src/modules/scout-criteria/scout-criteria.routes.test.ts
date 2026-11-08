@@ -24,7 +24,7 @@ describe('scout criteria API', () => {
       seniorities: ['senior', 'staff'],
       track: 'ic',
       locations: ['Tel Aviv'],
-      companySizes: ['startup', 'unicorn'],
+      companySizes: ['startup', 'scale_up'],
       excludedCompanies: ['Acme'],
       minScore: 70,
     };

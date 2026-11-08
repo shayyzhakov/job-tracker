@@ -21,7 +21,7 @@ const status = z.enum(APPLICATION_STATUSES);
 export const size = z
   .enum(COMPANY_SIZES)
   .describe(
-    'Company size bucket: early_stage_startup (seed/Series A, small team), startup (growth-stage), unicorn (privately held, $1B+ valuation), corporate (large established company, including big public ones like Meta or Amazon). Look it up if you do not know it; omit only if it cannot be found.',
+    'Company size bucket: early_stage_startup (seed/Series A, small team), startup (growth-stage, roughly 50-500 employees), scale_up (mature, established tech company of roughly 500-5,000 employees, public or private, e.g. monday.com or Wix), corporate (large established company of roughly 5,000+ employees, including big public ones like Meta or Amazon). Look it up if you do not know it; omit only if it cannot be found.',
   );
 export const isPublic = z
   .boolean()

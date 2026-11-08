@@ -52,13 +52,13 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   ghosted: 'Ghosted',
 };
 
-export const COMPANY_SIZES = ['early_stage_startup', 'startup', 'unicorn', 'corporate'] as const;
+export const COMPANY_SIZES = ['early_stage_startup', 'startup', 'scale_up', 'corporate'] as const;
 export type CompanySize = (typeof COMPANY_SIZES)[number];
 
 export const COMPANY_SIZE_LABELS: Record<CompanySize, string> = {
   early_stage_startup: 'Early-stage startup',
   startup: 'Startup',
-  unicorn: 'Unicorn',
+  scale_up: 'Scale-up',
   corporate: 'Corporate',
 };
 

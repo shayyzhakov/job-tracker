@@ -122,7 +122,7 @@ describe('MCP server', () => {
 
   it('manages an application, its contacts and interviews end to end', async () => {
     const created = await call<ApplicationDetailDto>('create_application', {
-      company: { name: 'OrbitPay', size: 'unicorn' },
+      company: { name: 'OrbitPay', size: 'scale_up' },
       roleName: 'Engineering Manager',
       isManagement: true,
       listingUrl: 'https://jobs.orbitpay.com/42',
@@ -130,7 +130,7 @@ describe('MCP server', () => {
     });
     expect(created).toMatchObject({
       status: 'to_apply',
-      company: { name: 'OrbitPay', size: 'unicorn' },
+      company: { name: 'OrbitPay', size: 'scale_up' },
       contacts: [{ name: 'Dana' }],
     });
 
@@ -268,11 +268,11 @@ describe('MCP server', () => {
       roleName: 'Backend Engineer',
       status: 'applied',
     });
-    await call('update_company', { id: wix.id, size: 'unicorn', location: 'Tel Aviv' });
+    await call('update_company', { id: wix.id, size: 'scale_up', location: 'Tel Aviv' });
     expect(
       (await call<ApplicationDetailDto>('get_application', { id: app.id })).company,
     ).toMatchObject({
-      size: 'unicorn',
+      size: 'scale_up',
       location: 'Tel Aviv',
     });
     expect(await call('get_company', { id: wix.id })).toMatchObject({

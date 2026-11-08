@@ -107,7 +107,7 @@ describe('ApplicationsPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Clear filters' }));
     await user.click(screen.getByRole('combobox', { name: 'Company size' }));
-    await user.click(await screen.findByRole('option', { name: 'Unicorn' }));
+    await user.click(await screen.findByRole('option', { name: 'Scale-up' }));
     expect(screen.getByText('Acme')).toBeInTheDocument();
     expect(screen.queryByText('BigCorp')).not.toBeInTheDocument();
   });

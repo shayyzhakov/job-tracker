@@ -6,7 +6,7 @@ const BASE = '/api/v1/applications';
 const body = {
   company: {
     name: 'Acme',
-    size: 'unicorn',
+    size: 'scale_up',
     isPublic: false,
     location: 'Tel Aviv',
   },
@@ -52,7 +52,7 @@ describe('applications API', () => {
       isManagement: true,
       status: 'applied',
       expectedSalaryIls: 45000,
-      company: { name: 'Acme', size: 'unicorn', location: 'Tel Aviv' },
+      company: { name: 'Acme', size: 'scale_up', location: 'Tel Aviv' },
     });
     expect(created.appliedAt).not.toBeNull();
     expect(created.contacts.map((c) => c.name)).toEqual(['Dana', 'Avi']);

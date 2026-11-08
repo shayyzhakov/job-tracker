@@ -30,7 +30,7 @@ describe('ScoutSettingsPage', () => {
 
     await user.type(screen.getByRole('combobox', { name: 'Roles' }), 'Platform Engineer{Enter}');
     await user.click(screen.getByRole('radio', { name: 'Individual contributor' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Unicorn' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Scale-up' }));
     await user.type(screen.getByRole('combobox', { name: 'Excluded companies' }), 'Globex{Enter}');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
@@ -40,7 +40,7 @@ describe('ScoutSettingsPage', () => {
       seniorities: ['senior'],
       track: 'ic',
       locations: ['Tel Aviv'],
-      companySizes: ['unicorn'],
+      companySizes: ['scale_up'],
       excludedCompanies: ['Globex'],
       minScore: 60,
     });

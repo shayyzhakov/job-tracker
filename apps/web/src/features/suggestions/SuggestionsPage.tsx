@@ -16,6 +16,7 @@ import { IconCheck, IconExternalLink, IconSettings, IconX } from '@tabler/icons-
 import { Link, useNavigate } from 'react-router';
 import { useDismissOpportunity, useOpportunities, usePromoteOpportunity } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
+import { RoleTitle } from '../../components/RoleTitle';
 import { formatDateMaybeTime, formatFullDateTime } from '../../lib/format';
 
 const scoreColor = (score: number) => (score >= 80 ? 'teal' : score >= 60 ? 'yellow' : 'gray');
@@ -27,10 +28,17 @@ export function SuggestionsPage() {
   const navigate = useNavigate();
 
   const onError = (err: Error) =>
-    notifications.show({ color: 'red', title: 'Something went wrong', message: err.message });
+    notifications.show({
+      color: 'red',
+      title: 'Something went wrong',
+      message: err.message,
+    });
 
   const onPromote = (id: string) =>
-    promote.mutate(id, { onSuccess: (app) => navigate(`/applications/${app.id}`), onError });
+    promote.mutate(id, {
+      onSuccess: (app) => navigate(`/applications/${app.id}`),
+      onError,
+    });
   const onDismiss = (id: string) => dismiss.mutate(id, { onError });
 
   return (
@@ -100,10 +108,15 @@ function SuggestionCard({
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={4}>
           <Text fw={600} size="lg">
-            {o.title}
+            <RoleTitle name={o.title} isManagement={o.isManagement} badgeSide="right" />
           </Text>
           <Group gap="xs">
             <Text>{o.companyName}</Text>
+            {o.companySize && (
+              <Badge size="xs" variant="light">
+                {COMPANY_SIZE_LABELS[o.companySize]}
+              </Badge>
+            )}
             {o.location && (
               <Text c="dimmed" size="sm">
                 · {o.location}
@@ -118,12 +131,6 @@ function SuggestionCard({
           <Text c="dimmed" size="sm">
             Suggested {formatFullDateTime(o.createdAt)}
           </Text>
-          <Group gap="xs">
-            {o.companySize && <Badge variant="light">{COMPANY_SIZE_LABELS[o.companySize]}</Badge>}
-            <Badge variant="light" color="grape">
-              {o.isManagement ? 'Management' : 'IC'}
-            </Badge>
-          </Group>
         </Stack>
         <Tooltip label="Match score">
           <Badge size="xl" color={scoreColor(o.score)} aria-label={`Match score ${o.score}`}>

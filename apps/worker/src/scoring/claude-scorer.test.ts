@@ -17,7 +17,7 @@ const parsed = {
   reasons: ['Senior backend', 'Tel Aviv'],
   isManagement: false,
   seniority: 'senior',
-  companySize: 'unicorn',
+  companySize: 'scale_up',
 };
 
 function fakeClient(response: Record<string, unknown>) {

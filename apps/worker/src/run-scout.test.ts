@@ -142,7 +142,7 @@ describe('runScout', () => {
   });
 
   it('filters listings whose inferred company size is not allowed, but keeps unknown sizes', async () => {
-    const criteria = { companySizes: ['unicorn' as const] };
+    const criteria = { companySizes: ['scale_up' as const] };
     const corporate = setup({ criteria, scorer: fixedScorer({ companySize: 'corporate' }) });
     await runScout(corporate.deps);
     expect(corporate.inserted[0]?.status).toBe('filtered');

@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "db:setup": "tsx --env-file=../../.env src/db/table.ts",
     "db:seed": "tsx --env-file=../../.env src/db/seed.ts",
-    "db:migrate-notes": "tsx --env-file=../../.env src/db/migrate-notes.ts"
+    "db:migrate-notes": "tsx --env-file=../../.env src/db/migrate-notes.ts",
+    "db:migrate-company-sizes": "tsx --env-file=../../.env src/db/migrate-company-sizes-cli.ts"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.164",

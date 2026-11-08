@@ -29,7 +29,7 @@ describe('CompaniesPage', () => {
     renderRoute(<CompaniesPage />, { path: '/companies' });
 
     const acmeRow = await rowOf('Acme');
-    expect(within(acmeRow).getByText('Unicorn')).toBeInTheDocument();
+    expect(within(acmeRow).getByText('Scale-up')).toBeInTheDocument();
     expect(within(acmeRow).getByText('Private')).toBeInTheDocument();
     expect(within(acmeRow).getByRole('link', { name: /2 active of 3/ })).toHaveTextContent('2 / 3');
     expect(within(acmeRow).getByRole('link', { name: /2 active of 3/ })).toHaveAttribute(

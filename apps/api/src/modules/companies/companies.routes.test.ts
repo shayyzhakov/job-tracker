@@ -73,14 +73,14 @@ describe('companies API', () => {
     const res = await t.app.inject({
       method: 'PATCH',
       url: `/api/v1/companies/${a.company.id}`,
-      payload: { size: 'unicorn', location: 'Tel Aviv' },
+      payload: { size: 'scale_up', location: 'Tel Aviv' },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json<CompanyDetailDto>()).toMatchObject({ size: 'unicorn', totalApplications: 2 });
+    expect(res.json<CompanyDetailDto>()).toMatchObject({ size: 'scale_up', totalApplications: 2 });
     for (const app of [a, b]) {
       const detail = await t.app.inject({ method: 'GET', url: `/api/v1/applications/${app.id}` });
       expect(detail.json<ApplicationDetailDto>().company).toMatchObject({
-        size: 'unicorn',
+        size: 'scale_up',
         location: 'Tel Aviv',
       });
     }

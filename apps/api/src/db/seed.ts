@@ -41,7 +41,7 @@ const samples: Array<{
     input: {
       company: {
         name: 'Nimbus Data',
-        size: 'unicorn',
+        size: 'scale_up',
         isPublic: false,
         location: 'Tel Aviv',
       },
@@ -133,7 +133,7 @@ const samples: Array<{
   },
   {
     input: {
-      company: { name: 'Vertex Pay', size: 'unicorn', location: 'Tel Aviv' },
+      company: { name: 'Vertex Pay', size: 'scale_up', location: 'Tel Aviv' },
       roleName: 'Senior Engineer',
       status: 'applied',
       appliedAt: at(-30),
