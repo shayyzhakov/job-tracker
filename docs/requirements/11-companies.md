@@ -12,7 +12,7 @@ A Companies page that is the home of company records: companies the user applied
 2. **Companies exist on their own.** A company can be created with zero applications, from the web page and from the assistant. Creating an application with a company name still reuses an existing company with the same name (case-insensitive), as in [01](01-applications.md).
 3. **Unique names.** Names are unique case-insensitively. Creating a company or renaming one into a name that already exists is rejected with a conflict. It is never merged silently.
 4. **Editable fields:** name (required), size (early-stage startup, startup, unicorn, corporate; optional), public or private flag, website and location (both optional).
-5. **Companies table.** One row per company with: name, size, type (Public or Private), and applications as `active / total`. It is searchable by name and sortable by every column, defaulting to name ascending. "Active" uses the same rule as [01](01-applications.md): every status except accepted, rejected, withdrawn and ghosted (an offer counts as active). Selecting the applications cell opens the Applications page filtered to that company.
+5. **Companies table.** One row per company with: name, size, type (Public or Private), and applications as `active / total`. It is searchable by name and sortable by every column, defaulting to name ascending. "Active" uses the same rule as [01](01-applications.md): every status except accepted, rejected, withdrawn and ghosted (an offer counts as active). Selecting the applications cell opens the Applications page filtered to that company. A filter narrows the table to all companies, only those with at least one application, or only those with none.
 6. **Add and edit in the page.** An "Add company" action opens a form. Selecting a row's name or edit action opens the same form for that company.
 7. **Counts are derived, not stored,** so they cannot drift from the applications.
 8. **Delete only with no applications at all.** A company with any application, active or closed, cannot be deleted: the action is disabled with an explanation in the UI, and the API and assistant return a clear error with the application count. Deleting a company with none removes it and frees its name for reuse. Deleting an application never deletes its company.
@@ -25,6 +25,7 @@ A Companies page that is the home of company records: companies the user applied
 - The user has three applications at one company, changes the company's size, and sees the new size on all three.
 - Deleting a company whose only application is closed (for example rejected) is refused. Deleting an unused company works, and the same name can be added again afterwards.
 - Renaming a company to another company's name is rejected as a conflict.
+- The user can show only companies with no applications, or only those with at least one.
 - The table shows, for a company with two active and one closed application, `2 / 3`.
 - From the assistant, the user can list, create, edit and delete companies and see the changes in the web UI immediately.
 

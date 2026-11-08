@@ -108,4 +108,21 @@ describe('CompaniesPage', () => {
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('already exists');
   });
+
+  it('filters to companies with or without applications', async () => {
+    listCompanies([
+      company(),
+      company({ id: 'c2', name: 'Wix', activeApplications: 0, totalApplications: 0 }),
+    ]);
+    const { user } = renderRoute(<CompaniesPage />, { path: '/companies' });
+    await screen.findByText('Acme');
+
+    await user.click(screen.getByRole('radio', { name: 'No applications' }));
+    expect(screen.queryByText('Acme')).not.toBeInTheDocument();
+    expect(screen.getByText('Wix')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: 'With applications' }));
+    expect(screen.getByText('Acme')).toBeInTheDocument();
+    expect(screen.queryByText('Wix')).not.toBeInTheDocument();
+  });
 });

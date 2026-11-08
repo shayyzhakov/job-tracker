@@ -7,6 +7,7 @@ import {
   Card,
   Group,
   Modal,
+  SegmentedControl,
   Stack,
   Table,
   Text,
@@ -24,12 +25,16 @@ import { SortableTh, useSortedRows } from '../../components/SortableTh';
 import { CompanyFormModal } from './CompanyFormModal';
 
 type SortKey = 'name' | 'size' | 'type' | 'applications';
+type Scope = 'all' | 'with' | 'without';
 
 export function CompaniesPage() {
   const [search, setSearch] = useState('');
   const [q] = useDebouncedValue(search.trim(), 250);
   const { data, isPending, error } = useCompanies(q);
-  const rows = data ?? [];
+  const [scope, setScope] = useState<Scope>('all');
+  const rows = (data ?? []).filter(
+    (c) => scope === 'all' || (scope === 'with') === c.totalApplications > 0,
+  );
   const { sorted, sort, toggle } = useSortedRows<CompanyWithCountsDto, SortKey>(
     rows,
     {
@@ -60,13 +65,25 @@ export function CompaniesPage() {
         </Button>
       </Group>
 
-      <TextInput
-        placeholder="Search companies"
-        leftSection={<IconSearch size={16} />}
-        value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
-        w={300}
-      />
+      <Group>
+        <TextInput
+          placeholder="Search companies"
+          leftSection={<IconSearch size={16} />}
+          value={search}
+          onChange={(e) => setSearch(e.currentTarget.value)}
+          w={300}
+        />
+        <SegmentedControl
+          aria-label="Applications filter"
+          value={scope}
+          onChange={(v) => setScope(v as Scope)}
+          data={[
+            { value: 'all', label: 'All' },
+            { value: 'with', label: 'With applications' },
+            { value: 'without', label: 'No applications' },
+          ]}
+        />
+      </Group>
 
       {isPending ? (
         <PageLoader />
@@ -75,8 +92,8 @@ export function CompaniesPage() {
       ) : rows.length === 0 ? (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
-            {q
-              ? 'No companies match your search.'
+            {q || scope !== 'all'
+              ? 'No companies match your filters.'
               : 'No companies yet. Add one to start tracking it.'}
           </Text>
         </Card>
