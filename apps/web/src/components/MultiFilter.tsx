@@ -34,7 +34,7 @@ export function MultiFilter<T extends string>({
     <Popover position="bottom-start" shadow="md" withinPortal>
       <Popover.Target>
         <Button
-          variant={value.length ? 'light' : 'default'}
+          variant="default"
           aria-label={`${label} filter`}
           rightSection={
             value.length ? (
