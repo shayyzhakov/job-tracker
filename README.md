@@ -148,7 +148,7 @@ Infrastructure is code (OpenTofu) in [infra/](infra/README.md); `AWS_PROFILE=<pr
 
 ## Roadmap
 
-Technical design is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Requirements live in [docs/PRD.md](docs/PRD.md) (an index of one file per requirement in `docs/requirements/`).
+Technical design is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the data model (ERD) in [docs/DATA-MODEL.md](docs/DATA-MODEL.md). Requirements live in [docs/PRD.md](docs/PRD.md) (an index of one file per requirement in `docs/requirements/`).
 
 - Custom domain for the CloudFront URL (Route 53 + ACM in us-east-1).
 - AI scout sources: real job boards (Greenhouse, Lever, Ashby and Comeet public board APIs for a company watchlist, or Claude web search). LinkedIn has no public API.

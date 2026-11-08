@@ -77,6 +77,8 @@ DynamoDB, single table, on-demand billing, keys `PK`/`SK`, two global secondary 
 
 ### Item types
 
+The full entity-relationship diagram, column types, enums, relationships and access patterns are in [DATA-MODEL.md](DATA-MODEL.md).
+
 | Item                     | PK                   | SK                  | Index keys                                                                                                       |
 | ------------------------ | -------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Application              | `APP#<id>`           | `META`              | GSI1: `APPS` / `<updatedAt>#<id>` (list, newest first)                                                           |
@@ -86,7 +88,7 @@ DynamoDB, single table, on-demand billing, keys `PK`/`SK`, two global secondary 
 | Company                  | `COMPANY#<id>`       | `META`              | GSI1 (company listing and search)                                                                                |
 | Company-name marker      | `CNAME#<lowercased>` | `META`              | Uniqueness only                                                                                                  |
 | Opportunity (suggestion) | `OPP#<id>`           | `META`              | GSI1: `OPPSTATUS#<status>` / zero-padded score + time (best first); GSI2: `APPOPP#<applicationId>` once promoted |
-| Listing-URL marker       | `OPPURL#<url>`       | `META`              | Uniqueness only                                                                                                  |
+| Listing-URL marker       | `OPPURL#<sha256(url)>`       | `META`              | Uniqueness only                                                                                                  |
 | Scout criteria           | `SCOUT`              | `CRITERIA`          |                                                                                                                  |
 
 ### Design notes
