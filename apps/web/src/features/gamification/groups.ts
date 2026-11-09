@@ -25,6 +25,7 @@ export const GROUPS: StageGroup[] = [
     hint: 'Applied, waiting or interviewing',
     statuses: [
       'applied',
+      'coffee_chat',
       'hr_screening',
       'phone_interview',
       'technical_interview',

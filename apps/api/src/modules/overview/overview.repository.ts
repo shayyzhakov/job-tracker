@@ -45,7 +45,6 @@ export class DynamoOverviewRepository {
           id: a.id,
           status: displayedStatus({
             status: a.status,
-            statusChangedAt: a.statusChangedAt ?? a.updatedAt,
             next: t?.nextStaged ?? null,
             lastPast: t?.lastPast ?? null,
           }),

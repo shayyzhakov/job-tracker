@@ -43,13 +43,15 @@ describe('unplugged (nothing registered)', () => {
 
     renderRoute(<ApplicationsPage />);
     expect(await screen.findByText('Applications')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Applications view')).not.toBeInTheDocument();
+    // The core view switch stays (Table, Timeline) but offers no Pipeline.
+    expect(screen.getByLabelText('Applications view')).toBeInTheDocument();
+    expect(screen.queryByText('Pipeline')).not.toBeInTheDocument();
     expect(hit).not.toHaveBeenCalled();
   });
 });
 
 describe('plugged', () => {
-  it('adds the hero and the view switch through slots, leaving core content intact', async () => {
+  it('adds the hero and the Pipeline view through extension points, leaving core content intact', async () => {
     server.use(http.get('/api/v1/progress', () => HttpResponse.json(progress)));
     unplug = registerGamification();
 
@@ -59,6 +61,7 @@ describe('plugged', () => {
 
     renderRoute(<ApplicationsPage />);
     expect(await screen.findByLabelText('Applications view')).toBeInTheDocument();
+    expect(screen.getByText('Pipeline')).toBeInTheDocument();
   });
 
   it('the runtime switch hides everything and stops requests', async () => {

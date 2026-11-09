@@ -25,6 +25,7 @@ import type {
   ScoutCriteriaDto,
   ScoutCriteriaInput,
   StatusGroup,
+  TimelineInterviewDto,
 } from '@job-tracker/shared';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { emitAppEvent } from '../lib/app-events';
@@ -360,3 +361,14 @@ export function useNoteMutations(applicationId: string) {
     }),
   };
 }
+
+/** Interview rounds of all applications from an instant on, with no end, earliest first. */
+export const useTimeline = (from: Date) => {
+  const params = new URLSearchParams({ from: from.toISOString() });
+  return useQuery({
+    // Under 'applications' so every interview/status mutation refreshes it.
+    queryKey: [...queryKeys.applications, 'timeline', params.toString()],
+    queryFn: () => api<TimelineInterviewDto[]>(`/timeline?${params}`),
+    placeholderData: keepPreviousData,
+  });
+};

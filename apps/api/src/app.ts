@@ -30,6 +30,7 @@ import { notesRoutes } from './modules/notes/notes.routes.js';
 import { opportunitiesRoutes } from './modules/opportunities/opportunities.routes.js';
 import { overviewRoutes } from './modules/overview/overview.routes.js';
 import { scoutCriteriaRoutes } from './modules/scout-criteria/scout-criteria.routes.js';
+import { timelineRoutes } from './modules/timeline/timeline.routes.js';
 import { type McpOAuthOptions, oauthRoutes } from './oauth/oauth.routes.js';
 import { createServices } from './services.js';
 
@@ -114,6 +115,10 @@ export async function buildApp({
       await api.register(overviewRoutes, {
         prefix: '/overview',
         service: services.overview,
+      });
+      await api.register(timelineRoutes, {
+        prefix: '/timeline',
+        repo: services.timeline,
       });
       if (gamification) {
         await api.register(progressRoutes, {

@@ -142,11 +142,11 @@ describe('MCP server', () => {
       id: created.id,
       status: 'technical_interview',
     });
-    expect(moved.history.map((h) => h.toStatus)).toEqual(['to_apply', 'technical_interview']);
+    expect(moved.status).toBe('technical_interview');
+    expect(moved.history.map((h) => h.toStatus)).toEqual(['to_apply', 'applied']);
     expect(moved.appliedAt).not.toBeNull();
     // a round stage is recorded as an interview too (dated now)
     expect(moved.interviews).toMatchObject([{ type: 'technical' }]);
-    expect(moved.history.at(-1)?.interviewId).toBe(moved.interviews[0]?.id);
 
     const scheduledAt = new Date(Date.now() + 2 * 86_400_000).toISOString();
     const interview = await call<InterviewDto>('schedule_interview', {

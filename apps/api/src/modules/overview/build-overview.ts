@@ -37,6 +37,7 @@ const NO_RESPONSE: ReadonlySet<ApplicationStatus> = new Set([
 
 /** Statuses that mean the process got as far as an interview (or beyond). */
 const INTERVIEW_STAGE: ReadonlySet<ApplicationStatus> = new Set([
+  'coffee_chat',
   'hr_screening',
   'phone_interview',
   'technical_interview',

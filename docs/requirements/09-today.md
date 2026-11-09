@@ -24,7 +24,7 @@ Each open application is in one state: **your move**, **scheduled** (an intervie
 
 - **Reply-by date.** If the employer gave a date, it replaces the default timer.
 - **Follow-ups.** "Followed up" restarts a 7-day timer. After the second unanswered follow-up the card asks whether to mark the application ghosted.
-- **Snooze, not dismiss.** Snoozed cards move to the waiting list and return on their own at their previous urgency. A status change clears hand-overs, snoozes and the reply-by / deadline.
+- **Snooze, not dismiss.** Snoozed cards move to the waiting list and return on their own at their previous urgency. A status change, and scheduling or adding an interview, clears hand-overs, snoozes and the reply-by / deadline and restarts the wait.
 - **One card per application**, most urgent wins. Low-priority nudges are capped at five on screen; deadlines are never hidden.
 - **Ranking:** deadlines, overdue, soon, nudges; the earliest date first within each group.
 

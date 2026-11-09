@@ -85,6 +85,14 @@ export interface StatusTransition {
   dueAt?: Date | null;
 }
 
+export interface ActivityRecord {
+  at: Date;
+  /** Applied date to set when the application has none yet. */
+  appliedAt?: Date | null;
+  replyBy?: Date | null;
+  dueAt?: Date | null;
+}
+
 export interface ApplicationsRepository {
   /**
    * Inserts the application, its contact links (reusing contacts that already exist, creating the
@@ -97,6 +105,11 @@ export interface ApplicationsRepository {
   update(id: string, patch: ApplicationFieldsPatch): Promise<void>;
   /** Updates status (and appliedAt) and appends a history entry atomically. */
   changeStatus(id: string, transition: StatusTransition): Promise<void>;
+  /**
+   * An interview round happened or was scheduled: restarts the wait (hand-over, snooze, timeline) and
+   * sets the applied date if it was missing. No status or history change.
+   */
+  recordActivity(id: string, activity: ActivityRecord): Promise<void>;
   /** Hides the application's action card until `until`. False when the application doesn't exist. */
   snooze(id: string, until: Date): Promise<boolean>;
   /** Hands the ball to the employer at `at`; a follow-up also counts toward the ghosted prompt. */
@@ -355,6 +368,32 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
         ],
       }),
     );
+  }
+
+  async recordActivity(id: string, { at, appliedAt, replyBy, dueAt }: ActivityRecord) {
+    const changedAt = iso(at);
+    try {
+      await this.db.doc.send(
+        new UpdateCommand({
+          TableName: this.db.table,
+          Key: key.app(id),
+          ConditionExpression: 'attribute_exists(PK)',
+          ...buildUpdate({
+            ...(appliedAt ? { appliedAt: iso(appliedAt) } : {}),
+            statusChangedAt: changedAt,
+            waitingOnThemAt: null,
+            followUps: 0,
+            snoozedUntil: null,
+            replyBy: isoOrNull(replyBy ?? null),
+            dueAt: isoOrNull(dueAt ?? null),
+            updatedAt: changedAt,
+            GSI1SK: appIndexKeys(id, changedAt).GSI1SK,
+          }),
+        }),
+      );
+    } catch (err) {
+      if (!isConditionFailed(err)) throw err;
+    }
   }
 
   async snooze(id: string, until: Date) {

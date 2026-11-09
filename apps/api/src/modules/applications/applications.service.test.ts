@@ -81,19 +81,16 @@ describe('ApplicationsService', () => {
   });
 
   describe('changeStatus', () => {
-    it('updates the status and appends a history entry', async () => {
+    it('updates a milestone status and appends a history entry', async () => {
       const { id } = await service.create(input({ status: 'applied' }));
-      const updated = await service.changeStatus(id, 'hr_screening');
-      expect(updated.status).toBe('hr_screening');
+      const updated = await service.changeStatus(id, 'offer');
+      expect(updated.status).toBe('offer');
       expect(updated.history.at(-1)).toEqual(
-        expect.objectContaining({
-          fromStatus: 'applied',
-          toStatus: 'hr_screening',
-        }),
+        expect.objectContaining({ fromStatus: 'applied', toStatus: 'offer' }),
       );
     });
 
-    it('creates the interview for a round stage, at the given time or now', async () => {
+    it('adds an interview for a round, at the given time or now, without a status write', async () => {
       const { id } = await service.create(input({ status: 'applied' }));
       await service.changeStatus(id, 'hr_screening');
       const at = new Date('2026-11-08T12:00:00.000Z');
@@ -102,7 +99,31 @@ describe('ApplicationsService', () => {
         ['hr', NOW.toISOString()],
         ['technical', at.toISOString()],
       ]);
-      expect(updated.history.at(-1)?.interviewId).toBe(interviews.created[1]?.id);
+      expect(updated.history).toHaveLength(1);
+      expect(updated.status).toBe('applied');
+    });
+
+    it('stores a round given at creation as applied plus the interview', async () => {
+      const created = await service.create(input({ status: 'coffee_chat' }));
+      expect(created.status).toBe('applied');
+      expect(created.appliedAt).toBe(NOW.toISOString());
+      expect(interviews.created.map((i) => i.type)).toEqual(['coffee']);
+    });
+
+    it('reopens an offer or a close when a round is chosen', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'rejected');
+      const updated = await service.changeStatus(id, 'phone_interview');
+      expect(updated.status).toBe('applied');
+      expect(updated.history.map((h) => h.toStatus)).toEqual(['applied', 'rejected', 'applied']);
+    });
+
+    it('refuses to go back to applied or to apply while interviews exist', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'offer');
+      const phone = await interviews.create(id, { type: 'phone', scheduledAt: NOW });
+      apps.rows.find((r) => r.id === id)?.interviews.push(phone);
+      await expect(service.changeStatus(id, 'applied')).rejects.toThrow(/interviews/);
     });
 
     it('does not create an interview for non-round statuses', async () => {
@@ -112,14 +133,13 @@ describe('ApplicationsService', () => {
       expect(updated.history.at(-1)?.interviewId).toBeNull();
     });
 
-    it('leaves the stored status alone when an interview is scheduled, but marks it as applied', async () => {
+    it('scheduling an interview makes a to-apply application applied, without a round status', async () => {
       const { id } = await service.create(input({ status: 'to_apply' }));
-      await interviews.create(id, { type: 'phone', scheduledAt: NOW });
       await service.onInterviewScheduled(id);
       const app = await service.get(id);
-      expect(app.status).toBe('to_apply');
+      expect(app.status).toBe('applied');
       expect(app.appliedAt).not.toBeNull();
-      expect(app.history).toHaveLength(1);
+      expect(app.history.map((h) => h.toStatus)).toEqual(['to_apply', 'applied']);
     });
 
     it('does not record history when the status is unchanged', async () => {

@@ -31,6 +31,7 @@ export const XP_RULES = {
   contact: 5,
   /** One-time reward per application reaching a stage. */
   stage: {
+    coffee_chat: 10,
     hr_screening: 20,
     phone_interview: 20,
     technical_interview: 30,

@@ -251,6 +251,7 @@ export function ApplicationDetailPage() {
           <StatusSelect
             aria-label="Change status"
             value={app.status}
+            hasInterviews={app.interviews.length > 0}
             onChange={(status) => requestStatus(status)}
             w={200}
           />

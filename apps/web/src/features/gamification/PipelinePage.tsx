@@ -25,13 +25,13 @@ import {
   applyLocalFilters,
   useLocalFilters,
 } from '../../components/ApplicationFilterBar';
+import { ApplicationViewSwitch } from '../../components/ApplicationViewSwitch';
 import { CorporateBadge } from '../../components/CompanyName';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { RoleTitle } from '../../components/RoleTitle';
 import { STATUS_COLORS } from '../../components/StatusBadge';
 import { Gate } from './Gate';
 import { GROUPS, type GroupId, groupOf, type StageGroup } from './groups';
-import { ViewSwitch } from './ViewSwitch';
 
 function Board() {
   const { data: all, isPending, error } = useApplications({});
@@ -69,7 +69,7 @@ function Board() {
       <Group justify="space-between">
         <Group>
           <Title order={2}>Applications</Title>
-          <ViewSwitch current="pipeline" />
+          <ApplicationViewSwitch current="pipeline" />
         </Group>
         <Group>
           <ApplicationFilterBar />

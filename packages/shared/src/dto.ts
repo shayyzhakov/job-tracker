@@ -146,6 +146,9 @@ export interface UpcomingInterviewDto extends InterviewDto {
   roleName: string;
 }
 
+/** One interview round on the cross-application timeline. */
+export type TimelineInterviewDto = UpcomingInterviewDto;
+
 export interface MethodStatDto {
   method: ApplicationMethod;
   /** Applications submitted via this method (status past to_apply). */

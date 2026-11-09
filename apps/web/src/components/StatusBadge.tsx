@@ -4,6 +4,7 @@ import { Badge, type MantineColor } from '@mantine/core';
 export const STATUS_COLORS: Record<ApplicationStatus, MantineColor> = {
   to_apply: 'gray',
   applied: 'blue',
+  coffee_chat: 'yellow',
   hr_screening: 'cyan',
   phone_interview: 'teal',
   technical_interview: 'violet',

@@ -1,6 +1,7 @@
 export const APPLICATION_STATUSES = [
   'to_apply',
   'applied',
+  'coffee_chat',
   'hr_screening',
   'phone_interview',
   'technical_interview',
@@ -18,6 +19,7 @@ export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
 /** Statuses that represent an interview round (as opposed to applying, an offer, or a close). */
 export const INTERVIEW_ROUND_STATUSES = [
+  'coffee_chat',
   'hr_screening',
   'phone_interview',
   'technical_interview',
@@ -70,6 +72,7 @@ export function isOpenStatus(status: ApplicationStatus): boolean {
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   to_apply: 'To apply',
   applied: 'Applied',
+  coffee_chat: 'Coffee chat',
   hr_screening: 'HR screening',
   phone_interview: 'Phone interview',
   technical_interview: 'Technical interview',
@@ -128,6 +131,7 @@ export const ROUND_STATUS_INTERVIEW_TYPE: Record<
   (typeof INTERVIEW_ROUND_STATUSES)[number],
   InterviewType
 > = {
+  coffee_chat: 'coffee',
   hr_screening: 'hr',
   phone_interview: 'phone',
   technical_interview: 'technical',
@@ -137,13 +141,15 @@ export const ROUND_STATUS_INTERVIEW_TYPE: Record<
   final_interview: 'final',
 };
 
-/** Pipeline stage an interview type belongs to (types without a stage, like review or other, never change the displayed status). */
+/** Pipeline stage an interview type belongs to (only `other` has no stage and never changes the displayed status). */
 export const INTERVIEW_TYPE_ROUND_STATUS: Partial<Record<InterviewType, ApplicationStatus>> = {
+  coffee: 'coffee_chat',
   hr: 'hr_screening',
   phone: 'phone_interview',
   technical: 'technical_interview',
   system_design: 'technical_interview',
   home_assignment: 'home_assignment',
+  home_assignment_review: 'home_assignment',
   onsite: 'onsite_interview',
   managerial: 'managerial_interview',
   final: 'final_interview',
@@ -206,24 +212,21 @@ export interface InterviewMoment {
 
 /**
  * The status to show for an application: what's next, otherwise what was last.
- * - An upcoming interview with a stage wins (earliest first), even if that goes back to an earlier stage.
- * - Otherwise the stored status, unless a stage-bearing interview already happened and the stored status
- *   is still to apply / applied, or that interview happened after the last status change.
+ * Only milestones (to apply, applied, offer, closed outcomes) are stored; rounds come from interviews.
  * - Offer, closed outcomes and anything not open are shown as recorded.
- * `lastPast` is the latest past interview that has a stage.
+ * - An upcoming interview with a stage wins (earliest first), even if that goes back to an earlier stage.
+ * - Otherwise the latest past interview with a stage (`lastPast`).
+ * - Otherwise the stored milestone (which, for rows from before this model, may still be a round).
  */
 export function displayedStatus(input: {
   status: ApplicationStatus;
-  statusChangedAt: string;
   next: InterviewMoment | null;
   lastPast: InterviewMoment | null;
 }): ApplicationStatus {
-  const { status, statusChangedAt, next, lastPast } = input;
+  const { status, next, lastPast } = input;
   if (!isOpenStatus(status) || status === 'offer') return status;
   const upcoming = next && INTERVIEW_TYPE_ROUND_STATUS[next.type];
   if (upcoming) return upcoming;
   const past = lastPast && INTERVIEW_TYPE_ROUND_STATUS[lastPast.type];
-  // A held round beats applied / to apply outright; against a round status the later of the two wins.
-  if (past && (!isRoundStatus(status) || lastPast.at > statusChangedAt)) return past;
-  return status;
+  return past || status;
 }

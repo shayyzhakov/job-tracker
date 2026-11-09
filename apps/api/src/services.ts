@@ -20,6 +20,7 @@ import {
   DynamoScoutCriteriaRepository,
   type ScoutCriteriaRepository,
 } from './modules/scout-criteria/scout-criteria.repository.js';
+import { DynamoTimelineRepository } from './modules/timeline/timeline.repository.js';
 
 export interface Services {
   actions: ActionsService;
@@ -31,6 +32,7 @@ export interface Services {
   overview: OverviewService;
   opportunities: OpportunitiesService;
   scoutCriteria: ScoutCriteriaRepository;
+  timeline: DynamoTimelineRepository;
 }
 
 export function createServices(db: Db): Services {
@@ -55,5 +57,6 @@ export function createServices(db: Db): Services {
       applications,
     }),
     scoutCriteria: new DynamoScoutCriteriaRepository(db),
+    timeline: new DynamoTimelineRepository(db),
   };
 }

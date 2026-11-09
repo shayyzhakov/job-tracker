@@ -19,3 +19,13 @@ Status: **Built** means it's in the codebase. **Planned** means it's agreed but 
 | 09  | [Tasks (action queue)](requirements/09-today.md)                      | Built                        |
 | 10  | [Interview notes](requirements/10-interview-notes.md)                 | Built                        |
 | 11  | [Companies](requirements/11-companies.md)                             | Built                        |
+
+## Core idea: what an application's status means
+
+The applications view shows only what the user needs to know right now, so an application's status answers "where does this stand now?", not "what was the last thing recorded?".
+
+- **Interviews drive the status.** While an interview round is upcoming, the application shows that round, even if an earlier round has just passed: the previous round no longer matters once the next one is lined up. With nothing scheduled, it keeps showing the last round that was held (the user is waiting on the company).
+- **Only milestones are set by hand.** To apply, applied, offer and the closed outcomes (accepted, rejected, withdrawn, ghosted) are chosen by the user. Interview rounds (coffee chat, HR, phone, technical, home assignment, onsite, managerial, final) are never set on their own: choosing one in the app schedules or logs that interview. A round status therefore cannot exist without a real interview behind it.
+- **Offers and closed outcomes always win.** Once an application has an offer or is closed, it shows that, whatever interviews exist.
+
+Details: [01 Applications](requirements/01-applications.md) and [02 Contacts and interviews](requirements/02-contacts-and-interviews.md).

@@ -18,6 +18,7 @@
     "db:seed": "pnpm --filter @job-tracker/api db:seed",
     "db:migrate-notes": "pnpm --filter @job-tracker/api db:migrate-notes",
     "db:migrate-company-sizes": "pnpm --filter @job-tracker/api db:migrate-company-sizes",
+    "db:migrate-round-statuses": "pnpm --filter @job-tracker/api db:migrate-round-statuses",
     "deploy:aws": "scripts/deploy.sh",
     "deploy:code": "scripts/deploy-code.sh",
     "infra:init": "scripts/infra-init.sh"

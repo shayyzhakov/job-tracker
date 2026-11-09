@@ -5,11 +5,7 @@
 import { type ComponentType, Fragment, useSyncExternalStore } from 'react';
 import type { RouteObject } from 'react-router';
 
-export type SlotName =
-  | 'header.right'
-  | 'overview.top'
-  | 'applications.views'
-  | 'application.detail.top';
+export type SlotName = 'header.right' | 'overview.top' | 'application.detail.top';
 
 export interface SlotProps {
   /** Free-form context passed by the slot host (e.g. the current application's id). */
@@ -48,6 +44,35 @@ export function registerRoute(route: RouteObject) {
     const i = routes.indexOf(route);
     if (i >= 0) routes.splice(i, 1);
   };
+}
+
+/** An extra way of looking at all applications, shown next to Table and Timeline in the view switch. */
+export interface ApplicationView {
+  id: string;
+  label: string;
+  path: string;
+  /** Hook deciding whether the view is offered right now (e.g. a user setting). Always shown when omitted. */
+  useVisible?: () => boolean;
+}
+
+const views: ApplicationView[] = [];
+
+/** Adds a view to the applications view switch. Must happen before the first render (see main.tsx). */
+export function registerApplicationView(view: ApplicationView) {
+  views.push(view);
+  return () => {
+    const i = views.indexOf(view);
+    if (i >= 0) views.splice(i, 1);
+  };
+}
+
+/** The registered views that are currently visible. */
+export function useApplicationViews(): ApplicationView[] {
+  // The registry is filled once at start-up, so the number of hooks called here is stable.
+  return views.filter((v) =>
+    // biome-ignore lint/correctness/useHookAtTopLevel: fixed-length registry, see above
+    v.useVisible ? v.useVisible() : true,
+  );
 }
 
 export const getRegisteredRoutes = (): RouteObject[] => [...routes];

@@ -4,6 +4,7 @@ import { ApplicationDetailPage } from './features/applications/ApplicationDetail
 import { ApplicationsPage } from './features/applications/ApplicationsPage';
 import { ContactApplicationsPage } from './features/applications/ContactApplicationsPage';
 import { NewApplicationPage } from './features/applications/NewApplicationPage';
+import { TimelinePage } from './features/applications/TimelinePage';
 import { CompaniesPage } from './features/companies/CompaniesPage';
 import { IntegrationsPage } from './features/integrations/IntegrationsPage';
 import { OverviewPage } from './features/overview/OverviewPage';
@@ -23,6 +24,7 @@ export const createAppRouter = () =>
         { path: 'overview', element: <Navigate to="/" replace /> },
         { path: 'tasks', Component: TodayPage },
         { path: 'applications', Component: ApplicationsPage },
+        { path: 'applications/timeline', Component: TimelinePage },
         { path: 'applications/new', Component: NewApplicationPage },
         { path: 'applications/:id', Component: ApplicationDetailPage },
         { path: 'contacts/:id', Component: ContactApplicationsPage },

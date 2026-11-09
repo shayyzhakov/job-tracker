@@ -2,6 +2,7 @@ import {
   type ApplicationStatus,
   type DayActivity,
   dayKey,
+  INTERVIEW_TYPE_ROUND_STATUS,
   type InterviewType,
   type ProgressDto,
 } from '@job-tracker/shared';
@@ -49,11 +50,20 @@ export function buildProgress(
     byDate.set(date, entry);
   };
 
+  // A round counts as reached once its interview has been held; milestones come from the history.
+  const heldStages = new Map<string, Set<ApplicationStatus>>();
+  for (const i of interviews) {
+    const stage = INTERVIEW_TYPE_ROUND_STATUS[i.type];
+    if (!stage || Date.parse(i.scheduledAt) > now.getTime()) continue;
+    const set = heldStages.get(i.applicationId) ?? new Set();
+    set.add(stage);
+    heldStages.set(i.applicationId, set);
+  }
   const stageReachedCounts: Partial<Record<ApplicationStatus, number>> = {};
   for (const a of applications) {
     bump(a.createdAt, 'added');
     bump(a.appliedAt, 'applied');
-    for (const s of new Set(a.reachedStatuses)) {
+    for (const s of new Set([...a.reachedStatuses, ...(heldStages.get(a.id) ?? [])])) {
       stageReachedCounts[s] = (stageReachedCounts[s] ?? 0) + 1;
     }
   }

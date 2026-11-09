@@ -116,11 +116,10 @@ describe('applications API', () => {
     });
     expect(res.statusCode).toBe(200);
     const updated = res.json<ApplicationDetailDto>();
+    // a round is an interview, not a stored status: the status shown follows it
     expect(updated.status).toBe('phone_interview');
-    expect(updated.history.map((h) => [h.fromStatus, h.toStatus])).toEqual([
-      [null, 'applied'],
-      ['applied', 'phone_interview'],
-    ]);
+    expect(updated.interviews).toMatchObject([{ type: 'phone' }]);
+    expect(updated.history.map((h) => [h.fromStatus, h.toStatus])).toEqual([[null, 'applied']]);
   });
 
   it('derives interviewsCount from the interview rounds in the status history', async () => {

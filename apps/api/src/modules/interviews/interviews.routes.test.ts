@@ -62,7 +62,6 @@ describe('interviews API', () => {
     });
     const afterMove = moved.json<ApplicationDetailDto>();
     expect(afterMove.interviews).toMatchObject([{ type: 'technical', scheduledAt: when }]);
-    expect(afterMove.history.at(-1)?.interviewId).toBe(afterMove.interviews[0]?.id);
 
     // a scheduled interview shows as the status without rewriting the history
     const final = await t.app.inject({
@@ -73,7 +72,7 @@ describe('interviews API', () => {
     const finalId = final.json<{ id: string }>().id;
     const detail = await getApp(id);
     expect(detail.interviews).toHaveLength(2);
-    expect(detail.history).toHaveLength(2);
+    expect(detail.history).toHaveLength(1);
     // the earliest upcoming round wins
     expect(detail.status).toBe('technical_interview');
 

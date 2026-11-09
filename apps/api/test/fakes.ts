@@ -177,6 +177,26 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     if (dueAt !== undefined) row.dueAt = dueAt?.toISOString() ?? null;
   }
 
+  async recordActivity(
+    id: string,
+    {
+      at,
+      appliedAt,
+      replyBy,
+      dueAt,
+    }: { at: Date; appliedAt?: Date | null; replyBy?: Date | null; dueAt?: Date | null },
+  ) {
+    const row = this.rows.find((r) => r.id === id);
+    if (!row) return;
+    if (appliedAt) row.appliedAt = appliedAt.toISOString();
+    row.statusChangedAt = at.toISOString();
+    row.waitingOnThemAt = null;
+    row.followUps = 0;
+    row.snoozedUntil = null;
+    row.replyBy = replyBy?.toISOString() ?? null;
+    row.dueAt = dueAt?.toISOString() ?? null;
+  }
+
   async snooze(id: string, until: Date) {
     const row = this.rows.find((r) => r.id === id);
     if (row) row.snoozedUntil = until.toISOString();

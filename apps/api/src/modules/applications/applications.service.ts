@@ -9,8 +9,13 @@ import type {
   InterviewDto,
   InterviewInput,
 } from '@job-tracker/shared';
-import { isOpenStatus, isRoundStatus, ROUND_STATUS_INTERVIEW_TYPE } from '@job-tracker/shared';
-import { NotFoundError } from '../../errors.js';
+import {
+  INITIAL_STATUSES,
+  isOpenStatus,
+  isRoundStatus,
+  ROUND_STATUS_INTERVIEW_TYPE,
+} from '@job-tracker/shared';
+import { ConflictError, NotFoundError } from '../../errors.js';
 import type { CompaniesRepository } from '../companies/companies.repository.js';
 import type { ApplicationsRepository } from './applications.repository.js';
 
@@ -49,19 +54,30 @@ export class ApplicationsService {
     return app;
   }
 
+  /** A round status is never stored: it becomes "applied" plus the interview behind it. */
   async create(input: ApplicationCreate): Promise<ApplicationDetailDto> {
     const company = await this.resolveCompany(input.company);
     const now = this.now();
     const { company: _company, contacts, appliedAt, ...fields } = input;
+    const round = isRoundStatus(input.status) ? input.status : null;
+    const status = round ? 'applied' : input.status;
     const id = await this.apps.insert(
       {
         ...fields,
+        status,
         companyId: company.id,
-        appliedAt: appliedAt ?? (input.status === 'to_apply' ? null : now),
+        appliedAt: appliedAt ?? (status === 'to_apply' ? null : now),
       },
       contacts,
       now,
     );
+    if (round) {
+      await this.interviews.create(id, {
+        type: ROUND_STATUS_INTERVIEW_TYPE[round],
+        scheduledAt: now,
+        timeUnknown: true,
+      });
+    }
     return this.get(id);
   }
 
@@ -74,8 +90,8 @@ export class ApplicationsService {
   }
 
   /**
-   * Moving to an interview-round stage records the interview itself (at `interviewAt`, default now),
-   * so a round is one entity whether it is upcoming or already happened.
+   * Only milestones (to apply, applied, offer, closed outcomes) are stored. Choosing a round adds the
+   * interview behind it (at `interviewAt`, default now), and the round shown follows the interviews.
    */
   async changeStatus(
     id: string,
@@ -84,21 +100,43 @@ export class ApplicationsService {
     timeline: { replyBy?: Date; dueAt?: Date } = {},
   ): Promise<ApplicationDetailDto> {
     const state = await this.requireState(id);
-    if (state.status !== status) {
-      const now = this.now();
-      const interview = isRoundStatus(status)
-        ? await this.interviews.create(id, {
-            type: ROUND_STATUS_INTERVIEW_TYPE[status],
-            scheduledAt: interviewAt ?? now,
-            timeUnknown: !interviewAt,
-          })
-        : null;
+    const now = this.now();
+    if (isRoundStatus(status)) {
+      await this.interviews.create(id, {
+        type: ROUND_STATUS_INTERVIEW_TYPE[status],
+        scheduledAt: interviewAt ?? now,
+        timeUnknown: !interviewAt,
+      });
+      // Rounds need an applied application; picking one explicitly also reopens an offer or a close.
+      if (state.status === 'to_apply' || !isOpenStatus(state.status) || state.status === 'offer') {
+        await this.apps.changeStatus(id, {
+          from: state.status,
+          to: 'applied',
+          appliedAt: state.appliedAt ?? now,
+          at: now,
+          replyBy: timeline.replyBy ?? null,
+          dueAt: timeline.dueAt ?? null,
+        });
+      } else {
+        await this.apps.recordActivity(id, {
+          at: now,
+          appliedAt: state.appliedAt ? null : now,
+          replyBy: timeline.replyBy ?? null,
+          dueAt: timeline.dueAt ?? null,
+        });
+      }
+    } else if (state.status !== status) {
+      if (
+        (INITIAL_STATUSES as readonly ApplicationStatus[]).includes(status) &&
+        (await this.get(id)).interviews.length > 0
+      ) {
+        throw new ConflictError('Remove the interviews before moving back to to apply or applied');
+      }
       await this.apps.changeStatus(id, {
         from: state.status,
         to: status,
         appliedAt: state.appliedAt ?? (status === 'to_apply' ? null : now),
         at: now,
-        interviewId: interview?.id ?? null,
         replyBy: timeline.replyBy ?? null,
         dueAt: timeline.dueAt ?? null,
       });
@@ -119,14 +157,23 @@ export class ApplicationsService {
   }
 
   /**
-   * A scheduled interview does not rewrite the stored status: the displayed status follows the
-   * calendar (see `displayedStatus`), so removing or moving the interview needs no cleanup.
-   * It still counts as the application having been sent.
+   * A scheduled interview never writes a round status: the status shown follows the calendar. It does
+   * make the application "applied", set the applied date, and restart the wait.
    */
   async onInterviewScheduled(id: string): Promise<void> {
     const state = await this.apps.getState(id);
-    if (!state || state.appliedAt || !isOpenStatus(state.status)) return;
-    await this.apps.update(id, { appliedAt: this.now() });
+    if (!state || !isOpenStatus(state.status) || state.status === 'offer') return;
+    const now = this.now();
+    if (state.status === 'to_apply') {
+      await this.apps.changeStatus(id, {
+        from: 'to_apply',
+        to: 'applied',
+        appliedAt: state.appliedAt ?? now,
+        at: now,
+      });
+    } else {
+      await this.apps.recordActivity(id, { at: now, appliedAt: state.appliedAt ? null : now });
+    }
   }
 
   async remove(id: string): Promise<void> {

@@ -237,7 +237,6 @@ export const toApplicationDto = (
     isManagement: a.isManagement,
     status: displayedStatus({
       status: a.status,
-      statusChangedAt,
       next: timing.nextStaged,
       lastPast: timing.lastPast,
     }),

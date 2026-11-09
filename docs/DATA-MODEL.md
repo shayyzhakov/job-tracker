@@ -38,7 +38,7 @@ erDiagram
         string companyId FK "-> COMPANY.id"
         string roleName
         boolean isManagement
-        enum status "ApplicationStatus"
+        enum status "milestone: to_apply, applied, offer or a closed outcome"
         string listingUrl "nullable"
         number expectedSalaryIls "nullable, monthly gross"
         string source "nullable"
@@ -48,7 +48,7 @@ erDiagram
         string methodDetails "optional"
         string notes "nullable"
         string appliedAt "nullable, ISO 8601"
-        list reachedStatuses "every status ever held"
+        list reachedStatuses "milestones ever held"
         string replyBy "optional, ISO 8601"
         string dueAt "optional, ISO 8601"
         string nextStep "optional"
@@ -104,7 +104,7 @@ erDiagram
         string id PK "uuid"
         string applicationId FK "-> APPLICATION.id"
         enum fromStatus "nullable on first entry"
-        enum toStatus "ApplicationStatus"
+        enum toStatus "milestone status"
         string changedAt "ISO 8601"
         string interviewId FK "optional -> INTERVIEW.id"
     }
@@ -152,15 +152,16 @@ Not stored: the **action queue** (what needs doing today) is derived from applic
 
 ### Enumerations
 
-| Enum                | Values                                                                                                                                                                                                                     |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ApplicationStatus` | `to_apply`, `applied`, `hr_screening`, `phone_interview`, `technical_interview`, `home_assignment`, `onsite_interview`, `managerial_interview`, `final_interview`, `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted` |
-| Status groups       | initial: `to_apply`, `applied`. active: the interview rounds and `offer`. closed: `accepted`, `rejected`, `withdrawn`, `ghosted`. "Open" = initial + active. Derived from status, never stored                             |
-| `CompanySize`       | `early_stage_startup`, `startup`, `scale_up`, `corporate`                                                                                                                                                                  |
-| `InterviewType`     | `hr`, `phone`, `technical`, `system_design`, `home_assignment`, `home_assignment_review`, `onsite`, `managerial`, `final`, `coffee`, `other`                                                                               |
-| `ApplicationMethod` | `referral`, `linkedin`, `company_site`, `job_board`, `recruiter_outreach`, `networking_event`, `other`                                                                                                                     |
-| `ReferralChannel`   | `in_person`, `phone`, `whatsapp`, `linkedin`, `email`, `other`                                                                                                                                                             |
-| `OpportunityStatus` | `new`, `filtered`, `dismissed`, `promoted`                                                                                                                                                                                 |
+| Enum                                                                                                                                                                                              | Values                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ApplicationStatus` (shown)                                                                                                                                                                       | `to_apply`, `applied`, `coffee_chat`, `hr_screening`, `phone_interview`, `technical_interview`, `home_assignment`, `onsite_interview`, `managerial_interview`, `final_interview`, `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted`                                                                                        |
+| Stored status                                                                                                                                                                                     | Only the milestones: `to_apply`, `applied`, `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted`. The round statuses (`coffee_chat` … `final_interview`) are never stored: they are derived from the interviews (next upcoming with a stage, else latest held, else the stored milestone) and exist as values only in the DTO |
+| \1 initial: `to_apply`, `applied`. active: the interview rounds and `offer`. closed: `accepted`, `rejected`, `withdrawn`, `ghosted`. "Open" = initial + active. Derived from status, never stored |
+| `CompanySize`                                                                                                                                                                                     | `early_stage_startup`, `startup`, `scale_up`, `corporate`                                                                                                                                                                                                                                                                        |
+| `InterviewType`                                                                                                                                                                                   | `hr`, `phone`, `technical`, `system_design`, `home_assignment`, `home_assignment_review`, `onsite`, `managerial`, `final`, `coffee`, `other`                                                                                                                                                                                     |
+| `ApplicationMethod`                                                                                                                                                                               | `referral`, `linkedin`, `company_site`, `job_board`, `recruiter_outreach`, `networking_event`, `other`                                                                                                                                                                                                                           |
+| `ReferralChannel`                                                                                                                                                                                 | `in_person`, `phone`, `whatsapp`, `linkedin`, `email`, `other`                                                                                                                                                                                                                                                                   |
+| `OpportunityStatus`                                                                                                                                                                               | `new`, `filtered`, `dismissed`, `promoted`                                                                                                                                                                                                                                                                                       |
 
 ### Scout criteria payload
 
@@ -261,18 +262,19 @@ Updating an application's `updatedAt` also rewrites its `GSI1SK`, and a status c
 
 ### Multi-item writes
 
-| Operation                 | What is written                                                                                                                                                                                                                                                 |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Create company            | One transaction: company item + company-name marker (fails if the name exists)                                                                                                                                                                                  |
-| Rename company            | One transaction: company update + new marker + delete of the old marker                                                                                                                                                                                         |
-| Delete company            | One transaction: company item + its name marker. Allowed only when no application references the company; that check is a separate read, so an application created in between could slip through (accepted for one user; a per-company counter would close it). |
-| Create application        | One transaction: application + its contact links (plus the contact item for each new person) + first status history entry (`fromStatus = null`). The company is created beforehand.                                                                             |
-| Change application status | One transaction: application update (`status`, `reachedStatuses`, `GSI1SK`) + new status history entry                                                                                                                                                          |
-| Delete interview          | Not a transaction: the interview is deleted (conditional), then its notes are found with `begins_with(SK, NOTE#<interviewId>#)` and batch-deleted. A failure in between leaves notes that reads ignore (their interview is gone).                               |
-| Attach contact            | One transaction: the contact item (only when new) + the link item. Attaching an already attached contact writes nothing.                                                                                                                                        |
-| Delete application        | The whole partition (`PK = APP#<id>`: application, contact links, interviews, notes, history) is batch-deleted, then contacts left with no link are deleted                                                                                                     |
-| Save suggestions          | One transaction per suggestion: opportunity + listing-URL marker (already-seen URLs are skipped)                                                                                                                                                                |
-| Promote suggestion        | Application is created as above, then the opportunity is moved to `promoted` and given `applicationId` with a compare-and-set on its old status                                                                                                                 |
+| Operation                           | What is written                                                                                                                                                                                                                                                 |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create company                      | One transaction: company item + company-name marker (fails if the name exists)                                                                                                                                                                                  |
+| Rename company                      | One transaction: company update + new marker + delete of the old marker                                                                                                                                                                                         |
+| Delete company                      | One transaction: company item + its name marker. Allowed only when no application references the company; that check is a separate read, so an application created in between could slip through (accepted for one user; a per-company counter would close it). |
+| Create application                  | One transaction: application + its contact links (plus the contact item for each new person) + first status history entry (`fromStatus = null`). The company is created beforehand.                                                                             |
+| Change application status           | A milestone: one transaction: application update (`status`, `reachedStatuses`, `GSI1SK`) + new status history entry. A round: creates the interview instead (no status write)                                                                                   |
+| Interview scheduled or round chosen | One update on the application (`statusChangedAt`, hand-over, snooze, applied date); a to-apply application also gets the `applied` milestone through the status-change transaction above                                                                        |
+| Delete interview                    | Not a transaction: the interview is deleted (conditional), then its notes are found with `begins_with(SK, NOTE#<interviewId>#)` and batch-deleted. A failure in between leaves notes that reads ignore (their interview is gone).                               |
+| Attach contact                      | One transaction: the contact item (only when new) + the link item. Attaching an already attached contact writes nothing.                                                                                                                                        |
+| Delete application                  | The whole partition (`PK = APP#<id>`: application, contact links, interviews, notes, history) is batch-deleted, then contacts left with no link are deleted                                                                                                     |
+| Save suggestions                    | One transaction per suggestion: opportunity + listing-URL marker (already-seen URLs are skipped)                                                                                                                                                                |
+| Promote suggestion                  | Application is created as above, then the opportunity is moved to `promoted` and given `applicationId` with a compare-and-set on its old status                                                                                                                 |
 
 ## 3. Keeping this document current
 

@@ -187,7 +187,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     'change_application_status',
     {
       title: 'Change application status',
-      description: `Move an application to a new status and record it in its history. Interview-round statuses also create the interview itself, so do not call schedule_interview for the same round. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
+      description: `Move an application to a new status. Only to_apply, applied, offer and the closed outcomes are stored (and recorded in the history). An interview-round status (coffee_chat, hr_screening, ... final_interview) adds that interview instead, so do not call schedule_interview for the same round; the status an application shows follows its interviews: the next upcoming one, else the last one held. Going back to to_apply or applied is refused while the application has interviews. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
       inputSchema: {
         id,
         status: z.string().describe(APPLICATION_STATUSES.join(' | ')),

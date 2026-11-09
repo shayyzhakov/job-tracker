@@ -50,7 +50,7 @@ describe('application statuses', () => {
 });
 
 describe('displayedStatus', () => {
-  const base = { statusChangedAt: '2026-01-01T00:00:00.000Z', next: null, lastPast: null };
+  const base = { next: null, lastPast: null };
   const at = (type: InterviewType, when: string) => ({ type, at: when });
 
   it('shows the upcoming interview round instead of the last passed one', () => {
@@ -84,18 +84,26 @@ describe('displayedStatus', () => {
     ).toBe('hr_screening');
   });
 
-  it('prefers a later manual status change over an older interview', () => {
+  it('shows the latest held round over a stored applied or legacy round', () => {
+    const lastPast = at('hr', '2025-12-01T00:00:00.000Z');
+    expect(displayedStatus({ ...base, status: 'applied', lastPast })).toBe('hr_screening');
+    expect(displayedStatus({ ...base, status: 'technical_interview', lastPast })).toBe(
+      'hr_screening',
+    );
+  });
+
+  it('shows a scheduled coffee chat as its own stage, ignoring the stored status', () => {
     expect(
       displayedStatus({
         ...base,
-        status: 'technical_interview',
-        lastPast: at('hr', '2025-12-01T00:00:00.000Z'),
+        status: 'hr_screening',
+        next: at('coffee', '2026-02-01T00:00:00.000Z'),
       }),
-    ).toBe('technical_interview');
+    ).toBe('coffee_chat');
   });
 
   it('ignores interviews without a stage and never touches offer or closed', () => {
-    const next = at('home_assignment_review', '2026-02-01T00:00:00.000Z');
+    const next = at('other', '2026-02-01T00:00:00.000Z');
     expect(displayedStatus({ ...base, status: 'phone_interview', next })).toBe('phone_interview');
     const phone = at('phone', '2026-02-01T00:00:00.000Z');
     expect(displayedStatus({ ...base, status: 'offer', next: phone })).toBe('offer');

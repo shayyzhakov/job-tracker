@@ -4,6 +4,7 @@ import {
   type ApplicationStatus,
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_TYPE_ROUND_STATUS,
+  isRoundStatus,
   STATUS_GROUP_LABELS,
   STATUS_GROUPS,
   type StatusGroup,
@@ -42,13 +43,13 @@ import {
   isFiltering,
   useLocalFilters,
 } from '../../components/ApplicationFilterBar';
+import { ApplicationViewSwitch } from '../../components/ApplicationViewSwitch';
 import { CorporateBadge } from '../../components/CompanyName';
 import { MultiFilter } from '../../components/MultiFilter';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { RoleTitle } from '../../components/RoleTitle';
 import { SortableTh, useSortedRows } from '../../components/SortableTh';
 import { StatusSelect } from '../../components/StatusSelect';
-import { Slot } from '../../lib/extensions';
 import { formatDate, formatDateTime } from '../../lib/format';
 
 // Nothing selected, or every group, means no restriction.
@@ -96,7 +97,7 @@ export function ApplicationsPage() {
       <Group justify="space-between">
         <Group>
           <Title order={2}>Applications</Title>
-          <Slot name="applications.views" />
+          <ApplicationViewSwitch current="table" />
         </Group>
         <Button component={Link} to="/applications/new" leftSection={<IconPlus size={16} />}>
           New application
@@ -206,6 +207,7 @@ export function ApplicationsPage() {
                         aria-label={`Status for ${a.company.name}`}
                         size="xs"
                         value={a.status}
+                        hasInterviews={isRoundStatus(a.status)}
                         onChange={(status: ApplicationStatus) =>
                           changeStatus.mutate({ id: a.id, status })
                         }
