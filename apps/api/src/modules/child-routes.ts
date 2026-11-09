@@ -6,7 +6,7 @@ import type { ChildService } from './child-service.js';
 export function childRoutes<TInput, TUpdate, TDto>(opts: {
   inputSchema: z.ZodType<TInput>;
   updateSchema: z.ZodType<TUpdate>;
-  service: ChildService<TInput, TUpdate, TDto>;
+  service: Pick<ChildService<TInput, TUpdate, TDto>, 'create' | 'update' | 'remove'>;
 }): FastifyPluginAsyncZod {
   const { inputSchema, updateSchema, service } = opts;
   const AppParams = z.object({ applicationId: z.uuid() });

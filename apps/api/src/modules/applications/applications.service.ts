@@ -9,13 +9,7 @@ import type {
   InterviewDto,
   InterviewInput,
 } from '@job-tracker/shared';
-import {
-  APPLICATION_STATUSES,
-  INTERVIEW_TYPE_ROUND_STATUS,
-  isOpenStatus,
-  isRoundStatus,
-  ROUND_STATUS_INTERVIEW_TYPE,
-} from '@job-tracker/shared';
+import { isOpenStatus, isRoundStatus, ROUND_STATUS_INTERVIEW_TYPE } from '@job-tracker/shared';
 import { NotFoundError } from '../../errors.js';
 import type { CompaniesRepository } from '../companies/companies.repository.js';
 import type { ApplicationsRepository } from './applications.repository.js';
@@ -124,20 +118,15 @@ export class ApplicationsService {
     return this.get(id);
   }
 
-  /** An interview scheduled directly moves the application forward to that interview's stage. */
-  async advanceToInterviewStage(id: string, interview: InterviewDto): Promise<void> {
-    const to = INTERVIEW_TYPE_ROUND_STATUS[interview.type];
+  /**
+   * A scheduled interview does not rewrite the stored status: the displayed status follows the
+   * calendar (see `displayedStatus`), so removing or moving the interview needs no cleanup.
+   * It still counts as the application having been sent.
+   */
+  async onInterviewScheduled(id: string): Promise<void> {
     const state = await this.apps.getState(id);
-    if (!to || !state || !isOpenStatus(state.status)) return;
-    if (APPLICATION_STATUSES.indexOf(to) <= APPLICATION_STATUSES.indexOf(state.status)) return;
-    const now = this.now();
-    await this.apps.changeStatus(id, {
-      from: state.status,
-      to,
-      appliedAt: state.appliedAt ?? now,
-      at: now,
-      interviewId: interview.id,
-    });
+    if (!state || state.appliedAt || !isOpenStatus(state.status)) return;
+    await this.apps.update(id, { appliedAt: this.now() });
   }
 
   async remove(id: string): Promise<void> {

@@ -6,6 +6,7 @@ export const APPLICATION_STATUSES = [
   'technical_interview',
   'home_assignment',
   'onsite_interview',
+  'managerial_interview',
   'final_interview',
   'offer',
   'accepted',
@@ -22,6 +23,7 @@ export const INTERVIEW_ROUND_STATUSES = [
   'technical_interview',
   'home_assignment',
   'onsite_interview',
+  'managerial_interview',
   'final_interview',
 ] as const satisfies readonly ApplicationStatus[];
 
@@ -73,6 +75,7 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   technical_interview: 'Technical interview',
   home_assignment: 'Home assignment',
   onsite_interview: 'Onsite interview',
+  managerial_interview: 'Managerial interview',
   final_interview: 'Final interview',
   offer: 'Offer',
   accepted: 'Accepted',
@@ -130,10 +133,11 @@ export const ROUND_STATUS_INTERVIEW_TYPE: Record<
   technical_interview: 'technical',
   home_assignment: 'home_assignment',
   onsite_interview: 'onsite',
+  managerial_interview: 'managerial',
   final_interview: 'final',
 };
 
-/** Pipeline stage an interview type belongs to (types without a stage don't move the status). */
+/** Pipeline stage an interview type belongs to (types without a stage, like review or other, never change the displayed status). */
 export const INTERVIEW_TYPE_ROUND_STATUS: Partial<Record<InterviewType, ApplicationStatus>> = {
   hr: 'hr_screening',
   phone: 'phone_interview',
@@ -141,6 +145,7 @@ export const INTERVIEW_TYPE_ROUND_STATUS: Partial<Record<InterviewType, Applicat
   system_design: 'technical_interview',
   home_assignment: 'home_assignment',
   onsite: 'onsite_interview',
+  managerial: 'managerial_interview',
   final: 'final_interview',
 };
 
@@ -191,3 +196,34 @@ export const REFERRAL_CHANNEL_LABELS: Record<ReferralChannel, string> = {
   email: 'Email',
   other: 'Other',
 };
+
+/** An interview as far as the displayed status is concerned. */
+export interface InterviewMoment {
+  type: InterviewType;
+  /** ISO timestamp. */
+  at: string;
+}
+
+/**
+ * The status to show for an application: what's next, otherwise what was last.
+ * - An upcoming interview with a stage wins (earliest first), even if that goes back to an earlier stage.
+ * - Otherwise the stored status, unless a stage-bearing interview already happened and the stored status
+ *   is still to apply / applied, or that interview happened after the last status change.
+ * - Offer, closed outcomes and anything not open are shown as recorded.
+ * `lastPast` is the latest past interview that has a stage.
+ */
+export function displayedStatus(input: {
+  status: ApplicationStatus;
+  statusChangedAt: string;
+  next: InterviewMoment | null;
+  lastPast: InterviewMoment | null;
+}): ApplicationStatus {
+  const { status, statusChangedAt, next, lastPast } = input;
+  if (!isOpenStatus(status) || status === 'offer') return status;
+  const upcoming = next && INTERVIEW_TYPE_ROUND_STATUS[next.type];
+  if (upcoming) return upcoming;
+  const past = lastPast && INTERVIEW_TYPE_ROUND_STATUS[lastPast.type];
+  // A held round beats applied / to apply outright; against a round status the later of the two wins.
+  if (past && (!isRoundStatus(status) || lastPast.at > statusChangedAt)) return past;
+  return status;
+}

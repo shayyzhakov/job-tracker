@@ -36,6 +36,7 @@ export const XP_RULES = {
     technical_interview: 30,
     home_assignment: 30,
     onsite_interview: 40,
+    managerial_interview: 30,
     final_interview: 40,
     offer: 100,
     accepted: 200,

@@ -38,6 +38,7 @@ export const application = (overrides: Partial<ApplicationDto> = {}): Applicatio
   createdAt: '2026-11-01T10:00:00.000Z',
   updatedAt: '2026-11-01T10:00:00.000Z',
   nextInterviewAt: null,
+  nextInterviewType: null,
   interviewsCount: 0,
   replyBy: null,
   dueAt: null,
@@ -56,7 +57,7 @@ export const applicationDetail = (
   contacts: [
     {
       id: 'ct1',
-      applicationId: 'a1',
+      applicationCount: 1,
       name: 'Dana Levi',
       role: 'Recruiter',
       email: 'dana@acme.com',

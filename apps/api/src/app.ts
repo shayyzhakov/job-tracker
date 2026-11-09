@@ -1,6 +1,6 @@
 import fastifyStatic from '@fastify/static';
 import {
-  ContactInputSchema,
+  ContactAttachSchema,
   ContactUpdateSchema,
   InterviewInputSchema,
   InterviewUpdateSchema,
@@ -22,6 +22,7 @@ import { actionsRoutes } from './modules/actions/actions.routes.js';
 import { applicationsRoutes } from './modules/applications/applications.routes.js';
 import { childRoutes } from './modules/child-routes.js';
 import { companiesRoutes } from './modules/companies/companies.routes.js';
+import { contactsRoutes } from './modules/contacts/contacts.routes.js';
 import { DynamoProgressRepository } from './modules/gamification/progress.repository.js';
 import { progressRoutes } from './modules/gamification/progress.routes.js';
 import { healthRoutes } from './modules/health/health.routes.js';
@@ -120,9 +121,13 @@ export async function buildApp({
           source: new DynamoProgressRepository(db),
         });
       }
+      await api.register(contactsRoutes, {
+        prefix: '/contacts',
+        service: services.contacts,
+      });
       await api.register(
         childRoutes({
-          inputSchema: ContactInputSchema,
+          inputSchema: ContactAttachSchema,
           updateSchema: ContactUpdateSchema,
           service: services.contacts,
         }),

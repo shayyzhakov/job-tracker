@@ -7,13 +7,14 @@ import type {
   ApplicationMethod,
   ApplicationStatus,
   ApplicationUpdate,
-  ContactInput,
+  ContactAttach,
   HandOverReason,
   ReferralChannel,
 } from '@job-tracker/shared';
-import { statusGroup } from '@job-tracker/shared';
+import { INTERVIEW_TYPE_ROUND_STATUS, statusGroup } from '@job-tracker/shared';
 import {
   batchDelete,
+  batchGet,
   buildUpdate,
   type Db,
   dateOrNull,
@@ -30,8 +31,11 @@ import {
   type ApplicationItem,
   type CompanyItem,
   type ContactItem,
+  type ContactLinkItem,
   type HistoryItem,
   type InterviewItem,
+  type InterviewTiming,
+  NO_TIMING,
   type NoteItem,
   nul,
   toApplicationDto,
@@ -40,6 +44,7 @@ import {
   toInterviewDto,
   toNoteDto,
 } from '../../db/mappers.js';
+import { DynamoContactsRepository } from '../contacts/contacts.repository.js';
 
 export interface NewApplication {
   companyId: string;
@@ -81,8 +86,11 @@ export interface StatusTransition {
 }
 
 export interface ApplicationsRepository {
-  /** Inserts the application, its contacts and the initial history entry atomically. */
-  insert(app: NewApplication, contacts: ContactInput[], at: Date): Promise<string>;
+  /**
+   * Inserts the application, its contact links (reusing contacts that already exist, creating the
+   * rest) and the initial history entry atomically.
+   */
+  insert(app: NewApplication, contacts: ContactAttach[], at: Date): Promise<string>;
   findById(id: string): Promise<ApplicationDetailDto | null>;
   list(query: ApplicationListQuery): Promise<ApplicationDto[]>;
   getState(id: string): Promise<ApplicationState | null>;
@@ -130,9 +138,13 @@ const byCreated = (a: { createdAt: string; id: string }, b: { createdAt: string;
   a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
 
 export class DynamoApplicationsRepository implements ApplicationsRepository {
-  constructor(private readonly db: Db) {}
+  private readonly contacts: DynamoContactsRepository;
 
-  async insert(app: NewApplication, contactInputs: ContactInput[], at: Date) {
+  constructor(private readonly db: Db) {
+    this.contacts = new DynamoContactsRepository(db);
+  }
+
+  async insert(app: NewApplication, contactInputs: ContactAttach[], at: Date) {
     const id = randomUUID();
     const now = iso(at);
     const item: ApplicationItem = {
@@ -163,22 +175,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       updatedAt: now,
     };
     const history = historyItem(id, null, app.status, now);
-    const contactItems = contactInputs.map((c, i): ContactItem => {
-      // Offset by 1ms per contact to keep input order stable.
-      const createdAt = iso(new Date(at.getTime() + i));
-      return {
-        id: randomUUID(),
-        applicationId: id,
-        name: c.name,
-        role: nul(c.role),
-        email: nul(c.email),
-        phone: nul(c.phone),
-        linkedinUrl: nul(c.linkedinUrl),
-        notes: nul(c.notes),
-        createdAt,
-        updatedAt: createdAt,
-      };
-    });
+    const contacts = await this.contacts.resolve(contactInputs, at);
     const put = (Item: Record<string, unknown>) => ({
       Put: { TableName: this.db.table, Item },
     });
@@ -186,7 +183,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       new TransactWriteCommand({
         TransactItems: [
           put({ ...key.app(id), ...appIndexKeys(id, now), ...item }),
-          ...contactItems.map((c) => put({ ...key.contact(id, c.id), ...c })),
+          ...this.contacts.attachItems(id, contacts, at),
           put({ ...key.history(id, now, history.id), ...history }),
         ],
       }),
@@ -194,18 +191,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     return id;
   }
 
-  /** Earliest interview strictly after `now` per application id. */
+  /** What each application's interviews say about its status, relative to `now`. */
   private async interviewTimes(now: Date) {
     const all = await queryGsi1<InterviewItem>(this.db, 'INTERVIEWS');
-    const after = afterTime(now);
-    const times = new Map<string, { next: string | null; hasPast: boolean }>();
-    for (const i of all) {
-      const t = times.get(i.applicationId) ?? { next: null, hasPast: false };
-      if (`${i.scheduledAt}` > after) t.next ??= i.scheduledAt;
-      else t.hasPast = true;
-      times.set(i.applicationId, t);
-    }
-    return times;
+    return timingByApplication(all, afterTime(now));
   }
 
   async findById(id: string): Promise<ApplicationDetailDto | null> {
@@ -222,7 +211,20 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     ).Item as CompanyItem;
     const ofKind = <T>(prefix: string) =>
       items.filter((i) => (i.SK as string).startsWith(prefix)) as unknown as T[];
-    const contacts = ofKind<ContactItem>('CONTACT#').sort(byCreated);
+    const links = ofKind<ContactLinkItem>('CONTACT#').sort(byCreated);
+    const [profiles, counts] = await Promise.all([
+      batchGet<ContactItem>(
+        this.db,
+        links.map((l) => key.contact(l.id)),
+      ),
+      this.contacts.applicationCounts(links.map((l) => l.id)),
+    ]);
+    const profileById = new Map(profiles.map((p) => [p.id, p]));
+    // A link whose contact is gone (failed cleanup) is skipped.
+    const contacts = links.flatMap((l) => {
+      const profile = profileById.get(l.id);
+      return profile ? [toContactDto(profile, counts.get(l.id) ?? 1)] : [];
+    });
     const interviews = ofKind<InterviewItem>('INTERVIEW#').sort((a, b) =>
       a.scheduledAt.localeCompare(b.scheduledAt),
     );
@@ -232,12 +234,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       .filter((n) => interviewIds.has(n.interviewId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
     const history = ofKind<HistoryItem>('HISTORY#'); // sort key already orders by time then id
-    const nowIso = iso(new Date());
-    const next = interviews.find((i) => i.scheduledAt > nowIso)?.scheduledAt ?? null;
-    const hasPast = interviews.some((i) => i.scheduledAt <= nowIso);
+    const timing = timingByApplication(interviews, iso(new Date())).get(app.id) ?? NO_TIMING;
     return {
-      ...toApplicationDto(app, company, next, hasPast),
-      contacts: contacts.map(toContactDto),
+      ...toApplicationDto(app, company, timing),
+      contacts,
       interviews: interviews.map(toInterviewDto),
       interviewNotes: notes.map(toNoteDto),
       history: history.map(toHistoryDto),
@@ -253,22 +253,22 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     const companyById = new Map(companies.map((c) => [c.id, c]));
     const needle = query.q?.toLowerCase();
     return apps
+      .flatMap((a): ApplicationDto[] => {
+        const company = companyById.get(a.companyId);
+        return company ? [toApplicationDto(a, company, times.get(a.id))] : [];
+      })
       .filter((a) => {
         if (query.status && a.status !== query.status) return false;
         if (query.groups && !query.groups.includes(statusGroup(a.status))) return false;
         if (needle) {
-          const company = companyById.get(a.companyId);
-          const hit =
-            a.roleName.toLowerCase().includes(needle) ||
-            company?.name.toLowerCase().includes(needle);
-          if (!hit) return false;
+          if (
+            !a.roleName.toLowerCase().includes(needle) &&
+            !a.company.name.toLowerCase().includes(needle)
+          ) {
+            return false;
+          }
         }
         return true;
-      })
-      .flatMap((a): ApplicationDto[] => {
-        const company = companyById.get(a.companyId);
-        const t = times.get(a.id);
-        return company ? [toApplicationDto(a, company, t?.next ?? null, t?.hasPast ?? false)] : [];
       });
   }
 
@@ -396,6 +396,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       this.db,
       items.map((i) => ({ PK: i.PK as string, SK: i.SK as string })),
     );
+    // Contacts that were only on this application go with it.
+    await this.contacts.deleteOrphans(
+      items.filter((i) => String(i.SK).startsWith('CONTACT#')).map((i) => i.id as string),
+    );
     // Suggestions promoted into this application keep existing but lose the link.
     const linked = await queryAll<{ id: string }>(this.db, {
       IndexName: GSI2,
@@ -418,4 +422,32 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     );
     return true;
   }
+}
+
+/** Per application: the next upcoming interview, the latest past one with a stage, and the stages already held. */
+export function timingByApplication(interviews: readonly InterviewItem[], after: string) {
+  const byApp = new Map<string, InterviewTiming & { pastStages: Set<ApplicationStatus> }>();
+  for (const i of [...interviews].sort((x, y) => x.scheduledAt.localeCompare(y.scheduledAt))) {
+    const t = byApp.get(i.applicationId) ?? {
+      next: null,
+      nextStaged: null,
+      hasPast: false,
+      lastPast: null,
+      pastStages: new Set<ApplicationStatus>(),
+    };
+    const moment = { type: i.type, at: i.scheduledAt };
+    if (i.scheduledAt > after) {
+      t.next ??= moment;
+      if (INTERVIEW_TYPE_ROUND_STATUS[i.type]) t.nextStaged ??= moment;
+    } else {
+      t.hasPast = true;
+      const stage = INTERVIEW_TYPE_ROUND_STATUS[i.type];
+      if (stage) {
+        t.lastPast = moment;
+        t.pastStages.add(stage);
+      }
+    }
+    byApp.set(i.applicationId, t);
+  }
+  return byApp;
 }

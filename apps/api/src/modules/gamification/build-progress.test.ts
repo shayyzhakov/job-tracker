@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { ApplicationItem, ContactItem, HistoryItem, InterviewItem } from '../../db/mappers.js';
+import type {
+  ApplicationItem,
+  ContactLinkItem,
+  HistoryItem,
+  InterviewItem,
+} from '../../db/mappers.js';
 import { buildProgress } from './build-progress.js';
 
 const app = (over: Partial<ApplicationItem> = {}): ApplicationItem => ({
@@ -85,7 +90,7 @@ describe('buildProgress', () => {
       { id: 'i2', type: 'phone', createdAt: '2026-11-06T07:05:00.000Z' },
       { id: 'i3', type: 'technical', createdAt: '2026-11-06T07:10:00.000Z' },
     ] as InterviewItem[];
-    const contacts = [{ id: 'c1', createdAt: '2026-11-06T07:00:00.000Z' }] as ContactItem[];
+    const contacts = [{ id: 'c1', createdAt: '2026-11-06T07:00:00.000Z' }] as ContactLinkItem[];
     const p = buildProgress({ ...empty, interviews, contacts }, NOW);
     expect(p).toMatchObject({ interviewsCount: 3, contactsCount: 1 });
     expect([...p.interviewTypesUsed].sort()).toEqual(['phone', 'technical']);

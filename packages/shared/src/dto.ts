@@ -33,15 +33,29 @@ export interface CompanyDetailDto extends CompanyWithCountsDto {
   applications: CompanyApplicationDto[];
 }
 
+/** A person (recruiter, headhunter, hiring manager) shared by every application they appear on. */
 export interface ContactDto {
   id: string;
-  applicationId: string;
+  /** How many applications this contact is attached to (1 = only the one it is shown on). */
+  applicationCount: number;
   name: string;
   role: string | null;
   email: string | null;
   phone: string | null;
   linkedinUrl: string | null;
   notes: string | null;
+}
+
+export interface ContactApplicationDto {
+  id: string;
+  roleName: string;
+  status: ApplicationStatus;
+  companyName: string;
+}
+
+/** A contact with every application it is attached to. */
+export interface ContactDetailDto extends ContactDto {
+  applications: ContactApplicationDto[];
 }
 
 export interface InterviewDto {
@@ -99,6 +113,8 @@ export interface ApplicationDto {
   updatedAt: string;
   /** Next upcoming interview, if any — convenient for list views. */
   nextInterviewAt: string | null;
+  /** Type of that interview; lets the list label rounds that have no stage (review, other). */
+  nextInterviewType: InterviewType | null;
   /** Interview rounds reached so far, derived from the status history. */
   interviewsCount: number;
   /** When the employer said they'd reply by (ISO date); overrides the default waiting timer. */

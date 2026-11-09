@@ -2,6 +2,8 @@ import {
   APPLICATION_STATUSES,
   type ApplicationDto,
   type ApplicationStatus,
+  INTERVIEW_TYPE_LABELS,
+  INTERVIEW_TYPE_ROUND_STATUS,
   STATUS_GROUP_LABELS,
   STATUS_GROUPS,
   type StatusGroup,
@@ -53,7 +55,7 @@ import { formatDate, formatDateTime } from '../../lib/format';
 const groupsFilter = (groups: StatusGroup[]): StatusGroup[] | undefined =>
   groups.length === 0 || groups.length === STATUS_GROUPS.length ? undefined : groups;
 
-type SortKey = 'company' | 'role' | 'status' | 'applied' | 'interview' | 'done';
+type SortKey = 'company' | 'role' | 'status' | 'applied' | 'done';
 
 export function ApplicationsPage() {
   // The Companies page links here with ?q=<company>&scope=all to show all of a company's applications.
@@ -86,7 +88,6 @@ export function ApplicationsPage() {
     role: (a) => a.roleName,
     status: (a) => APPLICATION_STATUSES.indexOf(a.status),
     applied: (a) => a.appliedAt,
-    interview: (a) => a.nextInterviewAt,
     done: (a) => a.interviewsCount,
   });
 
@@ -155,9 +156,6 @@ export function ApplicationsPage() {
                   <SortableTh columnKey="applied" sort={sort} onSort={toggle} w={120}>
                     Applied
                   </SortableTh>
-                  <SortableTh columnKey="interview" sort={sort} onSort={toggle} w={170}>
-                    Next interview
-                  </SortableTh>
                   <SortableTh columnKey="done" sort={sort} onSort={toggle} w={110}>
                     Interviews
                   </SortableTh>
@@ -212,11 +210,16 @@ export function ApplicationsPage() {
                           changeStatus.mutate({ id: a.id, status })
                         }
                       />
+                      {a.nextInterviewAt && (
+                        <Text size="xs" c="dimmed" mt={2} data-testid="next-interview">
+                          {a.nextInterviewType && !INTERVIEW_TYPE_ROUND_STATUS[a.nextInterviewType]
+                            ? `${INTERVIEW_TYPE_LABELS[a.nextInterviewType]} · `
+                            : ''}
+                          {formatDateTime(a.nextInterviewAt)}
+                        </Text>
+                      )}
                     </Table.Td>
                     <Table.Td style={{ whiteSpace: 'nowrap' }}>{formatDate(a.appliedAt)}</Table.Td>
-                    <Table.Td style={{ whiteSpace: 'nowrap' }}>
-                      {formatDateTime(a.nextInterviewAt)}
-                    </Table.Td>
                     <Table.Td>
                       {a.interviewsCount > 0 ? (
                         <Badge

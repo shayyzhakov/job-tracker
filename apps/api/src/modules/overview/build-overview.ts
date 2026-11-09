@@ -42,6 +42,7 @@ const INTERVIEW_STAGE: ReadonlySet<ApplicationStatus> = new Set([
   'technical_interview',
   'home_assignment',
   'onsite_interview',
+  'managerial_interview',
   'final_interview',
   'offer',
   'accepted',

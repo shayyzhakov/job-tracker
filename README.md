@@ -109,7 +109,7 @@ claude mcp add --transport http job-tracker http://localhost:3000/mcp
 | Area            | Tools                                                                                                                                 |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Applications    | `list_applications`, `get_application`, `create_application`, `update_application`, `change_application_status`, `delete_application` |
-| Contacts        | `add_contact`, `update_contact`, `remove_contact`                                                                                     |
+| Contacts        | `list_contacts`, `get_contact`, `add_contact`, `update_contact`, `remove_contact`                                                     |
 | Interviews      | `schedule_interview`, `update_interview`, `remove_interview`                                                                          |
 | Interview notes | `list_notes`, `add_note`, `update_note`, `remove_note`                                                                                |
 | Companies       | `search_companies`, `list_companies`, `get_company`, `create_company`, `update_company`, `delete_company`                             |

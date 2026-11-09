@@ -60,7 +60,10 @@ export const key = {
   company: (id: string) => ({ PK: `COMPANY#${id}`, SK: 'META' }),
   companyName: (name: string) => ({ PK: `CNAME#${name.toLowerCase()}`, SK: 'META' }),
   app: (id: string) => ({ PK: `APP#${id}`, SK: 'META' }),
-  contact: (appId: string, id: string) => ({ PK: `APP#${appId}`, SK: `CONTACT#${id}` }),
+  /** The person (shared across applications). */
+  contact: (id: string) => ({ PK: `CONTACT#${id}`, SK: 'META' }),
+  /** Attaches the person to one application. */
+  contactLink: (appId: string, id: string) => ({ PK: `APP#${appId}`, SK: `CONTACT#${id}` }),
   interview: (appId: string, id: string) => ({ PK: `APP#${appId}`, SK: `INTERVIEW#${id}` }),
   note: (appId: string, interviewId: string, id: string) => ({
     PK: `APP#${appId}`,

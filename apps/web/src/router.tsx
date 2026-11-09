@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { Layout } from './components/Layout';
 import { ApplicationDetailPage } from './features/applications/ApplicationDetailPage';
 import { ApplicationsPage } from './features/applications/ApplicationsPage';
+import { ContactApplicationsPage } from './features/applications/ContactApplicationsPage';
 import { NewApplicationPage } from './features/applications/NewApplicationPage';
 import { CompaniesPage } from './features/companies/CompaniesPage';
 import { IntegrationsPage } from './features/integrations/IntegrationsPage';
@@ -24,6 +25,7 @@ export const createAppRouter = () =>
         { path: 'applications', Component: ApplicationsPage },
         { path: 'applications/new', Component: NewApplicationPage },
         { path: 'applications/:id', Component: ApplicationDetailPage },
+        { path: 'contacts/:id', Component: ContactApplicationsPage },
         { path: 'companies', Component: CompaniesPage },
         { path: 'suggestions', Component: SuggestionsPage },
         { path: 'integrations', Component: IntegrationsPage },

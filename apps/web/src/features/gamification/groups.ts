@@ -30,6 +30,7 @@ export const GROUPS: StageGroup[] = [
       'technical_interview',
       'home_assignment',
       'onsite_interview',
+      'managerial_interview',
       'final_interview',
     ],
     dropStatus: 'applied',

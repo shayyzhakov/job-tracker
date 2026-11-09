@@ -13,7 +13,7 @@ Let the user manage their job search by talking to an AI assistant such as Claud
    | Area            | Capabilities                                                                                                                                  |
    | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
    | Applications    | list and search (same filters as the UI, including status groups: initial, active, closed), view details, create, edit, change status, delete |
-   | Contacts        | add, edit, remove on an application                                                                                                           |
+   | Contacts        | list and view known contacts with their applications, add (reuse an existing contact by id), edit (shared), remove from an application        |
    | Interviews      | schedule, edit, remove on an application                                                                                                      |
    | Interview notes | list, add, edit, remove on an interview (see [10](10-interview-notes.md))                                                                     |
    | Companies       | search, list with application counts, view, create, edit, delete (see [11](11-companies.md))                                                  |

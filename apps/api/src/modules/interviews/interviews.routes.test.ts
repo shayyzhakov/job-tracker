@@ -33,8 +33,8 @@ describe('interviews API', () => {
       url: url(id),
       payload: { type: 'technical', scheduledAt: inDays(5) },
     });
-    // hr round moved on to technical: hr counted, upcoming technical not yet
-    expect((await getApp(id)).interviewsCount).toBe(1);
+    // neither round has happened yet
+    expect((await getApp(id)).interviewsCount).toBe(0);
   });
 
   it('counts a round once it has a past interview, even with a follow-up scheduled', async () => {
@@ -52,7 +52,7 @@ describe('interviews API', () => {
     expect((await getApp(id)).interviewsCount).toBe(1);
   });
 
-  it('is one record per round: a status change creates it, a scheduled one advances the status', async () => {
+  it('is one record per round, and the displayed status follows the next upcoming interview', async () => {
     const { id } = await createApplication(t.app);
     const when = inDays(3);
     const moved = await t.app.inject({
@@ -64,23 +64,56 @@ describe('interviews API', () => {
     expect(afterMove.interviews).toMatchObject([{ type: 'technical', scheduledAt: when }]);
     expect(afterMove.history.at(-1)?.interviewId).toBe(afterMove.interviews[0]?.id);
 
-    await t.app.inject({
+    // a scheduled interview shows as the status without rewriting the history
+    const final = await t.app.inject({
       method: 'POST',
       url: url(id),
       payload: { type: 'final', scheduledAt: inDays(6) },
     });
+    const finalId = final.json<{ id: string }>().id;
     const detail = await getApp(id);
-    expect(detail.status).toBe('final_interview');
     expect(detail.interviews).toHaveLength(2);
-    expect(detail.history.at(-1)?.interviewId).toBe(detail.interviews[1]?.id);
+    expect(detail.history).toHaveLength(2);
+    // the earliest upcoming round wins
+    expect(detail.status).toBe('technical_interview');
 
-    // an earlier-stage interview doesn't pull the status back
+    // an earlier stage can be next, even after a later one was scheduled
     await t.app.inject({
       method: 'POST',
       url: url(id),
-      payload: { type: 'hr', scheduledAt: inDays(-1) },
+      payload: { type: 'hr', scheduledAt: inDays(1) },
     });
-    expect((await getApp(id)).status).toBe('final_interview');
+    expect((await getApp(id)).status).toBe('hr_screening');
+
+    // an interview without a stage never changes the displayed status
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'other', scheduledAt: inDays(0.5) },
+    });
+    expect((await getApp(id)).status).toBe('hr_screening');
+    expect(finalId).toBeTruthy();
+  });
+
+  it('shows the last held round while nothing is scheduled, and reverts when a scheduled one is removed', async () => {
+    const { id } = await createApplication(t.app);
+    await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'phone', scheduledAt: inDays(-2) },
+    });
+    expect((await getApp(id)).status).toBe('phone_interview');
+
+    const tech = await t.app.inject({
+      method: 'POST',
+      url: url(id),
+      payload: { type: 'technical', scheduledAt: inDays(4) },
+    });
+    expect((await getApp(id)).status).toBe('technical_interview');
+    expect((await getApp(id)).nextInterviewType).toBe('technical');
+
+    await t.app.inject({ method: 'DELETE', url: `${url(id)}/${tech.json<{ id: string }>().id}` });
+    expect((await getApp(id)).status).toBe('phone_interview');
   });
 
   it('schedules interviews and exposes the next upcoming one on the application', async () => {

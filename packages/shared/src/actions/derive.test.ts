@@ -26,6 +26,7 @@ const app = (status: ApplicationStatus, over: Partial<ApplicationDto> = {}): App
   createdAt: daysAgo(30),
   updatedAt: daysAgo(1),
   nextInterviewAt: null,
+  nextInterviewType: null,
   interviewsCount: 0,
   replyBy: null,
   dueAt: null,

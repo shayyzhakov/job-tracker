@@ -112,16 +112,14 @@ describe('ApplicationsService', () => {
       expect(updated.history.at(-1)?.interviewId).toBeNull();
     });
 
-    it('advances to the stage of a directly scheduled interview, but never backwards', async () => {
-      const { id } = await service.create(input({ status: 'applied' }));
-      const phone = await interviews.create(id, { type: 'phone', scheduledAt: NOW });
-      await service.advanceToInterviewStage(id, phone);
-      expect((await service.get(id)).status).toBe('phone_interview');
-      expect((await service.get(id)).history.at(-1)?.interviewId).toBe(phone.id);
-
-      const hr = await interviews.create(id, { type: 'hr', scheduledAt: NOW });
-      await service.advanceToInterviewStage(id, hr);
-      expect((await service.get(id)).status).toBe('phone_interview');
+    it('leaves the stored status alone when an interview is scheduled, but marks it as applied', async () => {
+      const { id } = await service.create(input({ status: 'to_apply' }));
+      await interviews.create(id, { type: 'phone', scheduledAt: NOW });
+      await service.onInterviewScheduled(id);
+      const app = await service.get(id);
+      expect(app.status).toBe('to_apply');
+      expect(app.appliedAt).not.toBeNull();
+      expect(app.history).toHaveLength(1);
     });
 
     it('does not record history when the status is unchanged', async () => {

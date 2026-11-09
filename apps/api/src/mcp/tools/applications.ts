@@ -15,7 +15,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Services } from '../../services.js';
 import { defineTool, type ToolLogger } from '../tool.js';
-import { contactFields } from './children.js';
+import { contactFields, contactRef } from './children.js';
 
 const id = z.uuid().describe('Application id');
 const status = z.enum(APPLICATION_STATUSES);
@@ -69,6 +69,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         roleName: a.roleName,
         status: a.status,
         nextInterviewAt: a.nextInterviewAt,
+        nextInterviewType: a.nextInterviewType,
         interviewsCount: a.interviewsCount,
         updatedAt: a.updatedAt,
       }));
@@ -131,7 +132,12 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .describe('Other info about the method: job board name, recruiter, event, …'),
         notes: z.string().optional(),
         appliedAt: z.string().optional().describe('ISO 8601 date; set automatically if omitted'),
-        contacts: z.array(z.object(contactFields)).optional(),
+        contacts: z
+          .array(z.union([z.object(contactRef), z.object(contactFields)]))
+          .optional()
+          .describe(
+            'New contacts, or {contactId} to reuse an existing one. Call list_contacts first: people with the same email, phone or LinkedIn are reused automatically, but a matching name alone is not',
+          ),
       },
     },
     (args) => s.applications.create(ApplicationCreateSchema.parse(args)),

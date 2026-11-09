@@ -1,14 +1,13 @@
 // Composition root: wires repositories into the services that the REST routes and the MCP tools share.
-import type { ContactDto, ContactInput, ContactUpdate } from '@job-tracker/shared';
 import type { Db } from './db/dynamo.js';
 import { DynamoActionsRepository } from './modules/actions/actions.repository.js';
 import { ActionsService } from './modules/actions/actions.service.js';
 import { DynamoApplicationsRepository } from './modules/applications/applications.repository.js';
 import { ApplicationsService } from './modules/applications/applications.service.js';
-import { ChildService } from './modules/child-service.js';
 import { DynamoCompaniesRepository } from './modules/companies/companies.repository.js';
 import { CompaniesService } from './modules/companies/companies.service.js';
 import { DynamoContactsRepository } from './modules/contacts/contacts.repository.js';
+import { ContactsService } from './modules/contacts/contacts.service.js';
 import { DynamoInterviewsRepository } from './modules/interviews/interviews.repository.js';
 import { InterviewsService } from './modules/interviews/interviews.service.js';
 import { DynamoNotesRepository } from './modules/notes/notes.repository.js';
@@ -26,7 +25,7 @@ export interface Services {
   actions: ActionsService;
   applications: ApplicationsService;
   companies: CompaniesService;
-  contacts: ChildService<ContactInput, ContactUpdate, ContactDto>;
+  contacts: ContactsService;
   interviews: InterviewsService;
   notes: NotesService;
   overview: OverviewService;
@@ -47,7 +46,7 @@ export function createServices(db: Db): Services {
     actions: new ActionsService(new DynamoActionsRepository(db, applicationsRepo)),
     applications,
     companies: new CompaniesService(companies),
-    contacts: new ChildService('Contact', new DynamoContactsRepository(db), applicationsRepo),
+    contacts: new ContactsService(new DynamoContactsRepository(db), applicationsRepo),
     interviews: new InterviewsService(interviewsRepo, applicationsRepo, applications),
     notes: new NotesService(new DynamoNotesRepository(db)),
     overview: new OverviewService(new DynamoOverviewRepository(db)),

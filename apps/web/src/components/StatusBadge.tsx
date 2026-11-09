@@ -9,6 +9,7 @@ export const STATUS_COLORS: Record<ApplicationStatus, MantineColor> = {
   technical_interview: 'violet',
   home_assignment: 'grape',
   onsite_interview: 'indigo',
+  managerial_interview: 'pink',
   final_interview: 'orange',
   offer: 'lime',
   accepted: 'green',

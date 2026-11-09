@@ -5,7 +5,12 @@ import {
   type InterviewType,
   type ProgressDto,
 } from '@job-tracker/shared';
-import type { ApplicationItem, ContactItem, HistoryItem, InterviewItem } from '../../db/mappers.js';
+import type {
+  ApplicationItem,
+  ContactLinkItem,
+  HistoryItem,
+  InterviewItem,
+} from '../../db/mappers.js';
 
 export const PROGRESS_TIMEZONE = 'Asia/Jerusalem';
 /** How far back activity is reported (streaks and quests never look further). */
@@ -15,7 +20,7 @@ export interface ProgressInput {
   applications: ApplicationItem[];
   history: HistoryItem[];
   interviews: InterviewItem[];
-  contacts: ContactItem[];
+  contacts: ContactLinkItem[];
 }
 
 /** Pure read-model for the gamification layer: facts only, no scoring (that lives in @job-tracker/shared). */

@@ -6,6 +6,7 @@ import type {
   CompanyApplicationDto,
   CompanyDto,
   CompanyInput,
+  ContactAttach,
   ContactInput,
   HandOverReason,
   InterviewDto,
@@ -72,13 +73,15 @@ export class FakeCompaniesRepository implements CompaniesRepository {
   }
 }
 
+const isContactInput = (c: ContactAttach): c is ContactInput => !('contactId' in c);
+
 type StoredApp = Omit<ApplicationDetailDto, 'company'> & { companyId: string };
 
 export class FakeApplicationsRepository implements ApplicationsRepository {
   rows: StoredApp[] = [];
   constructor(private readonly companies: FakeCompaniesRepository) {}
 
-  async insert(app: NewApplication, contacts: ContactInput[], at: Date) {
+  async insert(app: NewApplication, contacts: ContactAttach[], at: Date) {
     const id = randomUUID();
     this.rows.push({
       id,
@@ -98,6 +101,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       createdAt: at.toISOString(),
       updatedAt: at.toISOString(),
       nextInterviewAt: null,
+      nextInterviewType: null,
       interviewsCount: 0,
       replyBy: app.replyBy?.toISOString() ?? null,
       dueAt: app.dueAt?.toISOString() ?? null,
@@ -109,9 +113,9 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       ).toISOString(),
       waitingOnThemAt: null,
       followUps: 0,
-      contacts: contacts.map((c) => ({
+      contacts: contacts.filter(isContactInput).map((c) => ({
         id: randomUUID(),
-        applicationId: id,
+        applicationCount: 1,
         name: c.name,
         role: c.role ?? null,
         email: c.email ?? null,

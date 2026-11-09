@@ -58,6 +58,21 @@ export const ContactInputSchema = z.object({
 export type ContactInput = z.infer<typeof ContactInputSchema>;
 export type ContactCreateInput = z.input<typeof ContactInputSchema>;
 
+/** Points at a contact that already exists, so it is reused instead of re-typed. */
+export const ContactRefSchema = z.object({ contactId: z.uuid() });
+export type ContactRef = z.infer<typeof ContactRefSchema>;
+
+/** Attach a contact to an application: an existing one by id, or new details (matched on email / LinkedIn). */
+export const ContactAttachSchema = z.union([ContactRefSchema, ContactInputSchema]);
+export type ContactAttach = z.infer<typeof ContactAttachSchema>;
+export type ContactAttachInput = z.input<typeof ContactAttachSchema>;
+
+export const ContactListQuerySchema = z.object({ q: optionalText });
+export type ContactListQuery = z.infer<typeof ContactListQuerySchema>;
+
+/** True when the attach payload references an existing contact. */
+export const isContactRef = (c: ContactAttach): c is ContactRef => 'contactId' in c;
+
 const applicationFields = {
   roleName: z.string().trim().min(1, 'Required'),
   isManagement: z.boolean().default(false),
@@ -78,7 +93,7 @@ const applicationFields = {
 export const ApplicationCreateSchema = z.object({
   company: z.union([z.object({ id: z.uuid() }), CompanyInputSchema]),
   status: ApplicationStatusSchema.default('to_apply'),
-  contacts: z.array(ContactInputSchema).default([]),
+  contacts: z.array(ContactAttachSchema).default([]),
   ...applicationFields,
 });
 export type ApplicationCreateInput = z.input<typeof ApplicationCreateSchema>;
@@ -144,8 +159,10 @@ export const ApplicationListQuerySchema = z.object({
   /** Comma-separated status groups (initial, active, closed); omitted means every group. */
   groups: optional(
     z
-      .string()
-      .transform((v) => v.split(',').map((g) => g.trim()))
+      .union([z.string(), z.array(z.string())])
+      .transform((v) =>
+        (Array.isArray(v) ? v : [v]).flatMap((s) => s.split(',')).map((g) => g.trim()),
+      )
       .pipe(z.array(StatusGroupSchema)),
   ),
   q: optionalText,

@@ -1,5 +1,10 @@
 import { type Db, queryGsi1, queryPartition } from '../../db/dynamo.js';
-import type { ApplicationItem, ContactItem, HistoryItem, InterviewItem } from '../../db/mappers.js';
+import type {
+  ApplicationItem,
+  ContactLinkItem,
+  HistoryItem,
+  InterviewItem,
+} from '../../db/mappers.js';
 import type { ProgressInput } from './build-progress.js';
 
 /** Read-only: loads every application and its children. Personal-scale data, aggregation happens in JS. */
@@ -17,7 +22,7 @@ export class DynamoProgressRepository {
       applications,
       history: of<HistoryItem>('HISTORY#'),
       interviews: of<InterviewItem>('INTERVIEW#'),
-      contacts: of<ContactItem>('CONTACT#'),
+      contacts: of<ContactLinkItem>('CONTACT#'),
     };
   }
 }

@@ -9,6 +9,7 @@ import {
   COMPANY_SIZE_LABELS,
   COMPANY_SIZES,
   type CompanySize,
+  ContactInputSchema,
   REFERRAL_CHANNEL_LABELS,
   REFERRAL_CHANNELS,
   type ReferralChannel,
@@ -34,10 +35,11 @@ import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
-import { useCompanySearch } from '../../api/hooks';
+import { useCompanySearch, useContacts } from '../../api/hooks';
 import { StatusSelect } from '../../components/StatusSelect';
 import { zodErrors } from '../../lib/zod-form';
 import { ContactFields, type ContactFormValues, emptyContact } from './ContactFields';
+import { SimilarContactBanner } from './SimilarContactBanner';
 
 export interface ApplicationFormValues {
   company: {
@@ -63,8 +65,21 @@ export interface ApplicationFormValues {
   dueAt: string | null;
   nextStep: string;
   notes: string;
-  contacts: ContactFormValues[];
+  contacts: ContactRow[];
 }
+
+/** A contact row: new details to fill in, or (when `contactId` is set) a known contact to reuse. */
+export interface ContactRow extends ContactFormValues {
+  contactId: string;
+  /** Label of the reused contact, shown instead of the fields. */
+  summary: string;
+}
+
+const newContactRow = (): ContactRow => ({
+  ...emptyContact(),
+  contactId: '',
+  summary: '',
+});
 
 const blankValues: ApplicationFormValues = {
   company: { name: '', size: null, isPublic: false, location: '', website: '' },
@@ -125,6 +140,9 @@ const salary = (v: number | string) => (typeof v === 'number' ? v : undefined);
 /** Form values -> create payload (blank optional fields are dropped by the schema). */
 export const toCreatePayload = (v: ApplicationFormValues) => ({
   ...v,
+  contacts: v.contacts.map(({ contactId, summary: _summary, ...fields }) =>
+    contactId ? { contactId } : fields,
+  ),
   applicationMethod: v.applicationMethod ?? undefined,
   referrerChannel: v.referrerChannel ?? undefined,
   company: { ...v.company, size: v.company.size ?? undefined },
@@ -133,6 +151,21 @@ export const toCreatePayload = (v: ApplicationFormValues) => ({
   replyBy: v.replyBy ?? undefined,
   dueAt: endOfDay(v.dueAt) ?? undefined,
 });
+
+/** Create validation with field-level errors on new contact rows (reused rows only carry an id). */
+const createErrors = (v: ApplicationFormValues) => {
+  const errors = zodErrors(ApplicationCreateSchema, {
+    ...toCreatePayload(v),
+    contacts: [],
+  });
+  v.contacts.forEach((c, i) => {
+    if (c.contactId) return;
+    for (const [path, message] of Object.entries(zodErrors(ContactInputSchema, c))) {
+      errors[`contacts.${i}.${path}`] = message;
+    }
+  });
+  return errors;
+};
 
 /** Form values -> PATCH payload (blank fields become null, i.e. cleared). */
 export const toUpdatePayload = (v: ApplicationFormValues) => {
@@ -168,10 +201,12 @@ export function ApplicationForm({
     initialValues,
     validate: (values) =>
       mode === 'create'
-        ? zodErrors(ApplicationCreateSchema, toCreatePayload(values))
+        ? createErrors(values)
         : zodErrors(ApplicationUpdateSchema, toUpdatePayload(values)),
   });
 
+  const { data: knownContacts = [] } = useContacts();
+  const usedIds = new Set(form.values.contacts.map((c) => c.contactId));
   const [companyQuery] = useDebouncedValue(form.values.company.name, 200);
   const companies = useCompanySearch(mode === 'create' ? companyQuery : '');
 
@@ -349,7 +384,7 @@ export function ApplicationForm({
                 variant="light"
                 size="xs"
                 leftSection={<IconPlus size={14} />}
-                onClick={() => form.insertListItem('contacts', emptyContact())}
+                onClick={() => form.insertListItem('contacts', newContactRow())}
               >
                 Add contact
               </Button>
@@ -374,7 +409,25 @@ export function ApplicationForm({
                       <IconTrash size={16} />
                     </ActionIcon>
                   </Group>
-                  <ContactFields form={form} prefix={`contacts.${i}`} />
+                  {form.values.contacts[i]?.contactId ? (
+                    <Text fw={600}>{form.values.contacts[i]?.summary}</Text>
+                  ) : (
+                    <>
+                      <ContactFields form={form} prefix={`contacts.${i}`} />
+                      <SimilarContactBanner
+                        name={form.values.contacts[i]?.name ?? ''}
+                        known={knownContacts}
+                        excludeIds={usedIds}
+                        onUse={(k) =>
+                          form.setFieldValue(`contacts.${i}`, {
+                            ...newContactRow(),
+                            contactId: k.id,
+                            summary: [k.name, k.role].filter(Boolean).join(' · '),
+                          })
+                        }
+                      />
+                    </>
+                  )}
                 </Stack>
               ))}
             </Stack>

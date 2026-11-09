@@ -5,8 +5,11 @@ import {
   type CompanyDto,
   type CompanySize,
   type ContactDto,
+  displayedStatus,
   INTERVIEW_ROUND_STATUSES,
+  INTERVIEW_TYPE_ROUND_STATUS,
   type InterviewDto,
+  type InterviewMoment,
   type InterviewType,
   type NoteDto,
   type OpportunityDto,
@@ -57,9 +60,9 @@ export interface ApplicationItem {
   updatedAt: string;
 }
 
+/** A person, shared by every application they are attached to (`CONTACT#<id> / META`). */
 export interface ContactItem {
   id: string;
-  applicationId: string;
   name: string;
   role: string | null;
   email: string | null;
@@ -68,6 +71,14 @@ export interface ContactItem {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Attaches a contact to one application (`APP#<appId> / CONTACT#<contactId>`). */
+export interface ContactLinkItem {
+  /** The contact's id. */
+  id: string;
+  applicationId: string;
+  createdAt: string;
 }
 
 export interface InterviewItem {
@@ -134,9 +145,9 @@ export const toCompanyDto = (c: CompanyItem): CompanyDto => ({
   location: c.location,
 });
 
-export const toContactDto = (c: ContactItem): ContactDto => ({
+export const toContactDto = (c: ContactItem, applicationCount: number): ContactDto => ({
   id: c.id,
-  applicationId: c.applicationId,
+  applicationCount,
   name: c.name,
   role: c.role,
   email: c.email,
@@ -174,17 +185,38 @@ export const toHistoryDto = (h: HistoryItem): StatusHistoryDto => ({
   interviewId: h.interviewId ?? null,
 });
 
-/** Distinct interview-round statuses the application has ever had (reachedStatuses mirrors the status history). */
+/** What the interviews of one application say about its status (see `displayedStatus`). */
+export interface InterviewTiming {
+  /** Earliest interview strictly in the future. */
+  next: InterviewMoment | null;
+  /** Earliest future interview that has a stage (the one that sets the displayed status). */
+  nextStaged: InterviewMoment | null;
+  hasPast: boolean;
+  /** Latest past interview that has a stage. */
+  lastPast: InterviewMoment | null;
+  /** Stages of past interviews. */
+  pastStages: ReadonlySet<ApplicationStatus>;
+}
+
+export const NO_TIMING: InterviewTiming = {
+  next: null,
+  nextStaged: null,
+  hasPast: false,
+  lastPast: null,
+  pastStages: new Set(),
+};
+
+/** Distinct interview-round statuses reached: from the status history, plus rounds that already happened. */
 const interviewRoundsReached = (
   reached: readonly ApplicationStatus[],
   status: ApplicationStatus,
-  nextInterviewAt: string | null,
-  hasPastInterview: boolean,
+  timing: InterviewTiming,
 ) => {
   const isRound = (s: string) => (INTERVIEW_ROUND_STATUSES as readonly string[]).includes(s);
   const rounds = new Set(reached.filter(isRound));
   // The current round hasn't happened yet while its only interview is still upcoming.
-  if (nextInterviewAt && !hasPastInterview && isRound(status)) rounds.delete(status);
+  if (timing.next && !timing.hasPast && isRound(status)) rounds.delete(status);
+  for (const s of timing.pastStages) rounds.add(s);
   return rounds.size;
 };
 
@@ -195,40 +227,43 @@ const statusChangedFallback = (a: ApplicationItem) =>
 export const toApplicationDto = (
   a: ApplicationItem,
   company: CompanyItem,
-  nextInterviewAt: string | null,
-  hasPastInterview = false,
-): ApplicationDto => ({
-  id: a.id,
-  company: toCompanyDto(company),
-  roleName: a.roleName,
-  isManagement: a.isManagement,
-  status: a.status,
-  listingUrl: a.listingUrl,
-  expectedSalaryIls: a.expectedSalaryIls,
-  source: a.source,
-  applicationMethod: nul(a.applicationMethod),
-  referrerName: nul(a.referrerName),
-  referrerChannel: nul(a.referrerChannel),
-  methodDetails: nul(a.methodDetails),
-  notes: a.notes,
-  appliedAt: a.appliedAt,
-  createdAt: a.createdAt,
-  updatedAt: a.updatedAt,
-  nextInterviewAt,
-  interviewsCount: interviewRoundsReached(
-    a.reachedStatuses,
-    a.status,
-    nextInterviewAt,
-    hasPastInterview,
-  ),
-  replyBy: nul(a.replyBy),
-  dueAt: nul(a.dueAt),
-  nextStep: nul(a.nextStep),
-  snoozedUntil: nul(a.snoozedUntil),
-  statusChangedAt: a.statusChangedAt ?? statusChangedFallback(a),
-  waitingOnThemAt: nul(a.waitingOnThemAt),
-  followUps: a.followUps ?? 0,
-});
+  timing: InterviewTiming = NO_TIMING,
+): ApplicationDto => {
+  const statusChangedAt = a.statusChangedAt ?? statusChangedFallback(a);
+  return {
+    id: a.id,
+    company: toCompanyDto(company),
+    roleName: a.roleName,
+    isManagement: a.isManagement,
+    status: displayedStatus({
+      status: a.status,
+      statusChangedAt,
+      next: timing.nextStaged,
+      lastPast: timing.lastPast,
+    }),
+    listingUrl: a.listingUrl,
+    expectedSalaryIls: a.expectedSalaryIls,
+    source: a.source,
+    applicationMethod: nul(a.applicationMethod),
+    referrerName: nul(a.referrerName),
+    referrerChannel: nul(a.referrerChannel),
+    methodDetails: nul(a.methodDetails),
+    notes: a.notes,
+    appliedAt: a.appliedAt,
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
+    nextInterviewAt: timing.next?.at ?? null,
+    nextInterviewType: timing.next?.type ?? null,
+    interviewsCount: interviewRoundsReached(a.reachedStatuses, a.status, timing),
+    replyBy: nul(a.replyBy),
+    dueAt: nul(a.dueAt),
+    nextStep: nul(a.nextStep),
+    snoozedUntil: nul(a.snoozedUntil),
+    statusChangedAt,
+    waitingOnThemAt: nul(a.waitingOnThemAt),
+    followUps: a.followUps ?? 0,
+  };
+};
 
 export const toOpportunityDto = (o: OpportunityItem): OpportunityDto => ({
   id: o.id,

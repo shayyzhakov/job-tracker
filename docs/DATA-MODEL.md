@@ -12,7 +12,7 @@ For the surrounding design decisions see [ARCHITECTURE.md](ARCHITECTURE.md#4-dat
 ```mermaid
 erDiagram
     COMPANY ||--o{ APPLICATION : "has"
-    APPLICATION ||--o{ CONTACT : "has"
+    CONTACT }o--o{ APPLICATION : "attached to (CONTACT_LINK)"
     APPLICATION ||--o{ INTERVIEW : "has"
     APPLICATION ||--o{ STATUS_HISTORY : "records"
     INTERVIEW |o--o{ STATUS_HISTORY : "may trigger"
@@ -60,9 +60,14 @@ erDiagram
         string updatedAt "ISO 8601"
     }
 
+    CONTACT_LINK {
+        string contactId FK "-> CONTACT.id (also the SK)"
+        string applicationId FK "-> APPLICATION.id (also the PK)"
+        string createdAt "ISO 8601"
+    }
+
     CONTACT {
         string id PK "uuid"
-        string applicationId FK "-> APPLICATION.id"
         string name
         string role "nullable"
         string email "nullable"
@@ -132,30 +137,30 @@ erDiagram
 
 ### Relationships
 
-| Relationship                 | Cardinality | Kind                                        | Notes                                                                                                                                                                                                                                                                                                                             |
-| ---------------------------- | ----------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Company → Application        | 1 : many    | `APPLICATION.companyId` → `COMPANY.id`      | An application always has a company. Companies are created with an application (de-duplicated by lowercased name) or on their own with no application. Company fields are never copied onto applications, so editing a company changes it for all of its applications. A company can be deleted only when it has no applications. |
-| Application → Contact        | 1 : many    | `CONTACT.applicationId`                     | Child rows live in the application's partition; deleting the application deletes them.                                                                                                                                                                                                                                            |
-| Application → Interview      | 1 : many    | `INTERVIEW.applicationId`                   | Same partition as the application.                                                                                                                                                                                                                                                                                                |
-| Interview → Note             | 1 : many    | `NOTE.interviewId` (+ `NOTE.applicationId`) | Same partition as the application, sort key `NOTE#<interviewId>#<id>`. Deleting the interview deletes its notes; deleting the application deletes all of them. Reads drop notes whose interview is missing.                                                                                                                       |
-| Application → Status history | 1 : many    | `STATUS_HISTORY.applicationId`              | Append-only log of status changes; same partition, sorted by time.                                                                                                                                                                                                                                                                |
-| Interview → Status history   | 1 : 0..many | `STATUS_HISTORY.interviewId` (optional)     | Set when a history step was created by, or came from, an interview. Absent on older rows.                                                                                                                                                                                                                                         |
-| Opportunity → Application    | many : 0..1 | `OPPORTUNITY.applicationId` (nullable)      | Set when a suggestion is promoted (`status = promoted`). Reverse lookup (application → opportunity) is served by GSI2.                                                                                                                                                                                                            |
-| Scout criteria               | singleton   | none                                        | One item for the whole table (single user). Not related to other entities; it drives which opportunities the scout worker keeps.                                                                                                                                                                                                  |
+| Relationship                 | Cardinality | Kind                                          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ----------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Company → Application        | 1 : many    | `APPLICATION.companyId` → `COMPANY.id`        | An application always has a company. Companies are created with an application (de-duplicated by lowercased name) or on their own with no application. Company fields are never copied onto applications, so editing a company changes it for all of its applications. A company can be deleted only when it has no applications.                                                                                                                               |
+| Application ↔ Contact        | many : many | `CONTACT_LINK` (`applicationId`, `contactId`) | A contact is one shared person (`CONTACT#<id>`); each application holds a small link item in its own partition. Edits to the contact show everywhere. Removing a link, or deleting the application, deletes the contact when no link is left (checked by a separate read, not a transaction). New details that match a contact on email (case-insensitive), phone (digits) or LinkedIn profile reuse it; there is no uniqueness marker, so this is best effort. |
+| Application → Interview      | 1 : many    | `INTERVIEW.applicationId`                     | Same partition as the application.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Interview → Note             | 1 : many    | `NOTE.interviewId` (+ `NOTE.applicationId`)   | Same partition as the application, sort key `NOTE#<interviewId>#<id>`. Deleting the interview deletes its notes; deleting the application deletes all of them. Reads drop notes whose interview is missing.                                                                                                                                                                                                                                                     |
+| Application → Status history | 1 : many    | `STATUS_HISTORY.applicationId`                | Append-only log of status changes; same partition, sorted by time.                                                                                                                                                                                                                                                                                                                                                                                              |
+| Interview → Status history   | 1 : 0..many | `STATUS_HISTORY.interviewId` (optional)       | Set when a history step was created by, or came from, an interview. Absent on older rows.                                                                                                                                                                                                                                                                                                                                                                       |
+| Opportunity → Application    | many : 0..1 | `OPPORTUNITY.applicationId` (nullable)        | Set when a suggestion is promoted (`status = promoted`). Reverse lookup (application → opportunity) is served by GSI2.                                                                                                                                                                                                                                                                                                                                          |
+| Scout criteria               | singleton   | none                                          | One item for the whole table (single user). Not related to other entities; it drives which opportunities the scout worker keeps.                                                                                                                                                                                                                                                                                                                                |
 
 Not stored: the **action queue** (what needs doing today) is derived from applications and interviews by `deriveActions` in `packages/shared/src/actions`, and **gamification progress** is derived by `build-progress.ts`. Neither has items in the table.
 
 ### Enumerations
 
-| Enum                | Values                                                                                                                                                                                             |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ApplicationStatus` | `to_apply`, `applied`, `hr_screening`, `phone_interview`, `technical_interview`, `home_assignment`, `onsite_interview`, `final_interview`, `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted` |
-| Status groups       | initial: `to_apply`, `applied`. active: the interview rounds and `offer`. closed: `accepted`, `rejected`, `withdrawn`, `ghosted`. "Open" = initial + active. Derived from status, never stored     |
-| `CompanySize`       | `early_stage_startup`, `startup`, `scale_up`, `corporate`                                                                                                                                          |
-| `InterviewType`     | `hr`, `phone`, `technical`, `system_design`, `home_assignment`, `home_assignment_review`, `onsite`, `managerial`, `final`, `coffee`, `other`                                                       |
-| `ApplicationMethod` | `referral`, `linkedin`, `company_site`, `job_board`, `recruiter_outreach`, `networking_event`, `other`                                                                                             |
-| `ReferralChannel`   | `in_person`, `phone`, `whatsapp`, `linkedin`, `email`, `other`                                                                                                                                     |
-| `OpportunityStatus` | `new`, `filtered`, `dismissed`, `promoted`                                                                                                                                                         |
+| Enum                | Values                                                                                                                                                                                                                     |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ApplicationStatus` | `to_apply`, `applied`, `hr_screening`, `phone_interview`, `technical_interview`, `home_assignment`, `onsite_interview`, `managerial_interview`, `final_interview`, `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted` |
+| Status groups       | initial: `to_apply`, `applied`. active: the interview rounds and `offer`. closed: `accepted`, `rejected`, `withdrawn`, `ghosted`. "Open" = initial + active. Derived from status, never stored                             |
+| `CompanySize`       | `early_stage_startup`, `startup`, `scale_up`, `corporate`                                                                                                                                                                  |
+| `InterviewType`     | `hr`, `phone`, `technical`, `system_design`, `home_assignment`, `home_assignment_review`, `onsite`, `managerial`, `final`, `coffee`, `other`                                                                               |
+| `ApplicationMethod` | `referral`, `linkedin`, `company_site`, `job_board`, `recruiter_outreach`, `networking_event`, `other`                                                                                                                     |
+| `ReferralChannel`   | `in_person`, `phone`, `whatsapp`, `linkedin`, `email`, `other`                                                                                                                                                             |
+| `OpportunityStatus` | `new`, `filtered`, `dismissed`, `promoted`                                                                                                                                                                                 |
 
 ### Scout criteria payload
 
@@ -191,7 +196,8 @@ All other attributes are schemaless; the columns and types are those in the ERD 
 | Company              | `COMPANY#<id>`         | `META`                    | `COMPANIES` / `<lowercased name>#<id>`                      |                                                                   |
 | Company-name marker  | `CNAME#<lowercased>`   | `META`                    |                                                             |                                                                   |
 | Application          | `APP#<id>`             | `META`                    | `APPS` / `<updatedAt>#<id>`                                 |                                                                   |
-| Contact              | `APP#<appId>`          | `CONTACT#<id>`            |                                                             |                                                                   |
+| Contact              | `CONTACT#<id>`         | `META`                    | `CONTACTS` / `<lowercased name>#<id>`                       |                                                                   |
+| Contact link         | `APP#<appId>`          | `CONTACT#<contactId>`     |                                                             | `CONTACT#<contactId>` / `<appId>` (applications of a contact)     |
 | Interview            | `APP#<appId>`          | `INTERVIEW#<id>`          | `INTERVIEWS` / `<scheduledAt>#<id>`                         |                                                                   |
 | Note                 | `APP#<appId>`          | `NOTE#<interviewId>#<id>` |                                                             |                                                                   |
 | Status history entry | `APP#<appId>`          | `HISTORY#<at>#<id>`       |                                                             |                                                                   |
@@ -207,7 +213,7 @@ Marker items exist only to enforce uniqueness (they carry no data). They are wri
 flowchart LR
     subgraph P1["Partition APP#a1 (item collection)"]
         A["SK META<br/>Application"]
-        C1["SK CONTACT#c1<br/>Contact"]
+        C1["SK CONTACT#c1<br/>Contact link"]
         I1["SK INTERVIEW#i1<br/>Interview"]
         N1["SK NOTE#i1#n1<br/>Interview note"]
         H1["SK HISTORY#2026-01-05T..#h1<br/>Status history"]
@@ -215,16 +221,20 @@ flowchart LR
     subgraph P2["Partition COMPANY#k1"]
         K["SK META<br/>Company"]
     end
+    subgraph P4["Partition CONTACT#c1"]
+        CT["SK META<br/>Contact (shared person)"]
+    end
     subgraph P3["Partition OPP#o1"]
         O["SK META<br/>Opportunity"]
     end
     A -- "companyId" --> K
+    C1 -- "contactId" --> CT
     O -. "applicationId (when promoted)" .-> A
     H1 -. "interviewId (optional)" .-> I1
     N1 -. "interviewId (in the SK)" .-> I1
 ```
 
-- **One-to-many inside the application aggregate** is expressed by sharing `PK = APP#<id>` and using a typed `SK` prefix (`CONTACT#`, `INTERVIEW#`, `NOTE#`, `HISTORY#`). One `Query` on the partition loads the application with all its children; `begins_with(SK, 'CONTACT#')` loads one kind, and `begins_with(SK, 'NOTE#<interviewId>#')` loads the notes of one interview.
+- **One-to-many inside the application aggregate** is expressed by sharing `PK = APP#<id>` and using a typed `SK` prefix (`CONTACT#` links, `INTERVIEW#`, `NOTE#`, `HISTORY#`). One `Query` on the partition loads the application with all its children; `begins_with(SK, 'CONTACT#')` loads one kind, and `begins_with(SK, 'NOTE#<interviewId>#')` loads the notes of one interview.
 - **Many-to-one across aggregates** (application → company, opportunity → application) is a plain attribute holding the other item's id, resolved with a `GetItem`/`BatchGetItem` on its key.
 - **History ordering:** the timestamp is embedded in the sort key, so history comes back in chronological order for free.
 
@@ -232,7 +242,10 @@ flowchart LR
 
 | Access pattern                                                          | Operation                                                                            |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Get one application with contacts, interviews, interview notes, history | `Query PK = APP#<id>`                                                                |
+| Get one application with contacts, interviews, interview notes, history | `Query PK = APP#<id>`, then `BatchGet` the linked `CONTACT#<id> / META` profiles     |
+| List contacts (reuse picker), search by name, role, email, phone        | `Query GSI1 GSI1PK = CONTACTS` (filtered in memory)                                  |
+| Applications of a contact (count, contact page, orphan check)           | `Query GSI2 GSI2PK = CONTACT#<id>`                                                   |
+| Match new contact details to a known contact                            | `Query GSI1 GSI1PK = CONTACTS`, compared on email / LinkedIn in memory               |
 | Notes of one interview (delete cascade)                                 | `Query PK = APP#<id>, begins_with(SK, NOTE#<interviewId>#)`                          |
 | List applications, newest updated first                                 | `Query GSI1 GSI1PK = APPS`, descending                                               |
 | Upcoming interviews / next interview per application                    | `Query GSI1 GSI1PK = INTERVIEWS`, `GSI1SK > <now>`                                   |
@@ -253,10 +266,11 @@ Updating an application's `updatedAt` also rewrites its `GSI1SK`, and a status c
 | Create company            | One transaction: company item + company-name marker (fails if the name exists)                                                                                                                                                                                  |
 | Rename company            | One transaction: company update + new marker + delete of the old marker                                                                                                                                                                                         |
 | Delete company            | One transaction: company item + its name marker. Allowed only when no application references the company; that check is a separate read, so an application created in between could slip through (accepted for one user; a per-company counter would close it). |
-| Create application        | One transaction: application + its initial contacts + first status history entry (`fromStatus = null`). The company is created beforehand.                                                                                                                      |
+| Create application        | One transaction: application + its contact links (plus the contact item for each new person) + first status history entry (`fromStatus = null`). The company is created beforehand.                                                                             |
 | Change application status | One transaction: application update (`status`, `reachedStatuses`, `GSI1SK`) + new status history entry                                                                                                                                                          |
 | Delete interview          | Not a transaction: the interview is deleted (conditional), then its notes are found with `begins_with(SK, NOTE#<interviewId>#)` and batch-deleted. A failure in between leaves notes that reads ignore (their interview is gone).                               |
-| Delete application        | The whole partition (`PK = APP#<id>`: application, contacts, interviews, notes, history) is batch-deleted                                                                                                                                                       |
+| Attach contact            | One transaction: the contact item (only when new) + the link item. Attaching an already attached contact writes nothing.                                                                                                                                        |
+| Delete application        | The whole partition (`PK = APP#<id>`: application, contact links, interviews, notes, history) is batch-deleted, then contacts left with no link are deleted                                                                                                     |
 | Save suggestions          | One transaction per suggestion: opportunity + listing-URL marker (already-seen URLs are skipped)                                                                                                                                                                |
 | Promote suggestion        | Application is created as above, then the opportunity is moved to `promoted` and given `applicationId` with a compare-and-set on its old status                                                                                                                 |
 

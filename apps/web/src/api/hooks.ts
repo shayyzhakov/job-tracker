@@ -10,7 +10,8 @@ import type {
   CompanyInput,
   CompanyUpdate,
   CompanyWithCountsDto,
-  ContactCreateInput,
+  ContactAttachInput,
+  ContactDetailDto,
   ContactDto,
   ContactUpdateInput,
   HandOverReason,
@@ -46,6 +47,8 @@ export const queryKeys = {
   opportunities: ['opportunities'] as const,
   opportunityList: (status: OpportunityStatus) => ['opportunities', status] as const,
   scoutCriteria: ['scout-criteria'] as const,
+  contacts: ['contacts'] as const,
+  contact: (id: string) => ['contacts', 'detail', id] as const,
 };
 
 const toSearch = (f: ApplicationFilters) => {
@@ -135,6 +138,7 @@ function useInvalidateAll() {
   return () =>
     Promise.all([
       qc.invalidateQueries({ queryKey: queryKeys.applications }),
+      qc.invalidateQueries({ queryKey: queryKeys.contacts }),
       qc.invalidateQueries({ queryKey: queryKeys.overview }),
       qc.invalidateQueries({ queryKey: queryKeys.actions }),
     ]);
@@ -264,7 +268,20 @@ function useChildMutations<TInput, TUpdate, TDto>(applicationId: string, resourc
 }
 
 export const useContactMutations = (applicationId: string) =>
-  useChildMutations<ContactCreateInput, ContactUpdateInput, ContactDto>(applicationId, 'contacts');
+  useChildMutations<ContactAttachInput, ContactUpdateInput, ContactDto>(applicationId, 'contacts');
+
+/** Every known contact, for reusing one instead of typing the person again. */
+export const useContacts = () =>
+  useQuery({
+    queryKey: queryKeys.contacts,
+    queryFn: () => api<ContactDto[]>('/contacts'),
+  });
+
+export const useContact = (id: string) =>
+  useQuery({
+    queryKey: queryKeys.contact(id),
+    queryFn: () => api<ContactDetailDto>(`/contacts/${id}`),
+  });
 
 export const useInterviewMutations = (applicationId: string) =>
   useChildMutations<InterviewCreateInput, InterviewUpdateInput, InterviewDto>(

@@ -70,6 +70,8 @@ describe('MCP server', () => {
         'change_application_status',
         'delete_application',
         'add_contact',
+        'list_contacts',
+        'get_contact',
         'update_contact',
         'remove_contact',
         'schedule_interview',
@@ -105,6 +107,8 @@ describe('MCP server', () => {
       'list_notes',
       'list_companies',
       'get_company',
+      'list_contacts',
+      'get_contact',
     ]) {
       expect(byName.get(name)?.annotations?.readOnlyHint).toBe(true);
     }
@@ -239,6 +243,7 @@ describe('MCP server', () => {
         roleName: 'Engineering Manager',
         status: 'technical_interview',
         nextInterviewAt: null,
+        nextInterviewType: null,
         interviewsCount: 1,
         updatedAt: expect.any(String),
       },

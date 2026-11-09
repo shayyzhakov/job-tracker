@@ -1,4 +1,4 @@
-import type { UpcomingInterviewDto } from '@job-tracker/shared';
+import { displayedStatus, type UpcomingInterviewDto } from '@job-tracker/shared';
 import { batchGet, type Db, dateOrNull, key, queryGsi1 } from '../../db/dynamo.js';
 import {
   type ApplicationItem,
@@ -6,7 +6,7 @@ import {
   type InterviewItem,
   toInterviewDto,
 } from '../../db/mappers.js';
-import { afterTime } from '../applications/applications.repository.js';
+import { afterTime, timingByApplication } from '../applications/applications.repository.js';
 import type { OverviewInput } from './build-overview.js';
 
 const UPCOMING_LIMIT = 10;
@@ -16,14 +16,14 @@ export class DynamoOverviewRepository {
   constructor(private readonly db: Db) {}
 
   async load(now: Date): Promise<OverviewInput> {
-    const [apps, upcoming] = await Promise.all([
+    const [apps, interviews] = await Promise.all([
       queryGsi1<ApplicationItem>(this.db, 'APPS'),
-      queryGsi1<InterviewItem>(this.db, 'INTERVIEWS', {
-        skCondition: 'GSI1SK > :after',
-        values: { ':after': afterTime(now) },
-        limit: UPCOMING_LIMIT,
-      }),
+      queryGsi1<InterviewItem>(this.db, 'INTERVIEWS'),
     ]);
+    const after = afterTime(now);
+    // Earliest first (the index is ordered by time).
+    const upcoming = interviews.filter((i) => i.scheduledAt > after).slice(0, UPCOMING_LIMIT);
+    const timing = timingByApplication(interviews, after);
 
     // Names for the upcoming interviews: fetch just the applications (and their companies) involved.
     const involvedApps = await batchGet<ApplicationItem>(
@@ -38,14 +38,23 @@ export class DynamoOverviewRepository {
     const companyById = new Map(companies.map((c) => [c.id, c]));
 
     return {
-      applications: apps.map((a) => ({
-        id: a.id,
-        status: a.status,
-        appliedAt: dateOrNull(a.appliedAt),
-        applicationMethod: a.applicationMethod ?? null,
-        expectedSalaryIls: a.expectedSalaryIls,
-        reachedStatuses: a.reachedStatuses,
-      })),
+      // Counts use the displayed status (see `displayedStatus`), and rounds that were held count as reached.
+      applications: apps.map((a) => {
+        const t = timing.get(a.id);
+        return {
+          id: a.id,
+          status: displayedStatus({
+            status: a.status,
+            statusChangedAt: a.statusChangedAt ?? a.updatedAt,
+            next: t?.nextStaged ?? null,
+            lastPast: t?.lastPast ?? null,
+          }),
+          appliedAt: dateOrNull(a.appliedAt),
+          applicationMethod: a.applicationMethod ?? null,
+          expectedSalaryIls: a.expectedSalaryIls,
+          reachedStatuses: [...new Set([...a.reachedStatuses, ...(t?.pastStages ?? [])])],
+        };
+      }),
       upcomingInterviews: upcoming.flatMap((i): UpcomingInterviewDto[] => {
         const app = appById.get(i.applicationId);
         const company = app && companyById.get(app.companyId);

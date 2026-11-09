@@ -1,5 +1,5 @@
 import {
-  ContactInputSchema,
+  ContactAttachSchema,
   ContactUpdateSchema,
   INTERVIEW_TYPES,
   InterviewInputSchema,
@@ -14,6 +14,11 @@ import { defineTool, type ToolLogger } from '../tool.js';
 
 const applicationId = z.uuid().describe('Application id');
 const nullable = <T extends z.ZodType>(schema: T) => schema.nullable().optional();
+
+/** Existing contact to reuse (see list_contacts), instead of typing the person again. */
+export const contactRef = {
+  contactId: z.uuid().describe('Id of an existing contact'),
+};
 
 export const contactFields = {
   name: z.string(),
@@ -33,11 +38,58 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     'add_contact',
     {
       title: 'Add contact',
-      description: 'Add a contact person (recruiter, hiring manager...) to an application.',
-      inputSchema: { applicationId, ...contactFields },
+      description:
+        'Add a contact person (recruiter, headhunter, hiring manager...) to an application. People are shared across applications: to reuse someone already known pass only contactId (find them with list_contacts). New details whose email, phone or LinkedIn URL match an existing contact reuse that contact automatically; a matching name alone does not, so check list_contacts first.',
+      inputSchema: {
+        applicationId,
+        contactId: contactRef.contactId.optional(),
+        ...contactFields,
+        name: contactFields.name.optional().describe('Required unless contactId is given'),
+      },
     },
-    ({ applicationId, ...input }) =>
-      s.contacts.create(applicationId, ContactInputSchema.parse(input)),
+    async ({ applicationId, ...input }) => {
+      const contact = await s.contacts.create(
+        applicationId,
+        ContactAttachSchema.parse(input.contactId ? { contactId: input.contactId } : input),
+      );
+      if (input.contactId || contact.applicationCount > 1) return contact;
+      // A new person: surface known contacts with a similar name, which are not merged automatically.
+      const similar = (await s.contacts.list(contact.name)).filter((c) => c.id !== contact.id);
+      return similar.length === 0
+        ? contact
+        : {
+            ...contact,
+            similarContacts: similar,
+            note: 'Created as a new contact. If one of similarContacts is the same person, add that one by contactId instead and remove this duplicate.',
+          };
+    },
+    logger,
+  );
+
+  defineTool(
+    server,
+    'list_contacts',
+    {
+      title: 'List contacts',
+      description:
+        'List known contacts (recruiters, headhunters...) with how many applications each is on. Optional q filters on name, role, email or phone. Use get_contact for the applications of one contact.',
+      inputSchema: { q: z.string().optional() },
+      annotations: { readOnlyHint: true },
+    },
+    ({ q }) => s.contacts.list(q),
+    logger,
+  );
+
+  defineTool(
+    server,
+    'get_contact',
+    {
+      title: 'Get contact',
+      description: 'Get one contact with every application it is attached to.',
+      inputSchema: { contactId: z.uuid() },
+      annotations: { readOnlyHint: true },
+    },
+    ({ contactId }) => s.contacts.get(contactId),
     logger,
   );
 
@@ -46,7 +98,8 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     'update_contact',
     {
       title: 'Update contact',
-      description: 'Update a contact on an application. Send null to clear a field.',
+      description:
+        'Update a contact. The contact is shared, so the change shows on every application it is on. Send null to clear a field.',
       inputSchema: {
         applicationId,
         contactId: z.uuid(),
@@ -68,7 +121,8 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     'remove_contact',
     {
       title: 'Remove contact',
-      description: 'Delete a contact from an application.',
+      description:
+        'Remove a contact from an application. Other applications keep it; a contact left on no application is deleted.',
       inputSchema: { applicationId, contactId: z.uuid() },
       annotations: { destructiveHint: true },
     },
