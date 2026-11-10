@@ -6,8 +6,6 @@ import {
   type CompanySize,
   type ContactDto,
   displayedStatus,
-  INTERVIEW_ROUND_STATUSES,
-  INTERVIEW_TYPE_ROUND_STATUS,
   type InterviewDto,
   type InterviewMoment,
   type InterviewType,

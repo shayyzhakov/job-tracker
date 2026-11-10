@@ -27,17 +27,17 @@ Open http://localhost:8080. A single image runs the API, which also serves the b
 
 ## Scripts (root)
 
-| Command                          | What it does                                                                                                                                                                                           |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm dev`                       | DynamoDB Local up → create table → API + web with hot reload                                                                                                                                           |
-| `pnpm test`                      | All tests (shared, API unit + integration, web components)                                                                                                                                             |
-| `pnpm test:watch`                | One Vitest watcher across all workspaces                                                                                                                                                               |
-| `pnpm typecheck`                 | `tsc --noEmit` everywhere                                                                                                                                                                              |
-| `pnpm check` / `pnpm check:fix`  | Biome lint + format                                                                                                                                                                                    |
-| `pnpm db:setup`                  | Create the DynamoDB table and indexes if missing (idempotent)                                                                                                                                          |
-| `pnpm db:seed`                   | Reset the dev table with sample data                                                                                                                                                                   |
-| `pnpm db:migrate-notes`          | One-off: move legacy single-line interview notes into notes (idempotent; uses `DYNAMODB_TABLE` and the AWS credentials of the environment, so run it once per environment, including AWS after deploy) |
-| `pnpm db:migrate-company-sizes`  | One-off: rename the stored company size `unicorn` to `scale_up` (idempotent; run once per environment, including AWS after deploy)                                                                     |
+| Command                         | What it does                                                                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                      | DynamoDB Local up → create table → API + web with hot reload                                                                                                                                           |
+| `pnpm test`                     | All tests (shared, API unit + integration, web components)                                                                                                                                             |
+| `pnpm test:watch`               | One Vitest watcher across all workspaces                                                                                                                                                               |
+| `pnpm typecheck`                | `tsc --noEmit` everywhere                                                                                                                                                                              |
+| `pnpm check` / `pnpm check:fix` | Biome lint + format                                                                                                                                                                                    |
+| `pnpm db:setup`                 | Create the DynamoDB table and indexes if missing (idempotent)                                                                                                                                          |
+| `pnpm db:seed`                  | Reset the dev table with sample data                                                                                                                                                                   |
+| `pnpm db:migrate-notes`         | One-off: move legacy single-line interview notes into notes (idempotent; uses `DYNAMODB_TABLE` and the AWS credentials of the environment, so run it once per environment, including AWS after deploy) |
+| `pnpm db:migrate-company-sizes` | One-off: rename the stored company size `unicorn` to `scale_up` (idempotent; run once per environment, including AWS after deploy)                                                                     |
 
 ## Layout
 
