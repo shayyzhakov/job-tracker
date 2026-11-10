@@ -1,5 +1,6 @@
 import { Alert, Button, Center, Loader, Stack } from '@mantine/core';
 import { createContext, type ReactNode, useContext, useEffect, useRef } from 'react';
+import { WebStorageStateStore } from 'oidc-client-ts';
 import { AuthProvider, useAuth } from 'react-oidc-context';
 import type { AuthConfig } from './config';
 import type { SessionUser } from './initials';
@@ -88,6 +89,8 @@ export function AuthGate({ config, children }: { config: AuthConfig | null; chil
       scope="openid email"
       response_type="code"
       automaticSilentRenew
+      // localStorage (default is sessionStorage) so the session survives closing the tab/browser.
+      userStore={new WebStorageStateStore({ store: window.localStorage })}
       onSigninCallback={() =>
         window.history.replaceState({}, document.title, window.location.pathname)
       }
