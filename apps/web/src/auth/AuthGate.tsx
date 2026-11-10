@@ -1,6 +1,6 @@
 import { Alert, Button, Center, Loader, Stack } from '@mantine/core';
-import { createContext, type ReactNode, useContext, useEffect, useRef } from 'react';
 import { WebStorageStateStore } from 'oidc-client-ts';
+import { createContext, type ReactNode, useContext, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from 'react-oidc-context';
 import type { AuthConfig } from './config';
 import type { SessionUser } from './initials';
