@@ -3,7 +3,6 @@ import {
   type ApplicationDetailDto,
   type ApplicationStatus,
   COMPANY_SIZE_LABELS,
-  INTERVIEW_TYPE_LABELS,
   isRoundStatus,
   REFERRAL_CHANNEL_LABELS,
   STATUS_LABELS,
@@ -44,6 +43,7 @@ import { ApplicationForm, toUpdatePayload, valuesFromApplication } from './Appli
 import { ContactsSection } from './ContactsSection';
 import { InterviewsSection } from './InterviewsSection';
 import { NotesTab } from './NotesTab';
+import { buildStatusFlow } from './statusFlow';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -116,42 +116,6 @@ function Details({ app }: { app: ApplicationDetailDto }) {
       )}
     </Card>
   );
-}
-
-interface TimelineStep {
-  key: string;
-  title: string;
-  at: string;
-  /** Dated in the future: hasn't happened yet. */
-  scheduled: boolean;
-}
-
-/**
- * Status changes and interviews share one chronological timeline. A step is "scheduled"
- * purely by its timestamp being in the future — there is no separate upcoming/past entity.
- */
-function buildTimelineSteps(
-  history: ApplicationDetailDto['history'],
-  interviews: ApplicationDetailDto['interviews'],
-  now: number,
-): TimelineStep[] {
-  // A history row that created/came from an interview is that interview: show it once.
-  const interviewIds = new Set(interviews.map((i) => i.id));
-  const steps: TimelineStep[] = [
-    ...history
-      .filter((h) => !(h.interviewId && interviewIds.has(h.interviewId)))
-      .map((h) => ({
-        key: `h-${h.id}`,
-        title: STATUS_LABELS[h.toStatus],
-        at: h.changedAt,
-      })),
-    ...interviews.map((i) => ({
-      key: `i-${i.id}`,
-      title: `${INTERVIEW_TYPE_LABELS[i.type]} interview`,
-      at: i.scheduledAt,
-    })),
-  ].map((s) => ({ ...s, scheduled: new Date(s.at).getTime() > now }));
-  return steps.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
 }
 
 /** Local date-time for <input type="datetime-local">, e.g. 2026-11-09T10:30. */
@@ -228,7 +192,7 @@ export function ApplicationDetailPage() {
     isRoundStatus(status)
       ? setPendingRound({ status })
       : changeStatus.mutate({ id: app.id, status });
-  const steps = buildTimelineSteps(app.history, app.interviews, Date.now());
+  const steps = buildStatusFlow(app, Date.now());
   const lastDone = steps.reduce((last, s, i) => (s.scheduled ? last : i), -1);
 
   return (

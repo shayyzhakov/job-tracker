@@ -122,7 +122,7 @@ describe('applications API', () => {
     expect(updated.history.map((h) => [h.fromStatus, h.toStatus])).toEqual([[null, 'applied']]);
   });
 
-  it('derives interviewsCount from the interview rounds in the status history', async () => {
+  it('derives interviewsCount from the interviews held, one per round (repeats add up)', async () => {
     const { id } = await create();
     const setStatus = (status: string) =>
       t.app.inject({ method: 'PATCH', url: `${BASE}/${id}/status`, payload: { status } });
@@ -131,9 +131,9 @@ describe('applications API', () => {
     const detail = (
       await t.app.inject({ method: 'GET', url: `${BASE}/${id}` })
     ).json<ApplicationDetailDto>();
-    expect(detail.interviewsCount).toBe(2);
+    expect(detail.interviewsCount).toBe(3);
     const list = (await t.app.inject({ method: 'GET', url: BASE })).json<ApplicationDetailDto[]>();
-    expect(list.find((a) => a.id === id)?.interviewsCount).toBe(2);
+    expect(list.find((a) => a.id === id)?.interviewsCount).toBe(3);
   });
 
   it('PATCH /:id/status rejects an unknown status', async () => {

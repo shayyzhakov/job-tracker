@@ -473,6 +473,7 @@ export function timingByApplication(interviews: readonly InterviewItem[], after:
       hasPast: false,
       lastPast: null,
       pastStages: new Set<ApplicationStatus>(),
+      heldStaged: 0,
     };
     const moment = { type: i.type, at: i.scheduledAt };
     if (i.scheduledAt > after) {
@@ -484,6 +485,7 @@ export function timingByApplication(interviews: readonly InterviewItem[], after:
       if (stage) {
         t.lastPast = moment;
         t.pastStages.add(stage);
+        t.heldStaged++;
       }
     }
     byApp.set(i.applicationId, t);

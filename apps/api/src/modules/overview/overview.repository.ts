@@ -1,4 +1,4 @@
-import { displayedStatus, type UpcomingInterviewDto } from '@job-tracker/shared';
+import { displayedStatus, milestonesReached, type UpcomingInterviewDto } from '@job-tracker/shared';
 import { batchGet, type Db, dateOrNull, key, queryGsi1 } from '../../db/dynamo.js';
 import {
   type ApplicationItem,
@@ -51,7 +51,9 @@ export class DynamoOverviewRepository {
           appliedAt: dateOrNull(a.appliedAt),
           applicationMethod: a.applicationMethod ?? null,
           expectedSalaryIls: a.expectedSalaryIls,
-          reachedStatuses: [...new Set([...a.reachedStatuses, ...(t?.pastStages ?? [])])],
+          reachedStatuses: [
+            ...new Set([...milestonesReached(a.reachedStatuses), ...(t?.pastStages ?? [])]),
+          ],
         };
       }),
       upcomingInterviews: upcoming.flatMap((i): UpcomingInterviewDto[] => {

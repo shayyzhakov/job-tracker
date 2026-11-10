@@ -37,6 +37,23 @@ describe('interviews API', () => {
     expect((await getApp(id)).interviewsCount).toBe(0);
   });
 
+  it('counts every held interview with a stage, so repeated rounds add up', async () => {
+    const { id } = await createApplication(t.app);
+    for (const [type, days] of [
+      ['phone', -4],
+      ['phone', -1],
+      ['other', -2],
+      ['technical', 3],
+    ] as const) {
+      await t.app.inject({
+        method: 'POST',
+        url: url(id),
+        payload: { type, scheduledAt: inDays(days) },
+      });
+    }
+    expect((await getApp(id)).interviewsCount).toBe(2);
+  });
+
   it('counts a round once it has a past interview, even with a follow-up scheduled', async () => {
     const { id } = await createApplication(t.app);
     await t.app.inject({

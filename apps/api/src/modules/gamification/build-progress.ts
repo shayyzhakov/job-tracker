@@ -4,6 +4,7 @@ import {
   dayKey,
   INTERVIEW_TYPE_ROUND_STATUS,
   type InterviewType,
+  milestonesReached,
   type ProgressDto,
 } from '@job-tracker/shared';
 import type {
@@ -63,7 +64,10 @@ export function buildProgress(
   for (const a of applications) {
     bump(a.createdAt, 'added');
     bump(a.appliedAt, 'applied');
-    for (const s of new Set([...a.reachedStatuses, ...(heldStages.get(a.id) ?? [])])) {
+    for (const s of new Set([
+      ...milestonesReached(a.reachedStatuses),
+      ...(heldStages.get(a.id) ?? []),
+    ])) {
       stageReachedCounts[s] = (stageReachedCounts[s] ?? 0) + 1;
     }
   }

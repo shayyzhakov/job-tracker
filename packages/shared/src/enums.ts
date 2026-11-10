@@ -203,6 +203,14 @@ export const REFERRAL_CHANNEL_LABELS: Record<ReferralChannel, string> = {
   other: 'Other',
 };
 
+/**
+ * Stored history can still carry round statuses from before rounds came from interviews; only the
+ * milestones in it (applied, offer, closed outcomes) are trusted.
+ */
+export function milestonesReached(statuses: readonly ApplicationStatus[]): ApplicationStatus[] {
+  return statuses.filter((s) => !isRoundStatus(s));
+}
+
 /** An interview as far as the displayed status is concerned. */
 export interface InterviewMoment {
   type: InterviewType;

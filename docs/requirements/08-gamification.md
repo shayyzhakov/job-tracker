@@ -50,4 +50,4 @@ For the technical design and the rules for extending it see [ARCHITECTURE.md](..
 - With the layer off (any of the three switches), there is no gamification UI, no `/progress` request, and every core page and test behaves as before.
 - XP, level, streak, quests and achievements are computed by pure, tested functions and agree between the overview, the header chip and the achievements page.
 - Every application status appears in exactly one pipeline column, including any status added in the future (a test fails otherwise).
-- A status change from the table, the pipeline board or the detail page produces the same rewards.
+- A status change from the pipeline board or the detail page produces the same rewards.

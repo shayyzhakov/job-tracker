@@ -1,12 +1,11 @@
 import {
   APPLICATION_STATUSES,
   type ApplicationDto,
-  type ApplicationStatus,
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_TYPE_ROUND_STATUS,
-  isRoundStatus,
   STATUS_GROUP_LABELS,
   STATUS_GROUPS,
+  STATUS_LABELS,
   type StatusGroup,
 } from '@job-tracker/shared';
 import {
@@ -31,12 +30,7 @@ import {
 } from '@tabler/icons-react';
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import {
-  type ApplicationFilters,
-  useActions,
-  useApplications,
-  useChangeStatus,
-} from '../../api/hooks';
+import { type ApplicationFilters, useActions, useApplications } from '../../api/hooks';
 import {
   ApplicationFilterBar,
   applyLocalFilters,
@@ -49,7 +43,6 @@ import { MultiFilter } from '../../components/MultiFilter';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { RoleTitle } from '../../components/RoleTitle';
 import { SortableTh, useSortedRows } from '../../components/SortableTh';
-import { StatusSelect } from '../../components/StatusSelect';
 import { formatDate, formatDateTime } from '../../lib/format';
 
 // Nothing selected, or every group, means no restriction.
@@ -77,7 +70,6 @@ export function ApplicationsPage() {
   const { data, isPending, error } = useApplications(filters);
   const [local] = useLocalFilters();
   const rows = applyLocalFilters(data ?? [], local);
-  const changeStatus = useChangeStatus();
   const { data: actions } = useActions();
   // flagged is ranked most urgent first (and includes capped nudges), so the first card per application is its next step.
   const needsYou = new Map<string, string>();
@@ -203,15 +195,7 @@ export function ApplicationsPage() {
                       <RoleTitle name={a.roleName} isManagement={a.isManagement} />
                     </Table.Td>
                     <Table.Td>
-                      <StatusSelect
-                        aria-label={`Status for ${a.company.name}`}
-                        size="xs"
-                        value={a.status}
-                        hasInterviews={isRoundStatus(a.status)}
-                        onChange={(status: ApplicationStatus) =>
-                          changeStatus.mutate({ id: a.id, status })
-                        }
-                      />
+                      <Text size="sm">{STATUS_LABELS[a.status]}</Text>
                       {a.nextInterviewAt && (
                         <Text size="xs" c="dimmed" mt={2} data-testid="next-interview">
                           {a.nextInterviewType && !INTERVIEW_TYPE_ROUND_STATUS[a.nextInterviewType]

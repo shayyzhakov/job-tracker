@@ -7,6 +7,7 @@ import {
   INITIAL_STATUSES,
   type InterviewType,
   isOpenStatus,
+  milestonesReached,
   STATUS_LABELS,
   statusGroup,
 } from './enums.js';
@@ -108,5 +109,14 @@ describe('displayedStatus', () => {
     const phone = at('phone', '2026-02-01T00:00:00.000Z');
     expect(displayedStatus({ ...base, status: 'offer', next: phone })).toBe('offer');
     expect(displayedStatus({ ...base, status: 'rejected', next: phone })).toBe('rejected');
+  });
+});
+
+describe('milestonesReached', () => {
+  it('drops round statuses left in old history and keeps milestones', () => {
+    expect(milestonesReached(['applied', 'hr_screening', 'phone_interview', 'offer'])).toEqual([
+      'applied',
+      'offer',
+    ]);
   });
 });

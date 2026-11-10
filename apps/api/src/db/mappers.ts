@@ -196,6 +196,8 @@ export interface InterviewTiming {
   lastPast: InterviewMoment | null;
   /** Stages of past interviews. */
   pastStages: ReadonlySet<ApplicationStatus>;
+  /** Past interviews that have a stage (two phone calls count as two). */
+  heldStaged: number;
 }
 
 export const NO_TIMING: InterviewTiming = {
@@ -204,21 +206,11 @@ export const NO_TIMING: InterviewTiming = {
   hasPast: false,
   lastPast: null,
   pastStages: new Set(),
+  heldStaged: 0,
 };
 
-/** Distinct interview-round statuses reached: from the status history, plus rounds that already happened. */
-const interviewRoundsReached = (
-  reached: readonly ApplicationStatus[],
-  status: ApplicationStatus,
-  timing: InterviewTiming,
-) => {
-  const isRound = (s: string) => (INTERVIEW_ROUND_STATUSES as readonly string[]).includes(s);
-  const rounds = new Set(reached.filter(isRound));
-  // The current round hasn't happened yet while its only interview is still upcoming.
-  if (timing.next && !timing.hasPast && isRound(status)) rounds.delete(status);
-  for (const s of timing.pastStages) rounds.add(s);
-  return rounds.size;
-};
+/** Interview rounds held so far: one per past interview with a stage (a round only in old history does not count). */
+const interviewRoundsReached = (timing: InterviewTiming) => timing.heldStaged;
 
 /** Rows from before statusChangedAt existed: appliedAt is exact while still "applied", else the last touch. */
 const statusChangedFallback = (a: ApplicationItem) =>
@@ -253,7 +245,7 @@ export const toApplicationDto = (
     updatedAt: a.updatedAt,
     nextInterviewAt: timing.next?.at ?? null,
     nextInterviewType: timing.next?.type ?? null,
-    interviewsCount: interviewRoundsReached(a.reachedStatuses, a.status, timing),
+    interviewsCount: interviewRoundsReached(timing),
     replyBy: nul(a.replyBy),
     dueAt: nul(a.dueAt),
     nextStep: nul(a.nextStep),
