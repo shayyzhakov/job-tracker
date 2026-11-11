@@ -1,6 +1,11 @@
 # Dormant until var.github_repo is set. Lets GitHub Actions deploy without stored AWS keys.
 locals {
   ci_enabled = var.github_repo != ""
+  # Classic and (if configured) immutable subject forms, both pinned to the `production` environment.
+  ci_subjects = compact([
+    "repo:${var.github_repo}:environment:production",
+    var.github_oidc_sub_prefix != "" ? "${var.github_oidc_sub_prefix}:environment:production" : "",
+  ])
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -24,7 +29,7 @@ resource "aws_iam_role" "ci_deploy" {
           # Only jobs of this repository that run in its `production` environment can assume the role.
           # That environment requires manual approval and is restricted to the main branch (see infra/README.md),
           # so a pull request, a fork or an unapproved run can never obtain AWS credentials.
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:environment:production"
+          "token.actions.githubusercontent.com:sub" = local.ci_subjects
         }
       }
     }]

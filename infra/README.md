@@ -89,14 +89,14 @@ docker run --rm -v "$PWD/infra:/infra" ghcr.io/aquasecurity/trivy:latest config 
 
 `ci.yml` (lint, types, tests, `tofu fmt`, Trivy) runs on every pull request. `deploy.yml` runs on pushes to `main`: it calls `ci.yml`, then, after a manual approval, runs `scripts/deploy.sh` (Lambda bundles, `tofu apply`, web upload, smoke test).
 
-**No AWS keys are stored anywhere.** The deploy job swaps a short-lived GitHub OIDC token for temporary AWS credentials. The IAM role trusts only `repo:<owner>/<repo>:environment:production`, so pull requests, forks and unapproved runs get nothing. The repository is public, but there is no secret in it to leak.
+**No AWS keys are stored anywhere.** The deploy job swaps a short-lived GitHub OIDC token for temporary AWS credentials. The IAM role trusts only `repo:<owner>/<repo>:environment:production` (plus the immutable form `repo:<owner>@<id>/<repo>@<id>:environment:production` when `github_oidc_sub_prefix` is set; this repository uses immutable subjects), so pull requests, forks and unapproved runs get nothing. The repository is public, but there is no secret in it to leak.
 
 ### One-time setup
 
 1. Create the OIDC provider and role (needs your AWS admin login):
 
    ```bash
-   cd infra/bootstrap && tofu apply -var github_repo=shayyzhakov/job-tracker
+   cd infra/bootstrap && tofu apply -var github_repo=shayyzhakov/job-tracker -var github_oidc_sub_prefix=repo:shayyzhakov@34414259/job-tracker@1449687239
    tofu output ci_role_arn
    ```
 2. GitHub, Settings > Secrets and variables > Actions > **Variables**: `AWS_DEPLOY_ROLE_ARN` (the output above) and `OWNER_EMAIL`. These are not secrets.

@@ -25,6 +25,14 @@ variable "github_repo" {
   default = ""
 }
 
+# OIDC subject prefix when the repository uses GitHub's immutable subject claims
+# ("repo:<owner>@<owner_id>/<repo>@<repo_id>"); see `gh api repos/<owner>/<repo>/actions/oidc/customization/sub`.
+# Empty = only the classic "repo:<owner>/<repo>" prefix is trusted.
+variable "github_oidc_sub_prefix" {
+  type    = string
+  default = ""
+}
+
 provider "aws" {
   region = var.region
   default_tags {
