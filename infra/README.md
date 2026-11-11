@@ -83,7 +83,7 @@ After the first deploy:
 docker run --rm -v "$PWD/infra:/infra" ghcr.io/opentofu/opentofu:1.10 -chdir=/infra fmt -check -recursive
 docker run --rm -v "$PWD/infra:/infra" ghcr.io/aquasecurity/trivy:latest config /infra
 ```
-(or the same with a locally installed `tofu`). Accepted low-severity findings are listed in `.trivyignore`.
+(or the same with a locally installed `tofu`). Accepted low-severity findings are listed in `.trivyignore`; accepted HIGH findings (no WAF, SSE-S3 on the public SPA bucket) are ignored inline with `#trivy:ignore:` on the resource, with the reason beside it.
 
 ## CI/CD (GitHub Actions)
 

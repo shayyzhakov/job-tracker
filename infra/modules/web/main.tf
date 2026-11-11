@@ -26,6 +26,9 @@ resource "aws_s3_bucket_public_access_block" "site" {
   restrict_public_buckets = true
 }
 
+# SSE-S3 is enough: the bucket only holds the public SPA build. A KMS CMK would add cost and a key policy for
+# CloudFront OAC with no real protection gained.
+#trivy:ignore:AVD-AWS-0132
 resource "aws_s3_bucket_server_side_encryption_configuration" "site" {
   bucket = aws_s3_bucket.site.id
   rule {
@@ -59,6 +62,8 @@ resource "aws_cloudfront_function" "spa_rewrite" {
   JS
 }
 
+# No WAF: deliberate single-user trade-off (about $5+/month), see infra/README.md.
+#trivy:ignore:AVD-AWS-0011
 resource "aws_cloudfront_distribution" "this" {
   enabled             = true
   comment             = var.name
