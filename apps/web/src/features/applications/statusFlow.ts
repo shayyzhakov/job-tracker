@@ -17,6 +17,10 @@ export interface FlowStep {
  * The whole flow of an application in one chronological list: every status change on record
  * (to apply, applied, offer, closed outcomes), the applied date, and every interview round.
  * A step is "scheduled" purely by its timestamp being in the future.
+ *
+ * The applied date is a bare date (midnight), which can fall before the moment the application was
+ * added. Applied is therefore never ordered before the first recorded step, so the flow reads
+ * to apply → applied, while still showing the applied date.
  */
 export function buildStatusFlow(
   app: Pick<ApplicationDetailDto, 'history' | 'interviews' | 'appliedAt'>,
@@ -27,9 +31,31 @@ export function buildStatusFlow(
   const firstApplied = app.history.find(
     (h) => h.toStatus === 'applied' && h.fromStatus !== 'rejected',
   );
-  const steps: (Omit<FlowStep, 'scheduled'> & { rank: number })[] = [
+  const firstRecorded = app.history
+    .filter((h) => h.fromStatus === null || h.toStatus === 'to_apply')
+    .map((h) => h.changedAt)
+    .sort()[0];
+  const appliedSort =
+    app.appliedAt && firstRecorded && firstRecorded > app.appliedAt ? firstRecorded : app.appliedAt;
+
+  interface Item {
+    key: string;
+    title: string;
+    at: string;
+    sortAt: string;
+    rank: number;
+  }
+  const items: Item[] = [
     ...(app.appliedAt
-      ? [{ key: 'applied', title: STATUS_LABELS.applied, at: app.appliedAt, rank: 0 }]
+      ? [
+          {
+            key: 'applied',
+            title: STATUS_LABELS.applied,
+            at: app.appliedAt,
+            sortAt: appliedSort ?? app.appliedAt,
+            rank: 2,
+          },
+        ]
       : []),
     ...app.history
       // A row from before rounds came from interviews that points at an interview is that interview.
@@ -39,6 +65,7 @@ export function buildStatusFlow(
         key: `h-${h.id}`,
         title: STATUS_LABELS[h.toStatus],
         at: h.changedAt,
+        sortAt: h.changedAt,
         rank: 1,
       })),
     ...app.interviews.map((i) => {
@@ -47,12 +74,12 @@ export function buildStatusFlow(
         key: `i-${i.id}`,
         title: stage ? STATUS_LABELS[stage] : `${INTERVIEW_TYPE_LABELS[i.type]} interview`,
         at: i.scheduledAt,
+        sortAt: i.scheduledAt,
         rank: 1,
       };
     }),
   ];
-  return steps
-    .map(({ rank, ...s }) => ({ ...s, rank, scheduled: new Date(s.at).getTime() > now }))
-    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.rank - b.rank)
-    .map(({ rank: _rank, ...s }) => s);
+  return items
+    .sort((a, b) => Date.parse(a.sortAt) - Date.parse(b.sortAt) || a.rank - b.rank)
+    .map(({ key, title, at }) => ({ key, title, at, scheduled: new Date(at).getTime() > now }));
 }

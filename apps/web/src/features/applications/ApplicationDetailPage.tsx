@@ -38,7 +38,7 @@ import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StatusSelect } from '../../components/StatusSelect';
 import { Slot } from '../../lib/extensions';
-import { formatDate, formatDateTime, formatIls } from '../../lib/format';
+import { formatDate, formatDateMaybeTime, formatDateTime, formatIls } from '../../lib/format';
 import { ApplicationForm, toUpdatePayload, valuesFromApplication } from './ApplicationForm';
 import { ContactsSection } from './ContactsSection';
 import { InterviewsSection } from './InterviewsSection';
@@ -323,7 +323,7 @@ export function ApplicationDetailPage() {
                         </Group>
                       )}
                       <Text size="xs" c="dimmed" mt={step.scheduled ? 4 : 0}>
-                        {formatDateTime(step.at)}
+                        {formatDateMaybeTime(step.at)}
                       </Text>
                     </Timeline.Item>
                   ))}

@@ -91,4 +91,20 @@ describe('buildStatusFlow', () => {
     );
     expect(flow.map((s) => s.title)).toEqual(['Applied', 'Rejected', 'Applied']);
   });
+
+  it('orders Applied after to apply when the applied date (a bare date) precedes the moment it was added', () => {
+    const flow = buildStatusFlow(
+      {
+        appliedAt: '2026-11-08T00:00:00.000Z',
+        history: [
+          row('h1', null, 'to_apply', '2026-11-08T10:13:00.000Z'),
+          row('h2', 'to_apply', 'applied', '2026-11-08T10:30:00.000Z'),
+        ],
+        interviews: [],
+      },
+      NOW,
+    );
+    expect(flow.map((s) => s.title)).toEqual(['To apply', 'Applied']);
+    expect(flow.at(-1)?.at).toBe('2026-11-08T00:00:00.000Z');
+  });
 });
