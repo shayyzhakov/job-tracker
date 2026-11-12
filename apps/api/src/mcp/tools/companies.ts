@@ -3,7 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Services } from '../../services.js';
 import { defineTool, type ToolLogger } from '../tool.js';
-import { isPublic, size } from './applications.js';
+import { isPublic, priority, size } from './applications.js';
 
 const id = z.uuid().describe('Company id');
 const nullable = <T extends z.ZodType>(schema: T) => schema.nullable().optional();
@@ -57,10 +57,11 @@ export function registerCompanyTools(server: McpServer, s: Services, logger?: To
     {
       title: 'Create company',
       description:
-        'Add a company the user wants to track, with or without an application. Fails if a company with the same name (case-insensitive) already exists. Fill in size, isPublic, website and location whenever you know them or can find them online.',
+        'Add a company the user wants to track, with or without an application. Fails if a company with the same name (case-insensitive) already exists. New companies start at moderate scout priority; pass priority only when the user states a preference. Fill in size, isPublic, website and location whenever you know them or can find them online.',
       inputSchema: {
         name: z.string(),
         size: size.optional(),
+        priority: priority.optional(),
         isPublic: isPublic.optional(),
         website: z.string().optional().describe('Company website URL. Fill in when known.'),
         location: z
@@ -84,6 +85,7 @@ export function registerCompanyTools(server: McpServer, s: Services, logger?: To
         id,
         name: z.string().optional(),
         size: nullable(size),
+        priority: priority.optional(),
         isPublic: isPublic.optional(),
         website: nullable(z.string()),
         location: nullable(z.string()),

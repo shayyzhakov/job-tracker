@@ -1,5 +1,6 @@
 import { COMPANY_SIZES, type ScoutCriteria, SENIORITY_LEVELS } from '@job-tracker/shared';
 import { z } from 'zod';
+import type { PrioritizedCompany } from './company-priority.js';
 
 /** A job listing as a source returns it, before de-duplication and scoring. */
 export const RawListingSchema = z.object({
@@ -13,10 +14,18 @@ export const RawListingSchema = z.object({
 });
 export type RawListing = z.input<typeof RawListingSchema>;
 
-/** Where listings come from (a job board API, a feed, a fixture file...). */
+/** What a source is told about the current run. */
+export interface FetchContext {
+  /** The saved scout criteria; search-style sources build their queries from it. */
+  criteria: ScoutCriteria;
+  /** Companies the user has put in a non-default priority bucket (top, high, low, blacklist). */
+  companies: PrioritizedCompany[];
+}
+
+/** Where listings come from (a job board API, a feed, a fixture file, a web search...). */
 export interface ListingSource {
   readonly name: string;
-  fetchListings(): Promise<RawListing[]>;
+  fetchListings(ctx: FetchContext): Promise<RawListing[]>;
 }
 
 export const ListingScoreSchema = z.object({

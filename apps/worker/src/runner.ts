@@ -1,6 +1,7 @@
 // Pieces shared by the local entry point (main.ts) and the Lambda handler (handler.ts).
 import {
   createDb,
+  DynamoCompaniesRepository,
   DynamoOpportunitiesRepository,
   DynamoScoutCriteriaRepository,
   resolveDbConfig,
@@ -10,6 +11,7 @@ import { runScout } from './run-scout.js';
 import { ClaudeScorer } from './scoring/claude-scorer.js';
 import { KeywordScorer } from './scoring/keyword-scorer.js';
 import { FixtureSource } from './sources/fixture-source.js';
+import { WebSearchSource } from './sources/web-search-source.js';
 import type { ListingScorer, ListingSource, Logger } from './types.js';
 
 const LEVELS = ['debug', 'info', 'warn', 'error'] as const;
@@ -24,9 +26,17 @@ export function createLogger(level: Config['LOG_LEVEL']): Logger {
   return { info: log('info'), warn: log('warn'), error: log('error') };
 }
 
-function buildSources(config: Config): ListingSource[] {
+function buildSources(config: Config, logger: Logger): ListingSource[] {
   const factories: Record<Config['SCOUT_SOURCES'][number], () => ListingSource> = {
     fixture: () => new FixtureSource(config.SCOUT_FIXTURE_PATH),
+    websearch: () =>
+      new WebSearchSource({
+        model: config.SCOUT_SEARCH_MODEL,
+        maxSearches: config.SCOUT_SEARCH_MAX_SEARCHES,
+        maxFetches: config.SCOUT_SEARCH_MAX_FETCHES,
+        deadlineMs: config.SCOUT_SEARCH_DEADLINE_SECONDS * 1000,
+        logger,
+      }),
   };
   return config.SCOUT_SOURCES.map((name) => factories[name]());
 }
@@ -42,9 +52,10 @@ export async function runScoutOnce(config: Config, logger: Logger) {
   const { db, close } = createDb(resolveDbConfig());
   try {
     return await runScout({
-      sources: buildSources(config),
+      sources: buildSources(config, logger),
       scorer: buildScorer(config),
       criteria: new DynamoScoutCriteriaRepository(db),
+      companies: new DynamoCompaniesRepository(db),
       opportunities: new DynamoOpportunitiesRepository(db),
       logger,
     });

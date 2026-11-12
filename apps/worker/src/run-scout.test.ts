@@ -1,4 +1,5 @@
 import {
+  type CompanyPriority,
   DEFAULT_SCOUT_CRITERIA,
   type ScoutCriteria,
   type ScoutCriteriaDto,
@@ -42,6 +43,7 @@ function setup(
     criteria?: Partial<ScoutCriteria>;
     existing?: string[];
     unsaved?: boolean;
+    companies?: { name: string; priority: CompanyPriority }[];
   } = {},
 ) {
   const inserted: Parameters<ScoutDeps['opportunities']['insertMany']>[0] = [];
@@ -54,6 +56,7 @@ function setup(
     sources: opts.sources ?? [source('fixture', [listing()])],
     scorer: opts.scorer ?? fixedScorer(),
     criteria: { get: async () => criteria },
+    companies: { list: async () => opts.companies ?? [] },
     opportunities: {
       existingUrls: async (urls) => new Set((opts.existing ?? []).filter((u) => urls.includes(u))),
       insertMany: async (rows) => {
@@ -119,18 +122,53 @@ describe('runScout', () => {
     expect(inserted.map((r) => r.listingUrl)).toEqual(['https://jobs.example.com/new']);
   });
 
-  it('filters excluded companies without calling the scorer', async () => {
+  it('filters blacklisted companies without calling the scorer', async () => {
     const scorer = fixedScorer();
     const { deps, inserted } = setup({
       scorer,
-      criteria: { excludedCompanies: ['acme'] },
+      companies: [{ name: 'acme', priority: 'blacklist' }],
       sources: [source('a', [listing({ companyName: ' ACME ' })])],
     });
     const stats = await runScout(deps);
-    expect(stats).toMatchObject({ excluded: 1, scored: 0, suggested: 0 });
+    expect(stats).toMatchObject({ blacklisted: 1, scored: 0, suggested: 0 });
     expect(scorer.score).not.toHaveBeenCalled();
     expect(inserted).toEqual([
-      expect.objectContaining({ status: 'filtered', score: 0, reasons: ['Excluded company'] }),
+      expect.objectContaining({ status: 'filtered', score: 0, reasons: ['Blacklisted company'] }),
+    ]);
+  });
+
+  it('boosts top and high companies and penalises low ones, with a reason', async () => {
+    const run = async (priority: CompanyPriority, score: number) => {
+      const { deps, inserted } = setup({
+        scorer: fixedScorer({ score }),
+        companies: [{ name: 'Acme', priority }],
+      });
+      await runScout(deps);
+      return inserted[0];
+    };
+    // minScore defaults to 60: a 50 becomes a suggestion only with a big enough boost.
+    expect(await run('top', 50)).toMatchObject({ score: 65, status: 'new' });
+    expect((await run('top', 50))?.reasons).toContain('Top-priority company (+15)');
+    expect(await run('high', 55)).toMatchObject({ score: 63, status: 'new' });
+    expect(await run('moderate', 55)).toMatchObject({ score: 55, status: 'filtered' });
+    expect(await run('low', 66)).toMatchObject({ score: 58, status: 'filtered' });
+    expect(await run('top', 95)).toMatchObject({ score: 100 });
+  });
+
+  it('tells sources which companies are prioritised', async () => {
+    const fetchListings = vi.fn<ListingSource['fetchListings']>(async () => []);
+    const { deps } = setup({
+      sources: [{ name: 'a', fetchListings }],
+      companies: [
+        { name: 'Wix', priority: 'top' },
+        { name: 'Meh', priority: 'moderate' },
+        { name: 'Evil', priority: 'blacklist' },
+      ],
+    });
+    await runScout(deps);
+    expect(fetchListings.mock.calls[0]?.[0].companies).toEqual([
+      { name: 'wix', priority: 'top' },
+      { name: 'evil', priority: 'blacklist' },
     ]);
   });
 

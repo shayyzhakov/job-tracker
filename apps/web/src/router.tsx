@@ -8,6 +8,7 @@ import { TimelinePage } from './features/applications/TimelinePage';
 import { CompaniesPage } from './features/companies/CompaniesPage';
 import { IntegrationsPage } from './features/integrations/IntegrationsPage';
 import { OverviewPage } from './features/overview/OverviewPage';
+import { ScoutCompaniesPage } from './features/scout/ScoutCompaniesPage';
 import { ScoutSettingsPage } from './features/scout/ScoutSettingsPage';
 import { SuggestionsPage } from './features/suggestions/SuggestionsPage';
 import { TodayPage } from './features/today/TodayPage';
@@ -32,6 +33,7 @@ export const createAppRouter = () =>
         { path: 'suggestions', Component: SuggestionsPage },
         { path: 'integrations', Component: IntegrationsPage },
         { path: 'scout/settings', Component: ScoutSettingsPage },
+        { path: 'scout/companies', Component: ScoutCompaniesPage },
         ...getRegisteredRoutes(),
       ],
     },

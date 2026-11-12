@@ -26,6 +26,7 @@ erDiagram
         string id PK "uuid"
         string name UK "unique, case-insensitive"
         enum size "nullable: CompanySize"
+        enum priority "CompanyPriority, absent = moderate"
         boolean isPublic
         string website "nullable"
         string location "nullable"
@@ -157,6 +158,7 @@ Not stored: the **action queue** (what needs doing today) is derived from applic
 | `ApplicationStatus` (shown) | `to_apply`, `applied`, `coffee_chat`, `hr_screening`, `phone_interview`, `technical_interview`, `home_assignment`, `onsite_interview`, `managerial_interview`, `final_interview`, `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted`                                                                                        |
 | Stored status               | Only the milestones: `to_apply`, `applied`, `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted`. The round statuses (`coffee_chat` … `final_interview`) are never stored: they are derived from the interviews (next upcoming with a stage, else latest held, else the stored milestone) and exist as values only in the DTO |
 | Status groups               | initial: `to_apply`, `applied`. active: the interview rounds and `offer`. closed: `accepted`, `rejected`, `withdrawn`, `ghosted`. "Open" = initial + active. Derived from status, never stored                                                                                                                                   |
+| `CompanyPriority`           | `top`, `high`, `moderate` (default), `low`, `blacklist`                                                                                                                                                                                                                                                                          |
 | `CompanySize`               | `early_stage_startup`, `startup`, `scale_up`, `corporate`                                                                                                                                                                                                                                                                        |
 | `InterviewType`             | `hr`, `phone`, `technical`, `system_design`, `home_assignment`, `home_assignment_review`, `onsite`, `managerial`, `final`, `coffee`, `other`                                                                                                                                                                                     |
 | `ApplicationMethod`         | `referral`, `linkedin`, `company_site`, `job_board`, `recruiter_outreach`, `networking_event`, `other`                                                                                                                                                                                                                           |
@@ -167,15 +169,14 @@ Not stored: the **action queue** (what needs doing today) is derived from applic
 
 Stored as a JSON map in the `criteria` attribute and re-parsed with `ScoutCriteriaSchema` on read, so criteria saved before a field existed pick up its default.
 
-| Field               | Type                                    | Default  |
-| ------------------- | --------------------------------------- | -------- |
-| `roles`             | list of string (trimmed, de-duplicated) | `[]`     |
-| `seniorities`       | list of `SeniorityLevel`                | `[]`     |
-| `track`             | `ic` \| `management` \| `either`        | `either` |
-| `locations`         | list of string                          | `[]`     |
-| `companySizes`      | list of `CompanySize` (empty = any)     | `[]`     |
-| `excludedCompanies` | list of string (case-insensitive match) | `[]`     |
-| `minScore`          | integer 0–100                           | `60`     |
+| Field          | Type                                    | Default  |
+| -------------- | --------------------------------------- | -------- |
+| `roles`        | list of string (trimmed, de-duplicated) | `[]`     |
+| `seniorities`  | list of `SeniorityLevel`                | `[]`     |
+| `track`        | `ic` \| `management` \| `either`        | `either` |
+| `locations`    | list of string                          | `[]`     |
+| `companySizes` | list of `CompanySize` (empty = any)     | `[]`     |
+| `minScore`     | integer 0–100                           | `60`     |
 
 ## 2. Physical model (the table)
 

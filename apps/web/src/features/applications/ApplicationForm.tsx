@@ -6,10 +6,14 @@ import {
   type ApplicationMethod,
   type ApplicationStatus,
   ApplicationUpdateSchema,
+  COMPANY_PRIORITIES,
+  COMPANY_PRIORITY_LABELS,
   COMPANY_SIZE_LABELS,
   COMPANY_SIZES,
+  type CompanyPriority,
   type CompanySize,
   ContactInputSchema,
+  DEFAULT_COMPANY_PRIORITY,
   REFERRAL_CHANNEL_LABELS,
   REFERRAL_CHANNELS,
   type ReferralChannel,
@@ -45,6 +49,7 @@ export interface ApplicationFormValues {
   company: {
     name: string;
     size: CompanySize | null;
+    priority: CompanyPriority;
     isPublic: boolean;
     location: string;
     website: string;
@@ -82,7 +87,14 @@ const newContactRow = (): ContactRow => ({
 });
 
 const blankValues: ApplicationFormValues = {
-  company: { name: '', size: null, isPublic: false, location: '', website: '' },
+  company: {
+    name: '',
+    size: null,
+    priority: DEFAULT_COMPANY_PRIORITY,
+    isPublic: false,
+    location: '',
+    website: '',
+  },
   roleName: '',
   isManagement: false,
   status: 'to_apply',
@@ -114,6 +126,7 @@ export const valuesFromApplication = (a: ApplicationDetailDto): ApplicationFormV
   company: {
     name: a.company.name,
     size: a.company.size,
+    priority: a.company.priority,
     isPublic: a.company.isPublic,
     location: a.company.location ?? '',
     website: a.company.website ?? '',
@@ -233,6 +246,16 @@ export function ApplicationForm({
                 label: COMPANY_SIZE_LABELS[s],
               }))}
               {...form.getInputProps('company.size')}
+            />
+            <Select
+              label="Scout priority"
+              description="How hard the scout should look for jobs here."
+              allowDeselect={false}
+              data={COMPANY_PRIORITIES.map((p) => ({
+                value: p,
+                label: COMPANY_PRIORITY_LABELS[p],
+              }))}
+              {...form.getInputProps('company.priority')}
             />
             <TextInput
               label="Location"

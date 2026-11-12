@@ -1,6 +1,9 @@
 import {
+  COMPANY_PRIORITIES,
+  COMPANY_PRIORITY_LABELS,
   COMPANY_SIZE_LABELS,
   COMPANY_SIZES,
+  type CompanyPriority,
   type CompanySize,
   type CompanyWithCountsDto,
 } from '@job-tracker/shared';
@@ -29,7 +32,7 @@ import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { SortableTh, useSortedRows } from '../../components/SortableTh';
 import { CompanyFormModal } from './CompanyFormModal';
 
-type SortKey = 'name' | 'size' | 'type' | 'applications';
+type SortKey = 'name' | 'size' | 'priority' | 'type' | 'applications';
 type AppsFilter = 'with' | 'without';
 
 export function CompaniesPage() {
@@ -39,11 +42,13 @@ export function CompaniesPage() {
   // Multi-select filters: nothing selected means no filtering on that field.
   const [appsFilter, setAppsFilter] = useState<AppsFilter[]>([]);
   const [sizeFilter, setSizeFilter] = useState<CompanySize[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<CompanyPriority[]>([]);
   const rows = (data ?? []).filter(
     (c) =>
       (appsFilter.length === 0 ||
         appsFilter.includes(c.totalApplications > 0 ? 'with' : 'without')) &&
-      (sizeFilter.length === 0 || (c.size !== null && sizeFilter.includes(c.size))),
+      (sizeFilter.length === 0 || (c.size !== null && sizeFilter.includes(c.size))) &&
+      (priorityFilter.length === 0 || priorityFilter.includes(c.priority)),
   );
   const { sorted, sort, toggle } = useSortedRows<CompanyWithCountsDto, SortKey>(
     rows,
@@ -51,6 +56,7 @@ export function CompaniesPage() {
       name: (c) => c.name,
       // Order by the size scale (smallest first); companies without a size sort last.
       size: (c) => (c.size ? COMPANY_SIZES.indexOf(c.size) : null),
+      priority: (c) => COMPANY_PRIORITIES.indexOf(c.priority),
       type: (c) => (c.isPublic ? 'Public' : 'Private'),
       applications: (c) => c.totalApplications * 1000 + c.openApplications,
     },
@@ -90,6 +96,13 @@ export function CompaniesPage() {
           onChange={setSizeFilter}
           options={COMPANY_SIZES.map((s) => ({ value: s, label: COMPANY_SIZE_LABELS[s] }))}
         />
+        <MultiFilter
+          label="Priority"
+          allLabel="All priorities"
+          value={priorityFilter}
+          onChange={setPriorityFilter}
+          options={COMPANY_PRIORITIES.map((p) => ({ value: p, label: COMPANY_PRIORITY_LABELS[p] }))}
+        />
         <MultiFilter<AppsFilter>
           label="Applications"
           allLabel="All applications"
@@ -109,7 +122,7 @@ export function CompaniesPage() {
       ) : rows.length === 0 ? (
         <Card withBorder padding="xl">
           <Text c="dimmed" ta="center">
-            {q || appsFilter.length > 0 || sizeFilter.length > 0
+            {q || appsFilter.length > 0 || sizeFilter.length > 0 || priorityFilter.length > 0
               ? 'No companies match your filters.'
               : 'No companies yet. Add one to start tracking it.'}
           </Text>
@@ -125,6 +138,9 @@ export function CompaniesPage() {
                   </SortableTh>
                   <SortableTh columnKey="size" sort={sort} onSort={toggle} w={170}>
                     Size
+                  </SortableTh>
+                  <SortableTh columnKey="priority" sort={sort} onSort={toggle} w={130}>
+                    Priority
                   </SortableTh>
                   <SortableTh columnKey="type" sort={sort} onSort={toggle} w={110}>
                     Type
@@ -156,6 +172,7 @@ export function CompaniesPage() {
                     <Table.Td>
                       {c.size ? COMPANY_SIZE_LABELS[c.size] : <Text c="dimmed">–</Text>}
                     </Table.Td>
+                    <Table.Td>{COMPANY_PRIORITY_LABELS[c.priority]}</Table.Td>
                     <Table.Td>{c.isPublic ? 'Public' : 'Private'}</Table.Td>
                     <Table.Td>
                       {c.totalApplications > 0 ? (

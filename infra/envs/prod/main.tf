@@ -113,12 +113,12 @@ module "scout_function" {
   policy_json     = module.database.access_policy_json
   ssm_path_prefix = local.ssm_prefix
   memory_mb       = 512
-  timeout_seconds = 300
+  timeout_seconds = 900 # Lambda maximum; the web search source stops itself after SCOUT_SEARCH_DEADLINE_SECONDS
 
   environment = {
     DYNAMODB_TABLE        = module.database.table_name
     SCOUT_SCORER          = "claude"
-    SCOUT_SOURCES         = "fixture"
+    SCOUT_SOURCES         = "websearch"
     SCOUT_TIMEZONE        = "Asia/Jerusalem"
     SCOUT_FIXTURE_PATH    = "/var/task/listings.json"
     SSM_ANTHROPIC_API_KEY = aws_ssm_parameter.anthropic_api_key.name

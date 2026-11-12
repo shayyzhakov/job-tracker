@@ -1,15 +1,19 @@
 import type { NewOpportunity, OpportunitiesRepository } from '@job-tracker/api/scout';
 import {
+  type CompanyPriority,
   normalizeListingUrl,
   type ScoutCriteria,
   type ScoutCriteriaDto,
 } from '@job-tracker/shared';
+import { adjustScore, PriorityIndex } from './company-priority.js';
 import type { ListingScore, ListingScorer, ListingSource, Logger, RawListing } from './types.js';
 
 export interface ScoutDeps {
   sources: ListingSource[];
   scorer: ListingScorer;
   criteria: { get(): Promise<ScoutCriteriaDto> };
+  /** Companies and their priority buckets. */
+  companies: { list(): Promise<{ name: string; priority: CompanyPriority }[]> };
   opportunities: Pick<OpportunitiesRepository, 'existingUrls' | 'insertMany'>;
   logger: Logger;
   /** Parallel scorer calls. */
@@ -20,7 +24,8 @@ export interface ScoutStats {
   fetched: number;
   invalid: number;
   duplicates: number;
-  excluded: number;
+  /** Listings dropped because the company is on the blacklist. */
+  blacklisted: number;
   scored: number;
   failed: number;
   suggested: number;
@@ -45,7 +50,7 @@ export async function runScout(deps: ScoutDeps): Promise<ScoutStats> {
     fetched: 0,
     invalid: 0,
     duplicates: 0,
-    excluded: 0,
+    blacklisted: 0,
     scored: 0,
     failed: 0,
     suggested: 0,
@@ -61,12 +66,14 @@ export async function runScout(deps: ScoutDeps): Promise<ScoutStats> {
     return { ...stats, skipped: 'no-criteria' };
   }
 
+  const priorities = new PriorityIndex(await deps.companies.list());
+
   // 1. Fetch from every source; one failing source doesn't stop the run.
   const byUrl = new Map<string, Candidate>();
   for (const source of sources) {
     let listings: RawListing[];
     try {
-      listings = await source.fetchListings();
+      listings = await source.fetchListings({ criteria, companies: priorities.prioritized() });
     } catch (err) {
       stats.failedSources.push(source.name);
       logger.error('Source failed', { source: source.name, error: String(err) });
@@ -92,14 +99,13 @@ export async function runScout(deps: ScoutDeps): Promise<ScoutStats> {
   stats.duplicates += existing.size;
   const fresh = [...byUrl.values()].filter((c) => !existing.has(c.url));
 
-  // 3. Screen out excluded companies before paying for a model call.
-  const excluded = new Set(criteria.excludedCompanies.map((c) => c.toLowerCase()));
+  // 3. Screen out blacklisted companies before paying for a model call.
   const rows: NewOpportunity[] = [];
   const toScore: Candidate[] = [];
   for (const c of fresh) {
-    if (excluded.has(c.listing.companyName.trim().toLowerCase())) {
-      stats.excluded++;
-      rows.push(toRow(c, EXCLUDED_SCORE, 'filtered'));
+    if (priorities.get(c.listing.companyName) === 'blacklist') {
+      stats.blacklisted++;
+      rows.push(toRow(c, BLACKLISTED_SCORE, 'filtered'));
     } else {
       toScore.push(c);
     }
@@ -116,6 +122,9 @@ export async function runScout(deps: ScoutDeps): Promise<ScoutStats> {
       return;
     }
     stats.scored++;
+    // Companies the user cares about more (or less) get a boost (or penalty).
+    const { score, note } = adjustScore(result.score, priorities.get(c.listing.companyName));
+    if (note) result = { ...result, score, reasons: [...result.reasons, note] };
     const status = passesFilters(result, criteria) ? 'new' : 'filtered';
     if (status === 'new') stats.suggested++;
     else stats.filtered++;
@@ -128,10 +137,10 @@ export async function runScout(deps: ScoutDeps): Promise<ScoutStats> {
   return stats;
 }
 
-const EXCLUDED_SCORE: ListingScore = {
+const BLACKLISTED_SCORE: ListingScore = {
   score: 0,
   summary: '',
-  reasons: ['Excluded company'],
+  reasons: ['Blacklisted company'],
   isManagement: false,
   seniority: null,
   companySize: null,

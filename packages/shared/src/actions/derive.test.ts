@@ -10,7 +10,15 @@ const inHours = (n: number) => new Date(NOW.getTime() + n * 3_600_000).toISOStri
 let seq = 0;
 const app = (status: ApplicationStatus, over: Partial<ApplicationDto> = {}): ApplicationDto => ({
   id: `a${++seq}`,
-  company: { id: 'c', name: 'Acme', size: null, isPublic: false, website: null, location: null },
+  company: {
+    id: 'c',
+    name: 'Acme',
+    size: null,
+    priority: 'moderate',
+    isPublic: false,
+    website: null,
+    location: null,
+  },
   roleName: 'Engineer',
   isManagement: false,
   status,

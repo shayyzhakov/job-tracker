@@ -66,6 +66,14 @@ describe('SuggestionsPage', () => {
     );
   });
 
+  it('links to the company prioritization page', async () => {
+    render();
+    expect(await screen.findByRole('link', { name: /prioritize companies/i })).toHaveAttribute(
+      'href',
+      '/scout/companies',
+    );
+  });
+
   it('shows an error when the API fails', async () => {
     server.use(http.get('/api/v1/opportunities', () => new HttpResponse(null, { status: 500 })));
     render();

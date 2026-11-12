@@ -11,13 +11,13 @@ A Companies page that is the home of company records: companies the user applied
 1. **One company, many applications.** An application references its company by id. Company fields are never copied onto an application. Editing a company is reflected everywhere that company appears (applications table, application page, assistant output) with no per-application update.
 2. **Companies exist on their own.** A company can be created with zero applications, from the web page and from the assistant. Creating an application with a company name still reuses an existing company with the same name (case-insensitive), as in [01](01-applications.md).
 3. **Unique names.** Names are unique case-insensitively. Creating a company or renaming one into a name that already exists is rejected with a conflict. It is never merged silently.
-4. **Editable fields:** name (required), size (early-stage startup, startup, scale-up, corporate; optional), public or private flag, website and location (both optional).
+4. **Editable fields:** name (required), scout priority (see [12](12-company-priority.md); new companies start at moderate), size (early-stage startup, startup, scale-up, corporate; optional), public or private flag, website and location (both optional).
    Size buckets are judged mainly by headcount and maturity: early-stage startup (seed/Series A, under about 50 people), startup (growth stage, about 50 to 500), scale-up (a mature, established tech company of about 500 to 5,000 people, public or private, such as monday.com or Wix) and corporate (about 5,000 or more, including big public companies such as Meta or Amazon). Ownership is tracked separately by the public or private flag. The scale-up bucket replaced the earlier "unicorn" bucket, a valuation label that did not fit public companies.
 5. **Companies table.** One row per company with: name, size, type (Public or Private), and applications as `open / total`. It is searchable by name and sortable by every column, defaulting to name ascending. "Open" uses the same rule as [01](01-applications.md): every status except accepted, rejected, withdrawn and ghosted (initial and active groups; an offer counts as open). Selecting the applications cell opens the Applications page filtered to that company. A filter narrows the table to all companies, only those with at least one application, or only those with none.
 6. **Add and edit in the page.** An "Add company" action opens a form. Selecting a row's name or edit action opens the same form for that company.
 7. **Counts are derived, not stored,** so they cannot drift from the applications.
 8. **Delete only with no applications at all.** A company with any application, active or closed, cannot be deleted: the action is disabled with an explanation in the UI, and the API and assistant return a clear error with the application count. Deleting a company with none removes it and frees its name for reuse. Deleting an application never deletes its company.
-9. **Claude (MCP).** New tools to list companies (with application counts, optional name filter), get one company (with counts and its applications), create, update (partial; optional fields can be cleared) and delete. Delete is flagged as destructive and refuses when applications exist (see [05](05-claude-integration.md)). `search_companies` keeps working. The existing instruction to fill in size, public flag, website and location when they are known applies to the create and update tools.
+9. **Claude (MCP).** New tools to list companies (with application counts, optional name filter), get one company (with counts and its applications), create, update (partial; optional fields can be cleared) and delete. Delete is flagged as destructive and refuses when applications exist (see [05](05-claude-integration.md)). `search_companies` keeps working. The existing instruction to fill in size, public flag, website and location when they are known applies to the create and update tools. Create and update also take the scout priority.
 10. **Navigation.** A "Companies" item in the sidebar, between Applications and Suggestions, at `/companies`.
 
 ## Acceptance criteria
@@ -40,7 +40,7 @@ A Companies page that is the home of company records: companies the user applied
 
 ## Not included (v1)
 
-Merging duplicate companies, company-level notes or contacts, logos or automatic enrichment, bulk import, and linking scout opportunities or the scout's excluded-companies list to company records.
+Merging duplicate companies, company-level notes or contacts, logos or automatic enrichment, bulk import, and linking scout opportunities to company records (the scout matches companies by name; priorities are set per company, see [12](12-company-priority.md)).
 
 ## Open questions
 

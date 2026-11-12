@@ -16,7 +16,7 @@ import type {
   ScoutCriteria,
   ScoutCriteriaDto,
 } from '@job-tracker/shared';
-import { DEFAULT_SCOUT_CRITERIA, statusGroup } from '@job-tracker/shared';
+import { DEFAULT_COMPANY_PRIORITY, DEFAULT_SCOUT_CRITERIA, statusGroup } from '@job-tracker/shared';
 import type {
   ApplicationFieldsPatch,
   ApplicationsRepository,
@@ -48,6 +48,7 @@ export class FakeCompaniesRepository implements CompaniesRepository {
       id: randomUUID(),
       name: input.name,
       size: input.size ?? null,
+      priority: input.priority ?? DEFAULT_COMPANY_PRIORITY,
       isPublic: input.isPublic,
       website: input.website ?? null,
       location: input.location ?? null,

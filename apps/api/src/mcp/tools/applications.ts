@@ -3,6 +3,7 @@ import {
   APPLICATION_STATUSES,
   ApplicationCreateSchema,
   ApplicationUpdateSchema,
+  COMPANY_PRIORITIES,
   COMPANY_SIZES,
   HAND_OVER_REASONS,
   HandOverSchema,
@@ -23,6 +24,11 @@ export const size = z
   .enum(COMPANY_SIZES)
   .describe(
     'Company size bucket: early_stage_startup (seed/Series A, small team), startup (growth-stage, roughly 50-500 employees), scale_up (mature, established tech company of roughly 500-5,000 employees, public or private, e.g. monday.com or Wix), corporate (large established company of roughly 5,000+ employees, including big public ones like Meta or Amazon). Look it up if you do not know it; omit only if it cannot be found.',
+  );
+export const priority = z
+  .enum(COMPANY_PRIORITIES)
+  .describe(
+    'How much the job scout should care about the company: top (dream target, searched first), high, moderate (default for new companies), low, blacklist (never suggest its listings). Only set it when the user states a preference.',
   );
 export const isPublic = z
   .boolean()
@@ -97,7 +103,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     {
       title: 'Create application',
       description:
-        'Create a job application. Give an existing company by id, or a new company by name (reused if a company with that name already exists; its details are not changed, use update_application for that). Status defaults to to_apply. Fill in the company fields (size, isPublic, website, location) whenever you know them or can find them online; leave them out only when the information is not available.',
+        'Create a job application. Give an existing company by id, or a new company by name (reused if a company with that name already exists; its details, including priority, are not changed, use update_application or update_company for that). Status defaults to to_apply. Fill in the company fields (size, isPublic, website, location) whenever you know them or can find them online; leave them out only when the information is not available.',
       inputSchema: {
         company: z
           .union([
@@ -105,6 +111,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
             z.object({
               name: z.string(),
               size: size.optional(),
+              priority: priority.optional(),
               isPublic: isPublic.optional(),
               website: z.string().optional().describe('Company website URL. Fill in when known.'),
               location: z
@@ -171,6 +178,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .object({
             name: z.string().optional(),
             size: nullable(size),
+            priority: priority.optional(),
             isPublic: isPublic.optional(),
             website: nullable(z.string()),
             location: nullable(z.string()),

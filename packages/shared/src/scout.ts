@@ -67,8 +67,6 @@ export const ScoutCriteriaSchema = z.object({
   locations: textList,
   /** Allowed company sizes; empty means any size. */
   companySizes: z.array(z.enum(COMPANY_SIZES)).default([]),
-  /** Companies never to suggest (matched case-insensitively). */
-  excludedCompanies: textList,
   /** Listings scoring below this (0–100) are filtered out. */
   minScore: z.number().int().min(0).max(100).default(60),
 });

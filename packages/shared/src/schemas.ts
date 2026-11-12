@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   APPLICATION_METHODS,
   APPLICATION_STATUSES,
+  COMPANY_PRIORITIES,
   COMPANY_SIZES,
   INTERVIEW_TYPES,
   REFERRAL_CHANNELS,
@@ -22,6 +23,7 @@ const httpUrl = z
 export const ApplicationStatusSchema = z.enum(APPLICATION_STATUSES);
 export const StatusGroupSchema = z.enum(STATUS_GROUPS);
 export const CompanySizeSchema = z.enum(COMPANY_SIZES);
+export const CompanyPrioritySchema = z.enum(COMPANY_PRIORITIES);
 export const ApplicationMethodSchema = z.enum(APPLICATION_METHODS);
 export const ReferralChannelSchema = z.enum(REFERRAL_CHANNELS);
 export const InterviewTypeSchema = z.enum(INTERVIEW_TYPES);
@@ -29,6 +31,8 @@ export const InterviewTypeSchema = z.enum(INTERVIEW_TYPES);
 export const CompanyInputSchema = z.object({
   name: z.string().trim().min(1, 'Required'),
   size: CompanySizeSchema.optional(),
+  /** Scout priority; new companies start as moderate when omitted. */
+  priority: CompanyPrioritySchema.optional(),
   isPublic: z.boolean().default(false),
   website: optional(z.url()),
   location: optionalText,
@@ -40,6 +44,7 @@ export const CompanyUpdateSchema = z
   .object({
     name: z.string().trim().min(1, 'Required'),
     size: CompanySizeSchema.nullable(),
+    priority: CompanyPrioritySchema,
     isPublic: z.boolean(),
     website: z.preprocess(blankToNull, z.url().nullable()),
     location: z.preprocess(blankToNull, z.string().trim().nullable()),

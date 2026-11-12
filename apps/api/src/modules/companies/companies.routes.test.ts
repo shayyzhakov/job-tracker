@@ -1,3 +1,4 @@
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import type {
   ApplicationDetailDto,
   CompanyDetailDto,
@@ -36,6 +37,33 @@ describe('companies API', () => {
     expect(await list()).toEqual([
       expect.objectContaining({ name: 'Wix', openApplications: 0, totalApplications: 0 }),
     ]);
+  });
+
+  it('starts new companies at moderate priority and accepts an explicit one', async () => {
+    expect((await post({ name: 'Wix' })).json<CompanyDto>().priority).toBe('moderate');
+    const top = (await post({ name: 'Monday', priority: 'top' })).json<CompanyDto>();
+    expect(top.priority).toBe('top');
+    expect((await post({ name: 'Bad', priority: 'urgent' })).statusCode).toBe(400);
+
+    const patched = await t.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/companies/${top.id}`,
+      payload: { priority: 'blacklist' },
+    });
+    expect(patched.json<CompanyDto>()).toMatchObject({ name: 'Monday', priority: 'blacklist' });
+  });
+
+  it('reads a company stored before priorities existed as moderate', async () => {
+    const { id } = (await post({ name: 'Legacy' })).json<CompanyDto>();
+    await t.db.doc.send(
+      new UpdateCommand({
+        TableName: t.db.table,
+        Key: { PK: `COMPANY#${id}`, SK: 'META' },
+        UpdateExpression: 'REMOVE priority',
+      }),
+    );
+    const res = await t.app.inject({ method: 'GET', url: `/api/v1/companies/${id}` });
+    expect(res.json<CompanyDto>().priority).toBe('moderate');
   });
 
   it('rejects a duplicate name, ignoring case', async () => {

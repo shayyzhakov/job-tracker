@@ -14,7 +14,6 @@ describe('ScoutCriteriaSchema', () => {
       seniorities: [],
       track: 'either',
       companySizes: [],
-      excludedCompanies: [],
       minScore: 60,
     });
   });
@@ -22,10 +21,10 @@ describe('ScoutCriteriaSchema', () => {
   it('trims list entries and drops blanks and case-insensitive duplicates', () => {
     const parsed = ScoutCriteriaSchema.parse({
       roles: ['  Backend Engineer ', '', 'backend engineer', 'Platform Engineer'],
-      excludedCompanies: ['Acme', 'ACME '],
+      locations: ['Tel Aviv', 'tel aviv '],
     });
     expect(parsed.roles).toEqual(['Backend Engineer', 'Platform Engineer']);
-    expect(parsed.excludedCompanies).toEqual(['Acme']);
+    expect(parsed.locations).toEqual(['Tel Aviv']);
   });
 
   it('rejects unknown seniority, track and company size values', () => {

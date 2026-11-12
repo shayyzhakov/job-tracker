@@ -3,8 +3,10 @@ import {
   type ApplicationMethod,
   type ApplicationStatus,
   type CompanyDto,
+  type CompanyPriority,
   type CompanySize,
   type ContactDto,
+  DEFAULT_COMPANY_PRIORITY,
   displayedStatus,
   type InterviewDto,
   type InterviewMoment,
@@ -22,6 +24,8 @@ export interface CompanyItem {
   id: string;
   name: string;
   size: CompanySize | null;
+  /** Absent on rows written before priorities existed; read as the default. */
+  priority?: CompanyPriority;
   isPublic: boolean;
   website: string | null;
   location: string | null;
@@ -138,6 +142,7 @@ export const toCompanyDto = (c: CompanyItem): CompanyDto => ({
   id: c.id,
   name: c.name,
   size: c.size,
+  priority: c.priority ?? DEFAULT_COMPANY_PRIORITY,
   isPublic: c.isPublic,
   website: c.website,
   location: c.location,

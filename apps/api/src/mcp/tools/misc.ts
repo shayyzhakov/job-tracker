@@ -64,7 +64,6 @@ export function registerMiscTools(server: McpServer, s: Services, logger?: ToolL
         track: z.enum(ROLE_TRACKS).optional(),
         locations: z.array(z.string()).optional(),
         companySizes: z.array(z.enum(COMPANY_SIZES)).optional(),
-        excludedCompanies: z.array(z.string()).optional(),
         minScore: z.number().optional().describe('0–100; lower-scoring listings are hidden'),
       },
     },

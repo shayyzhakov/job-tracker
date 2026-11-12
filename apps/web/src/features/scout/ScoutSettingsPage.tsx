@@ -14,6 +14,7 @@ import {
 } from '@job-tracker/shared';
 import {
   Alert,
+  Anchor,
   Button,
   Card,
   Chip,
@@ -29,6 +30,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
+import { Link } from 'react-router';
 import { useSaveScoutCriteria, useScoutCriteria } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { formatDateTime } from '../../lib/format';
@@ -130,12 +132,13 @@ function CriteriaForm({ saved }: { saved: ScoutCriteriaDto }) {
                 </Group>
               </Chip.Group>
             </Input.Wrapper>
-            <TagsInput
-              label="Excluded companies"
-              description="Never suggest listings from these companies."
-              placeholder="Company name"
-              {...form.getInputProps('excludedCompanies')}
-            />
+            <Text size="sm" c="dimmed">
+              Want to skip or favour specific companies?{' '}
+              <Anchor component={Link} to="/scout/companies">
+                Prioritize companies
+              </Anchor>
+              .
+            </Text>
             <Input.Wrapper
               label="Minimum match score"
               description="Listings scoring lower are hidden."

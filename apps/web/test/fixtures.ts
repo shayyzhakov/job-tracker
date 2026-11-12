@@ -15,6 +15,7 @@ export const acme: CompanyDto = {
   id: 'c1',
   name: 'Acme',
   size: 'scale_up',
+  priority: 'moderate',
   isPublic: false,
   website: null,
   location: 'Tel Aviv',

@@ -2,6 +2,7 @@
 import type {
   ApplicationMethod,
   ApplicationStatus,
+  CompanyPriority,
   CompanySize,
   InterviewType,
   ReferralChannel,
@@ -11,6 +12,8 @@ export interface CompanyDto {
   id: string;
   name: string;
   size: CompanySize | null;
+  /** How much the scout should care about this company. */
+  priority: CompanyPriority;
   isPublic: boolean;
   website: string | null;
   location: string | null;

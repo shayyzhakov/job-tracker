@@ -2,6 +2,10 @@
 
 export { createDb, type Db, type DbConfig, resolveDbConfig } from './db/dynamo.js';
 export {
+  type CompaniesRepository,
+  DynamoCompaniesRepository,
+} from './modules/companies/companies.repository.js';
+export {
   DynamoOpportunitiesRepository,
   type NewOpportunity,
   type OpportunitiesRepository,

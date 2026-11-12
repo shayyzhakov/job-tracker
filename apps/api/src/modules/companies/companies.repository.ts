@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { GetCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import type {
-  ApplicationUpdate,
-  CompanyApplicationDto,
-  CompanyDto,
-  CompanyInput,
+import {
+  type ApplicationUpdate,
+  type CompanyApplicationDto,
+  type CompanyDto,
+  type CompanyInput,
+  DEFAULT_COMPANY_PRIORITY,
 } from '@job-tracker/shared';
 import { buildUpdate, type Db, isTransactionCancelled, key, queryGsi1 } from '../../db/dynamo.js';
 import { type ApplicationItem, type CompanyItem, nul, toCompanyDto } from '../../db/mappers.js';
@@ -59,6 +60,7 @@ export class DynamoCompaniesRepository implements CompaniesRepository {
       id: randomUUID(),
       name: input.name,
       size: nul(input.size),
+      priority: input.priority ?? DEFAULT_COMPANY_PRIORITY,
       isPublic: input.isPublic ?? false,
       website: nul(input.website),
       location: nul(input.location),

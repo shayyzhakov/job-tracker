@@ -6,19 +6,20 @@ For the technical design see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Status: **Built** means it's in the codebase. **Planned** means it's agreed but not built.
 
-| #   | Requirement                                                           | Status                       |
-| --- | --------------------------------------------------------------------- | ---------------------------- |
-| 01  | [Applications](requirements/01-applications.md)                       | Built                        |
-| 02  | [Contacts and interviews](requirements/02-contacts-and-interviews.md) | Built                        |
-| 03  | [Overview dashboard](requirements/03-overview-dashboard.md)           | Built                        |
-| 04  | [AI opportunity scout](requirements/04-ai-opportunity-scout.md)       | Built (real sources Planned) |
-| 05  | [Claude integration](requirements/05-claude-integration.md)           | Built                        |
-| 06  | [Authentication and access](requirements/06-authentication.md)        | Built                        |
-| 07  | [Non-functional requirements](requirements/07-non-functional.md)      | Ongoing                      |
-| 08  | [Gamification](requirements/08-gamification.md)                       | Built (optional layer)       |
-| 09  | [Tasks (action queue)](requirements/09-today.md)                      | Built                        |
-| 10  | [Interview notes](requirements/10-interview-notes.md)                 | Built                        |
-| 11  | [Companies](requirements/11-companies.md)                             | Built                        |
+| #   | Requirement                                                           | Status                           |
+| --- | --------------------------------------------------------------------- | -------------------------------- |
+| 01  | [Applications](requirements/01-applications.md)                       | Built                            |
+| 02  | [Contacts and interviews](requirements/02-contacts-and-interviews.md) | Built                            |
+| 03  | [Overview dashboard](requirements/03-overview-dashboard.md)           | Built                            |
+| 04  | [AI opportunity scout](requirements/04-ai-opportunity-scout.md)       | Built (watchlist boards Planned) |
+| 05  | [Claude integration](requirements/05-claude-integration.md)           | Built                            |
+| 06  | [Authentication and access](requirements/06-authentication.md)        | Built                            |
+| 07  | [Non-functional requirements](requirements/07-non-functional.md)      | Ongoing                          |
+| 08  | [Gamification](requirements/08-gamification.md)                       | Built (optional layer)           |
+| 09  | [Tasks (action queue)](requirements/09-today.md)                      | Built                            |
+| 10  | [Interview notes](requirements/10-interview-notes.md)                 | Built                            |
+| 11  | [Companies](requirements/11-companies.md)                             | Built                            |
+| 12  | [Company priority](requirements/12-company-priority.md)               | Built                            |
 
 ## Core idea: what an application's status means
 

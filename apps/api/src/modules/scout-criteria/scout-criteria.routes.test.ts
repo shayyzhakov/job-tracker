@@ -25,7 +25,6 @@ describe('scout criteria API', () => {
       track: 'ic',
       locations: ['Tel Aviv'],
       companySizes: ['startup', 'scale_up'],
-      excludedCompanies: ['Acme'],
       minScore: 70,
     };
     const put = await t.app.inject({ method: 'PUT', url: URL, payload });

@@ -35,7 +35,22 @@ describe('loadConfig', () => {
       SCOUT_FIXTURE_PATH: DEFAULT_FIXTURE_PATH,
       SCOUT_CRON: '0 7 * * *',
       SCOUT_TIMEZONE: 'Asia/Jerusalem',
+      SCOUT_SEARCH_MODEL: 'claude-sonnet-5-5',
+      SCOUT_SEARCH_MAX_SEARCHES: 15,
+      SCOUT_SEARCH_MAX_FETCHES: 25,
+      SCOUT_SEARCH_DEADLINE_SECONDS: 600,
     });
+  });
+
+  it('accepts the websearch source and numeric search limits', () => {
+    const config = loadConfig({
+      ...base,
+      SCOUT_SOURCES: 'fixture,websearch',
+      SCOUT_SEARCH_MAX_SEARCHES: '5',
+    });
+    expect(config.SCOUT_SOURCES).toEqual(['fixture', 'websearch']);
+    expect(config.SCOUT_SEARCH_MAX_SEARCHES).toBe(5);
+    expect(() => loadConfig({ ...base, SCOUT_SEARCH_MAX_SEARCHES: '0' })).toThrow();
   });
 
   it('parses a comma-separated source list and rejects unknown sources', () => {

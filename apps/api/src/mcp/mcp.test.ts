@@ -263,10 +263,25 @@ describe('MCP server', () => {
       size: 'corporate',
       isPublic: true,
     });
+    expect(await call('get_company', { id: wix.id })).toMatchObject({ priority: 'moderate' });
+    await call('update_company', { id: wix.id, priority: 'high' });
+    expect(await call('get_company', { id: wix.id })).toMatchObject({ priority: 'high' });
     expect(await callError('create_company', { name: 'wix' })).toMatch(/already exists/);
     expect(await call('list_companies')).toEqual([
       expect.objectContaining({ name: 'Wix', openApplications: 0, totalApplications: 0 }),
     ]);
+
+    const monday = await call<{ company: { priority: string } }>('create_application', {
+      company: { name: 'Monday', priority: 'top' },
+      roleName: 'Backend Engineer',
+    });
+    expect(monday.company.priority).toBe('top');
+    await call('delete_application', { id: (monday as unknown as { id: string }).id });
+    await call('delete_company', {
+      id: (await call<{ id: string; name: string }[]>('list_companies')).find(
+        (c) => c.name === 'Monday',
+      )?.id,
+    });
 
     const app = await call<ApplicationDetailDto>('create_application', {
       company: { id: wix.id },

@@ -12,7 +12,13 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCheck, IconExternalLink, IconSettings, IconX } from '@tabler/icons-react';
+import {
+  IconBuildingSkyscraper,
+  IconCheck,
+  IconExternalLink,
+  IconSettings,
+  IconX,
+} from '@tabler/icons-react';
 import { Link, useNavigate } from 'react-router';
 import { useDismissOpportunity, useOpportunities, usePromoteOpportunity } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
@@ -50,14 +56,24 @@ export function SuggestionsPage() {
             New listings the AI scout found for you, best match first.
           </Text>
         </div>
-        <Button
-          component={Link}
-          to="/scout/settings"
-          variant="default"
-          leftSection={<IconSettings size={16} />}
-        >
-          Scout settings
-        </Button>
+        <Group gap="xs">
+          <Button
+            component={Link}
+            to="/scout/companies"
+            variant="default"
+            leftSection={<IconBuildingSkyscraper size={16} />}
+          >
+            Prioritize companies
+          </Button>
+          <Button
+            component={Link}
+            to="/scout/settings"
+            variant="default"
+            leftSection={<IconSettings size={16} />}
+          >
+            Scout settings
+          </Button>
+        </Group>
       </Group>
 
       {isPending ? (

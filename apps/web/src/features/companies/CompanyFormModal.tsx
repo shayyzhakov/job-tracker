@@ -1,8 +1,12 @@
 import {
+  COMPANY_PRIORITIES,
+  COMPANY_PRIORITY_LABELS,
   COMPANY_SIZE_LABELS,
   COMPANY_SIZES,
+  type CompanyPriority,
   type CompanySize,
   type CompanyWithCountsDto,
+  DEFAULT_COMPANY_PRIORITY,
 } from '@job-tracker/shared';
 import {
   Alert,
@@ -22,16 +26,25 @@ import { useCreateCompany, useUpdateCompany } from '../../api/hooks';
 interface Values {
   name: string;
   size: CompanySize | null;
+  priority: CompanyPriority;
   isPublic: boolean;
   website: string;
   location: string;
 }
 
-const EMPTY: Values = { name: '', size: null, isPublic: false, website: '', location: '' };
+const EMPTY: Values = {
+  name: '',
+  size: null,
+  priority: DEFAULT_COMPANY_PRIORITY,
+  isPublic: false,
+  website: '',
+  location: '',
+};
 
 const toValues = (c: CompanyWithCountsDto): Values => ({
   name: c.name,
   size: c.size,
+  priority: c.priority,
   isPublic: c.isPublic,
   website: c.website ?? '',
   location: c.location ?? '',
@@ -77,6 +90,7 @@ export function CompanyFormModal({
           patch: {
             name: v.name,
             size: v.size,
+            priority: v.priority,
             isPublic: v.isPublic,
             website: v.website,
             location: v.location,
@@ -86,6 +100,7 @@ export function CompanyFormModal({
         await create.mutateAsync({
           name: v.name,
           size: v.size ?? undefined,
+          priority: v.priority,
           isPublic: v.isPublic,
           website: v.website,
           location: v.location,
@@ -114,6 +129,13 @@ export function CompanyFormModal({
             clearable
             data={COMPANY_SIZES.map((s) => ({ value: s, label: COMPANY_SIZE_LABELS[s] }))}
             {...form.getInputProps('size')}
+          />
+          <Select
+            label="Scout priority"
+            description="How hard the scout should look for jobs here. Blacklist hides the company from the scout."
+            allowDeselect={false}
+            data={COMPANY_PRIORITIES.map((p) => ({ value: p, label: COMPANY_PRIORITY_LABELS[p] }))}
+            {...form.getInputProps('priority')}
           />
           <Input.Wrapper label="Type">
             <SegmentedControl

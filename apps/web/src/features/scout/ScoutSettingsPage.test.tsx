@@ -31,7 +31,6 @@ describe('ScoutSettingsPage', () => {
     await user.type(screen.getByRole('combobox', { name: 'Roles' }), 'Platform Engineer{Enter}');
     await user.click(screen.getByRole('radio', { name: 'Individual contributor' }));
     await user.click(screen.getByRole('checkbox', { name: 'Scale-up' }));
-    await user.type(screen.getByRole('combobox', { name: 'Excluded companies' }), 'Globex{Enter}');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(body).toBeDefined());
@@ -41,10 +40,19 @@ describe('ScoutSettingsPage', () => {
       track: 'ic',
       locations: ['Tel Aviv'],
       companySizes: ['scale_up'],
-      excludedCompanies: ['Globex'],
       minScore: 60,
     });
     expect(await screen.findByText(/saved/i)).toBeInTheDocument();
+  });
+
+  it('points to the company prioritization page instead of an excluded list', async () => {
+    render();
+    await screen.findByText('Backend Engineer');
+    expect(screen.queryByText('Excluded companies')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Prioritize companies' })).toHaveAttribute(
+      'href',
+      '/scout/companies',
+    );
   });
 
   it('explains that the scout is idle until criteria are saved', async () => {

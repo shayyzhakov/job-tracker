@@ -97,6 +97,24 @@ export const COMPANY_SIZE_LABELS: Record<CompanySize, string> = {
   corporate: 'Corporate',
 };
 
+/**
+ * How much the scout should care about a company, from most to least wanted.
+ * blacklist: never suggest its listings.
+ */
+export const COMPANY_PRIORITIES = ['top', 'high', 'moderate', 'low', 'blacklist'] as const;
+export type CompanyPriority = (typeof COMPANY_PRIORITIES)[number];
+
+/** Where new companies start, and how rows written before the field existed read. */
+export const DEFAULT_COMPANY_PRIORITY: CompanyPriority = 'moderate';
+
+export const COMPANY_PRIORITY_LABELS: Record<CompanyPriority, string> = {
+  top: 'Top target',
+  high: 'High',
+  moderate: 'Moderate',
+  low: 'Low',
+  blacklist: 'Blacklist',
+};
+
 export const INTERVIEW_TYPES = [
   'hr',
   'phone',
