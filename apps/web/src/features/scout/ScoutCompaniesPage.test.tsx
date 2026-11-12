@@ -1,5 +1,5 @@
 import type { CompanyWithCountsDto } from '@job-tracker/shared';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
 import { describe, expect, it } from 'vitest';
 import { acme } from '../../../test/fixtures';
@@ -50,6 +50,42 @@ describe('ScoutCompaniesPage', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'High' }));
 
     await waitFor(() => expect(body).toEqual({ priority: 'high' }));
+  });
+
+  it('moves a company by dragging its card onto another bucket', async () => {
+    listCompanies([company()]);
+    let body: unknown;
+    server.use(
+      http.patch('/api/v1/companies/c1', async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ ...company(), priority: 'blacklist' });
+      }),
+    );
+    render();
+
+    fireEvent.dragStart(await screen.findByTestId('company-c1'));
+    fireEvent.dragOver(screen.getByTestId('bucket-blacklist'));
+    fireEvent.drop(screen.getByTestId('bucket-blacklist'));
+
+    await waitFor(() => expect(body).toEqual({ priority: 'blacklist' }));
+  });
+
+  it('ignores a drop on the bucket the company is already in', async () => {
+    listCompanies([company()]);
+    let called = false;
+    server.use(
+      http.patch('/api/v1/companies/c1', () => {
+        called = true;
+        return HttpResponse.json(company());
+      }),
+    );
+    render();
+
+    fireEvent.dragStart(await screen.findByTestId('company-c1'));
+    fireEvent.drop(screen.getByTestId('bucket-moderate'));
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(called).toBe(false);
   });
 
   it('filters companies by name', async () => {

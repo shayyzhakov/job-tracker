@@ -11,7 +11,7 @@ Let the user tell the AI scout which companies matter. Every company gets a prio
 1. **Five buckets**, highest to lowest: **Top target**, **High**, **Moderate**, **Low**, **Blacklist**. Moderate is the middle and the default.
 2. **New companies start at Moderate.** This holds for every way a company is created: the Companies page, an application created with a new company name, a suggestion added to applications, and the assistant (MCP). The user decides later whether it should be higher or lower. Companies that existed before this feature read as Moderate.
 3. **Priority can be set when a company is created**, not only afterwards: in the Add company form, in the company section of the new-application form, and through the MCP tools `create_company` and `create_application` (new company). `update_company` and `update_application` change it later. If an application names an existing company, the company is reused unchanged, including its priority (change it with `update_company`).
-4. **Prioritize companies page** at `/scout/companies`, reached from a button next to "Scout settings" on the Suggestions page. It shows the five buckets with their companies and lets the user move a company to any other bucket. Companies can be searched by name. Moderate doubles as the "to review" bucket, since that is where new companies land.
+4. **Prioritize companies page** at `/scout/companies`, reached from a button next to "Scout settings" on the Suggestions page. It shows the five buckets with their companies and lets the user move a company to any other bucket by dragging its card onto the bucket, or with the menu on the card (the keyboard and touch path). Companies can be searched by name. Moderate doubles as the "to review" bucket, since that is where new companies land.
 5. **Companies page** shows each company's priority, and can filter and sort by it. The company form edits it.
 6. **Effect on the scout** (see [04](04-ai-opportunity-scout.md)):
    - Blacklist: listings from these companies are never suggested (dropped before scoring, no model call).
@@ -36,4 +36,4 @@ One new optional attribute `priority` on `Company` (`COMPANY#<id>` / `META`). No
 
 ## Not included (v1)
 
-Drag and drop between buckets, a separate "reviewed" flag (an untouched Moderate company and a deliberately Moderate one look the same), company aliases for name matching, per-bucket tuning of the boost, and a dedicated search of the Top and High companies' job boards (planned in [04](04-ai-opportunity-scout.md)).
+A separate "reviewed" flag (an untouched Moderate company and a deliberately Moderate one look the same), company aliases for name matching, per-bucket tuning of the boost, and a dedicated search of the Top and High companies' job boards (planned in [04](04-ai-opportunity-scout.md)).

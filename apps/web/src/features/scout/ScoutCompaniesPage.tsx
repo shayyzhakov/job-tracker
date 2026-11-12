@@ -46,11 +46,20 @@ export function ScoutCompaniesPage() {
   const [search, setSearch] = useState('');
   const { data, isPending, error } = useCompanies('');
   const update = useUpdateCompany();
+  // Drag state: the company being dragged and the bucket it is over.
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<CompanyPriority | null>(null);
 
   const needle = search.trim().toLowerCase();
   const companies = (data ?? []).filter((c) => !needle || c.name.toLowerCase().includes(needle));
   const move = (id: string, priority: CompanyPriority) =>
     update.mutate({ id, patch: { priority } });
+  const drop = (priority: CompanyPriority) => {
+    const company = (data ?? []).find((c) => c.id === dragId);
+    setDragId(null);
+    setOver(null);
+    if (company && company.priority !== priority) move(company.id, priority);
+  };
 
   return (
     <Stack>
@@ -58,7 +67,7 @@ export function ScoutCompaniesPage() {
         <Title order={2}>Prioritize companies</Title>
         <Text c="dimmed" size="sm">
           Tell the scout which companies matter. It searches the top buckets first and never
-          suggests blacklisted ones.
+          suggests blacklisted ones. Drag a company to another bucket, or use its menu.
         </Text>
       </div>
 
@@ -99,6 +108,15 @@ export function ScoutCompaniesPage() {
               priority={priority}
               companies={companies.filter((c) => c.priority === priority)}
               onMove={move}
+              isOver={over === priority}
+              onDragOver={() => setOver(priority)}
+              onDragLeave={() => setOver((o) => (o === priority ? null : o))}
+              onDrop={() => drop(priority)}
+              onDragStart={setDragId}
+              onDragEnd={() => {
+                setDragId(null);
+                setOver(null);
+              }}
               moving={update.isPending ? update.variables?.id : undefined}
             />
           ))}
@@ -113,15 +131,43 @@ function Bucket({
   companies,
   onMove,
   moving,
+  isOver,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragStart,
+  onDragEnd,
 }: {
   priority: CompanyPriority;
   companies: CompanyWithCountsDto[];
   onMove: (id: string, priority: CompanyPriority) => void;
   moving: string | undefined;
+  isOver: boolean;
+  onDragOver: () => void;
+  onDragLeave: () => void;
+  onDrop: () => void;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
 }) {
   const label = COMPANY_PRIORITY_LABELS[priority];
   return (
-    <Card withBorder padding="sm" aria-label={`${label} bucket`} component="section">
+    // biome-ignore lint/a11y/noStaticElementInteractions: native drag-and-drop target; each card's menu is the keyboard path
+    <Card
+      withBorder
+      padding="sm"
+      aria-label={`${label} bucket`}
+      component="section"
+      data-testid={`bucket-${priority}`}
+      style={
+        isOver ? { borderColor: `var(--mantine-color-${BUCKET_COLORS[priority]}-6)` } : undefined
+      }
+      onDragOver={(e: React.DragEvent) => {
+        e.preventDefault();
+        onDragOver();
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <Stack gap="xs">
         <div>
           <Group justify="space-between">
@@ -140,7 +186,17 @@ function Bucket({
           </Text>
         ) : (
           companies.map((c) => (
-            <Card key={c.id} withBorder padding="xs" opacity={moving === c.id ? 0.6 : 1}>
+            <Card
+              key={c.id}
+              withBorder
+              padding="xs"
+              opacity={moving === c.id ? 0.6 : 1}
+              draggable
+              style={{ cursor: 'grab' }}
+              data-testid={`company-${c.id}`}
+              onDragStart={() => onDragStart(c.id)}
+              onDragEnd={onDragEnd}
+            >
               <Group justify="space-between" wrap="nowrap" gap="xs">
                 <div style={{ minWidth: 0 }}>
                   <Text fw={500} size="sm" truncate>

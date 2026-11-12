@@ -3,6 +3,7 @@ import {
   type CompanyDetailDto,
   type CompanyDto,
   type CompanyInput,
+  type CompanyPriority,
   type CompanyUpdate,
   type CompanyWithCountsDto,
   isOpenStatus,
@@ -27,12 +28,16 @@ export class CompaniesService {
     return this.repo.search(q);
   }
 
-  async list(q?: string): Promise<CompanyWithCountsDto[]> {
+  /** Companies with counts. `priorities` narrows to those buckets; none (or empty) means all. */
+  async list(q?: string, priorities?: CompanyPriority[]): Promise<CompanyWithCountsDto[]> {
     const [companies, byCompany] = await Promise.all([
       this.repo.list(q),
       this.repo.applicationsByCompany(),
     ]);
-    return companies.map((c) => ({ ...c, ...counts(byCompany.get(c.id)) }));
+    const wanted = priorities?.length ? new Set(priorities) : null;
+    return companies
+      .filter((c) => !wanted || wanted.has(c.priority))
+      .map((c) => ({ ...c, ...counts(byCompany.get(c.id)) }));
   }
 
   async get(id: string): Promise<CompanyDetailDto> {

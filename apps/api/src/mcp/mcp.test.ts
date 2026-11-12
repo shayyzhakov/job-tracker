@@ -271,6 +271,12 @@ describe('MCP server', () => {
       expect.objectContaining({ name: 'Wix', openApplications: 0, totalApplications: 0 }),
     ]);
 
+    const all = await call<{ name: string }[]>('list_companies', {});
+    expect(all.map((c) => c.name)).toEqual(['Wix']);
+    expect(await call('list_companies', { priority: ['high'] })).toHaveLength(1);
+    expect(await call('list_companies', { priority: ['top', 'blacklist'] })).toEqual([]);
+    expect(await call('list_companies', { priority: [] })).toHaveLength(1);
+
     const monday = await call<{ company: { priority: string } }>('create_application', {
       company: { name: 'Monday', priority: 'top' },
       roleName: 'Backend Engineer',

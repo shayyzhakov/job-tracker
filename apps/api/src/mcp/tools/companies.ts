@@ -1,4 +1,4 @@
-import { CompanyInputSchema, CompanyUpdateSchema } from '@job-tracker/shared';
+import { COMPANY_PRIORITIES, CompanyInputSchema, CompanyUpdateSchema } from '@job-tracker/shared';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Services } from '../../services.js';
@@ -29,11 +29,19 @@ export function registerCompanyTools(server: McpServer, s: Services, logger?: To
     {
       title: 'List companies',
       description:
-        'List the companies the user tracks (including ones with no application yet), by name, with openApplications and totalApplications. Open means not accepted, rejected, withdrawn or ghosted (initial or active status group).',
-      inputSchema: { q: z.string().optional().describe('Filter by name (substring)') },
+        'List the companies the user tracks (including ones with no application yet), by name, with its scout priority, openApplications and totalApplications. Returns every priority unless you pass a priority filter. Open means not accepted, rejected, withdrawn or ghosted (initial or active status group).',
+      inputSchema: {
+        q: z.string().optional().describe('Filter by name (substring)'),
+        priority: z
+          .array(z.enum(COMPANY_PRIORITIES))
+          .optional()
+          .describe(
+            'Only companies in these scout priority buckets, e.g. ["top","high"]. Leave out to get every priority.',
+          ),
+      },
       annotations: { readOnlyHint: true },
     },
-    ({ q }) => s.companies.list(q?.trim() || undefined),
+    ({ q, priority }) => s.companies.list(q?.trim() || undefined, priority),
     logger,
   );
 
