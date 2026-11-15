@@ -12,6 +12,15 @@ import { z } from 'zod';
 import type { Services } from '../../services.js';
 import { defineTool, type ToolLogger } from '../tool.js';
 
+/**
+ * Notes are free text next to structured fields; clients tend to dump everything into them, so every
+ * notes tool and field carries this guidance (the server instructions repeat it).
+ */
+export const NOTES_GUIDANCE =
+  'Keep notes short (one to three lines) and only for what no other field holds: how it went, impressions, questions asked, decisions and reasoning, prep links or a candidate portal link. Do NOT put in notes: times or dates, meeting links or locations (interview location field), contact names/roles/emails/phones (contacts), status or scheduling facts (status history, interviews), confirmation or email links, or a recap of the invitation. Split unrelated points into separate notes instead of one long note.';
+
+export const NOTE_FIELD = `Free text. ${NOTES_GUIDANCE}`;
+
 const applicationId = z.uuid().describe('Application id');
 const nullable = <T extends z.ZodType>(schema: T) => schema.nullable().optional();
 
@@ -26,7 +35,7 @@ export const contactFields = {
   email: z.string().optional(),
   phone: z.string().optional(),
   linkedinUrl: z.string().optional().describe('LinkedIn profile or message URL (http/https)'),
-  notes: z.string().optional(),
+  notes: z.string().optional().describe(NOTE_FIELD),
 };
 
 const SCHEDULED_AT =
@@ -108,7 +117,7 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
         email: nullable(z.string()),
         phone: nullable(z.string()),
         linkedinUrl: nullable(z.string()),
-        notes: nullable(z.string()),
+        notes: nullable(z.string()).describe(NOTE_FIELD),
       },
     },
     ({ applicationId, contactId, ...patch }) =>
@@ -144,7 +153,10 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
         type: z.enum(INTERVIEW_TYPES).optional().describe('Defaults to other'),
         scheduledAt: z.string().describe(SCHEDULED_AT),
         durationMinutes: z.number().optional(),
-        location: z.string().optional().describe('Office address or video link'),
+        location: z
+          .string()
+          .optional()
+          .describe('Office address or video link. Keep it here, not in notes.'),
       },
     },
     ({ applicationId, ...input }) =>
@@ -199,7 +211,7 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     {
       title: 'List interview notes',
       description:
-        'List the notes of an application grouped by interview (newest interview first, newest note first).',
+        'List the notes of an application grouped by interview (newest interview first, newest note first). Check these before adding a note, to avoid repeating what is already there.',
       inputSchema: { applicationId },
       annotations: { readOnlyHint: true },
     },
@@ -223,9 +235,12 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     'add_note',
     {
       title: 'Add interview note',
-      description:
-        'Add a multi-line plain-text note to an interview (upcoming or past): questions asked, what was learned about the role, how it went.',
-      inputSchema: { applicationId, interviewId, text: z.string() },
+      description: `Add a short plain-text note to an interview (upcoming or past): how it went, questions asked, what was learned about the role, prep links. ${NOTES_GUIDANCE} Add one note per independent point.`,
+      inputSchema: {
+        applicationId,
+        interviewId,
+        text: z.string().describe(`One compact, self-contained note. ${NOTES_GUIDANCE}`),
+      },
     },
     ({ applicationId, interviewId, text }) =>
       s.notes.create(applicationId, interviewId, NoteInputSchema.parse({ text })),
@@ -237,8 +252,13 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     'update_note',
     {
       title: 'Update interview note',
-      description: 'Replace the text of an interview note.',
-      inputSchema: { applicationId, interviewId, noteId: z.uuid(), text: z.string() },
+      description: `Replace the text of an interview note. ${NOTES_GUIDANCE}`,
+      inputSchema: {
+        applicationId,
+        interviewId,
+        noteId: z.uuid(),
+        text: z.string().describe(`New compact text. ${NOTES_GUIDANCE}`),
+      },
     },
     ({ applicationId, interviewId, noteId, text }) =>
       s.notes.update(applicationId, interviewId, noteId, NoteUpdateSchema.parse({ text })),

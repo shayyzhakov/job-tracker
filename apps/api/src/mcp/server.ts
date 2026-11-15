@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Services } from '../services.js';
 import type { ToolLogger } from './tool.js';
 import { registerApplicationTools } from './tools/applications.js';
-import { registerChildTools } from './tools/children.js';
+import { NOTES_GUIDANCE, registerChildTools } from './tools/children.js';
 import { registerCompanyTools } from './tools/companies.js';
 import { registerMiscTools } from './tools/misc.js';
 import { registerSuggestionTools } from './tools/suggestions.js';
@@ -12,7 +12,8 @@ Salaries are expected monthly gross base salary in ILS. The user is in Israel (A
 Look up ids with list_applications, get_application or list_suggestions before changing anything.
 Status changes go through change_application_status so they are recorded in the history.
 When creating or updating a company, fill in size, isPublic, website and location whenever the information is known or findable online (e.g. Meta and Amazon are public corporates). Do not guess: omit a field when it cannot be determined.
-Every company has a scout priority (top, high, moderate, low, blacklist). It steers the daily job scout: top and high companies are searched first, blacklist companies are never suggested. New companies start at moderate; set priority only when the user says how much they want the company.`;
+Every company has a scout priority (top, high, moderate, low, blacklist). It steers the daily job scout: top and high companies are searched first, blacklist companies are never suggested. New companies start at moderate; set priority only when the user says how much they want the company.
+Notes (application, contact and interview notes): ${NOTES_GUIDANCE}`;
 
 const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#4f46e5"/><rect x="14" y="22" width="36" height="26" rx="4" fill="#fff"/><path d="M25 22v-4a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><rect x="14" y="32" width="36" height="3" fill="#4f46e5"/></svg>`;
 

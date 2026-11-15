@@ -22,7 +22,7 @@ Each open application is in one state: **your move**, **scheduled** (an intervie
 | Home assignment submitted         | Them       | Follow up after 7 days                                                                 |
 | Offer                             | You        | Ranked by expiry; red after 5 days without one                                         |
 
-- **Reply-by date.** If the employer gave a date, it replaces the default timer.
+- **Reply-by date.** If the employer gave a date, it replaces the default timer. (Planned: taken from the current round, see [13](13-round-timeline.md).)
 - **Follow-ups.** "Followed up" restarts a 7-day timer. After the second unanswered follow-up the card asks whether to mark the application ghosted.
 - **Snooze, not dismiss.** Snoozed cards move to the waiting list and return on their own at their previous urgency. A status change, and scheduling or adding an interview, clears hand-overs, snoozes and the reply-by / deadline and restarts the wait.
 - **One card per application**, most urgent wins. Low-priority nudges are capped at five on screen; deadlines are never hidden.
@@ -33,7 +33,7 @@ Each open application is in one state: **your move**, **scheduled** (an intervie
 - **Tasks** is the landing page: cards grouped by urgency, a collapsed list of scheduled interviews and of applications waiting on others (with their next check-in date), and an empty state ("You're clear").
 - A badge on the Tasks nav item shows how many actions need the user; it turns red when any is overdue.
 - In the applications list, a red marker on a row flags the applications that need the user.
-- Applications carry optional **reply by**, **your deadline** and **next step** fields (edit form, MCP `update_application`, and the status-change call).
+- Applications carry optional **reply by**, **your deadline** and **next step** fields (edit form, MCP `update_application`, and the status-change call). Planned: these move onto the interview round they describe, and only the current round's values count (see [13](13-round-timeline.md)).
 - Claude (MCP): `get_actions`, `snooze_application`, `hand_over_application`.
 
 ## Not included

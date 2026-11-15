@@ -20,6 +20,7 @@ Status: **Built** means it's in the codebase. **Planned** means it's agreed but 
 | 10  | [Interview notes](requirements/10-interview-notes.md)                 | Built                            |
 | 11  | [Companies](requirements/11-companies.md)                             | Built                            |
 | 12  | [Company priority](requirements/12-company-priority.md)               | Built                            |
+| 13  | [Round timeline](requirements/13-round-timeline.md)                   | Planned                          |
 
 ## Core idea: what an application's status means
 

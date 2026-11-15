@@ -16,7 +16,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Services } from '../../services.js';
 import { defineTool, type ToolLogger } from '../tool.js';
-import { contactFields, contactRef } from './children.js';
+import { contactFields, contactRef, NOTE_FIELD } from './children.js';
 
 const id = z.uuid().describe('Application id');
 const status = z.enum(APPLICATION_STATUSES);
@@ -137,7 +137,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .string()
           .optional()
           .describe('Other info about the method: job board name, recruiter, event, …'),
-        notes: z.string().optional(),
+        notes: z.string().optional().describe(NOTE_FIELD),
         appliedAt: z.string().optional().describe('ISO 8601 date; set automatically if omitted'),
         contacts: z
           .array(z.union([z.object(contactRef), z.object(contactFields)]))
@@ -169,7 +169,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         referrerName: nullable(z.string()),
         referrerChannel: nullable(channel),
         methodDetails: nullable(z.string()),
-        notes: nullable(z.string()),
+        notes: nullable(z.string()).describe(NOTE_FIELD),
         appliedAt: nullable(z.string()).describe('ISO 8601 date'),
         replyBy: nullable(z.string()).describe(REPLY_BY),
         dueAt: nullable(z.string()).describe(DUE_AT),
