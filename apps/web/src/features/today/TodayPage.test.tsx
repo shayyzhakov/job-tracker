@@ -21,7 +21,7 @@ describe('TodayPage', () => {
             roleName: 'Backend Engineer',
             state: 'waiting',
             subtitle: 'Applied 3 days ago',
-            checkInAt: '2026-11-16T10:00:00.000Z',
+            checkInAt: '2030-03-16T10:00:00.000Z',
             nextStep: null,
           },
         ],
@@ -29,7 +29,7 @@ describe('TodayPage', () => {
       }),
     );
     renderRoute(<TodayPage />);
-    expect(await screen.findByTestId('today-empty')).toHaveTextContent('Next check-in 16 Nov 2026');
+    expect(await screen.findByTestId('today-empty')).toHaveTextContent('Next check-in 16 Mar 2030');
     expect(screen.getByTestId('today-summary')).toHaveTextContent('0 need you · 1 waiting');
     expect(screen.getByTestId('today-waiting')).toHaveTextContent('Acme');
   });
