@@ -24,22 +24,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useCompanies, useUpdateCompany } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
-
-const BUCKET_HINTS: Record<CompanyPriority, string> = {
-  top: 'Searched first, biggest score boost.',
-  high: 'Searched early, score boost.',
-  moderate: 'The default. New companies land here.',
-  low: 'Searched last, score penalty.',
-  blacklist: 'Never suggested.',
-};
-
-const BUCKET_COLORS: Record<CompanyPriority, string> = {
-  top: 'teal',
-  high: 'green',
-  moderate: 'gray',
-  low: 'orange',
-  blacklist: 'red',
-};
+import { BUCKET_COLORS, BUCKET_HINTS } from './priorityMeta';
 
 /** Sort companies into priority buckets so the scout knows where to look (and where not to). */
 export function ScoutCompaniesPage() {
