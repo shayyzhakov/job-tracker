@@ -1,4 +1,11 @@
-import { COMPANY_SIZE_LABELS, type OpportunityDto } from '@job-tracker/shared';
+import {
+  COMPANY_PRIORITIES,
+  COMPANY_PRIORITY_LABELS,
+  COMPANY_SIZE_LABELS,
+  DEFAULT_COMPANY_PRIORITY,
+  type CompanyPriority,
+  type OpportunityDto,
+} from '@job-tracker/shared';
 import {
   Anchor,
   Badge,
@@ -6,6 +13,7 @@ import {
   Card,
   Group,
   List,
+  Menu,
   Stack,
   Text,
   Title,
@@ -15,14 +23,24 @@ import { notifications } from '@mantine/notifications';
 import {
   IconBuildingSkyscraper,
   IconCheck,
+  IconChevronDown,
+  IconFlag,
   IconExternalLink,
   IconSettings,
   IconX,
 } from '@tabler/icons-react';
 import { Link, useNavigate } from 'react-router';
-import { useDismissOpportunity, useOpportunities, usePromoteOpportunity } from '../../api/hooks';
+import {
+  useCompanies,
+  useCreateCompany,
+  useDismissOpportunity,
+  useOpportunities,
+  usePromoteOpportunity,
+  useUpdateCompany,
+} from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { RoleTitle } from '../../components/RoleTitle';
+import { BUCKET_COLORS, BUCKET_HINTS } from '../scout/priorityMeta';
 import { formatDateMaybeTime, formatFullDateTime } from '../../lib/format';
 
 const scoreColor = (score: number) => (score >= 80 ? 'teal' : score >= 60 ? 'yellow' : 'gray');
@@ -32,6 +50,9 @@ export function SuggestionsPage() {
   const promote = usePromoteOpportunity();
   const dismiss = useDismissOpportunity();
   const navigate = useNavigate();
+  const companies = useCompanies('');
+  const updateCompany = useUpdateCompany();
+  const createCompany = useCreateCompany();
 
   const onError = (err: Error) =>
     notifications.show({
@@ -46,6 +67,15 @@ export function SuggestionsPage() {
       onError,
     });
   const onDismiss = (id: string) => dismiss.mutate(id, { onError });
+
+  // Scout listings carry the company name as text, so match a company by name, case-insensitively.
+  const findCompany = (name: string) =>
+    companies.data?.find((c) => c.name.trim().toLowerCase() === name.trim().toLowerCase());
+  const onPriority = (name: string, priority: CompanyPriority) => {
+    const existing = findCompany(name);
+    if (existing) updateCompany.mutate({ id: existing.id, patch: { priority } }, { onError });
+    else createCompany.mutate({ name, priority, isPublic: false }, { onError });
+  };
 
   return (
     <Stack>
@@ -99,6 +129,9 @@ export function SuggestionsPage() {
             dismissing={dismiss.isPending && dismiss.variables === o.id}
             onPromote={() => onPromote(o.id)}
             onDismiss={() => onDismiss(o.id)}
+            priority={findCompany(o.companyName)?.priority ?? DEFAULT_COMPANY_PRIORITY}
+            priorityDisabled={companies.isPending}
+            onPriority={(p) => onPriority(o.companyName, p)}
           />
         ))
       )}
@@ -112,12 +145,18 @@ function SuggestionCard({
   dismissing,
   onPromote,
   onDismiss,
+  priority,
+  priorityDisabled,
+  onPriority,
 }: {
   opportunity: OpportunityDto;
   promoting: boolean;
   dismissing: boolean;
   onPromote: () => void;
   onDismiss: () => void;
+  priority: CompanyPriority;
+  priorityDisabled: boolean;
+  onPriority: (priority: CompanyPriority) => void;
 }) {
   return (
     <Card withBorder data-testid={`suggestion-${o.id}`}>
@@ -128,6 +167,11 @@ function SuggestionCard({
           </Text>
           <Group gap="xs">
             <Text>{o.companyName}</Text>
+            {priority !== DEFAULT_COMPANY_PRIORITY && (
+              <Badge size="xs" variant="light" color={BUCKET_COLORS[priority]}>
+                {COMPANY_PRIORITY_LABELS[priority]}
+              </Badge>
+            )}
             {o.companySize && (
               <Badge size="xs" variant="light">
                 {COMPANY_SIZE_LABELS[o.companySize]}
@@ -171,6 +215,38 @@ function SuggestionCard({
           </Group>
         </Anchor>
         <Group gap="xs">
+          <Menu position="top-end" withinPortal>
+            <Menu.Target>
+              <Button
+                variant="subtle"
+                color="gray"
+                disabled={priorityDisabled}
+                leftSection={<IconFlag size={16} />}
+                rightSection={<IconChevronDown size={14} />}
+                aria-label={`Set scout priority for ${o.companyName}`}
+              >
+                Prioritize {o.companyName}
+              </Button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Label>How much do you want {o.companyName}?</Menu.Label>
+              {COMPANY_PRIORITIES.map((p) => (
+                <Menu.Item
+                  key={p}
+                  color={p === 'blacklist' ? 'red' : undefined}
+                  rightSection={p === priority ? <IconCheck size={14} /> : null}
+                  onClick={() => p !== priority && onPriority(p)}
+                >
+                  <Text size="sm" fw={p === priority ? 600 : 400}>
+                    {COMPANY_PRIORITY_LABELS[p]}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {BUCKET_HINTS[p]}
+                  </Text>
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
           <Button
             variant="default"
             leftSection={<IconX size={16} />}

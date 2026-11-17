@@ -79,4 +79,22 @@ describe('SuggestionsPage', () => {
     render();
     expect(await screen.findByText(/could not load suggestions/i)).toBeInTheDocument();
   });
+
+  it('changes the priority of the suggestion company in place', async () => {
+    let patched: unknown;
+    server.use(
+      http.get('/api/v1/companies/with-counts', () =>
+        HttpResponse.json([{ id: 'c1', name: 'nimbus data', priority: 'moderate' }]),
+      ),
+      http.patch('/api/v1/companies/:id', async ({ request, params }) => {
+        patched = { id: params.id, body: await request.json() };
+        return HttpResponse.json({ id: 'c1' });
+      }),
+    );
+    const { user } = render();
+    const card = await screen.findByTestId('suggestion-o1');
+    await user.click(within(card).getByRole('button', { name: /set scout priority/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /blacklist/i }));
+    await waitFor(() => expect(patched).toEqual({ id: 'c1', body: { priority: 'blacklist' } }));
+  });
 });
