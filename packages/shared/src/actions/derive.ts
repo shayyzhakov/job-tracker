@@ -1,6 +1,7 @@
 import type { ApplicationDto, InterviewDto } from '../dto.js';
 import { type ApplicationStatus, isOpenStatus, isRoundStatus } from '../enums.js';
 import { dayKey } from '../gamification/engine.js';
+import { currentRound, roundEnd } from './current-round.js';
 import {
   ACTION_URGENCIES,
   type ActionDto,
@@ -83,6 +84,7 @@ export function deriveActions(input: DeriveActionsInput): ActionsDto {
           state: 'waiting',
           subtitle: `Snoozed until ${when(snoozedUntil, now, tz)}`,
           checkInAt: snoozedUntil.toISOString(),
+          nextStep: null,
         });
       } else actions.push(out.action);
     } else if (out.waiting.state === 'scheduled') scheduled.push(out.waiting);
@@ -174,7 +176,7 @@ function evaluate(
   }
 
   if (status === 'offer') {
-    const due = app.dueAt ? new Date(app.dueAt) : null;
+    const due = app.offerExpiresAt ? new Date(app.offerExpiresAt) : null;
     if (due) {
       const past = due < now;
       return action(
@@ -196,37 +198,10 @@ function evaluate(
   }
 
   if (status === 'applied') {
-    return waitOrFollowUp(app, handedOverAt ?? statusChangedAt, R.appliedStaleDays, now, tz, {
+    return waitOrFollowUp(app, handedOverAt ?? statusChangedAt, R.appliedStaleDays, null, now, tz, {
       ...base,
       label: `Applied ${ago(ageDays(statusChangedAt, now, tz))}`,
     });
-  }
-
-  if (status === 'home_assignment') {
-    if (handedOverAt) {
-      return waitOrFollowUp(app, handedOverAt, R.assignmentStaleDays, now, tz, {
-        ...base,
-        label: `Assignment submitted ${ago(ageDays(handedOverAt, now, tz))}`,
-      });
-    }
-    const due = app.dueAt ? new Date(app.dueAt) : null;
-    if (due) {
-      return action(
-        'submit_assignment',
-        due < now ? 'overdue' : 'deadline',
-        `Submit home assignment to ${app.company.name}`,
-        due < now ? `Was due ${when(due, now, tz)}` : `Due ${when(due, now, tz)}`,
-        due,
-      );
-    }
-    const age = ageDays(statusChangedAt, now, tz);
-    return action(
-      'submit_assignment',
-      age >= R.assignmentSoonDays ? 'soon' : 'nudge',
-      `Submit home assignment to ${app.company.name}`,
-      `Received ${ago(age)}, no due date set`,
-      statusChangedAt,
-    );
   }
 
   if (isRoundStatus(status)) {
@@ -252,44 +227,71 @@ function evaluateRound(
     interviewId?: string | null,
   ) => Outcome,
 ): Outcome {
-  const real = interviews
-    .filter((i) => !i.timeUnknown)
-    .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-  const endOf = (i: InterviewDto) =>
-    new Date(Date.parse(i.scheduledAt) + (i.durationMinutes ?? R.defaultInterviewMinutes) * 60_000);
+  const current = currentRound(interviews, now);
+  const round = current?.interview;
+  const replyBy = round?.replyBy ? new Date(round.replyBy) : null;
 
-  const upcoming = real.find((i) => endOf(i) > now);
-  if (upcoming) {
-    const at = new Date(upcoming.scheduledAt);
+  // A home assignment received and not submitted: the user's move, ranked by its due date.
+  if (current?.phase === 'open' && round) {
+    const due = round.dueAt ? new Date(round.dueAt) : null;
+    if (due) {
+      return action(
+        'submit_assignment',
+        due < now ? 'overdue' : 'deadline',
+        `Submit home assignment to ${app.company.name}`,
+        due < now ? `Was due ${when(due, now, tz)}` : `Due ${when(due, now, tz)}`,
+        due,
+        round.id,
+      );
+    }
+    const received = new Date(round.scheduledAt);
+    const age = ageDays(received, now, tz);
+    return action(
+      'submit_assignment',
+      age >= R.assignmentSoonDays ? 'soon' : 'nudge',
+      `Submit home assignment to ${app.company.name}`,
+      `Received ${ago(age)}, no due date set`,
+      received,
+      round.id,
+    );
+  }
+
+  if (current?.phase === 'upcoming' && round) {
+    const at = new Date(round.scheduledAt);
     return {
       waiting: {
         ...base,
         state: 'scheduled',
         subtitle: `Interview ${when(at, now, tz)}`,
         checkInAt: at.toISOString(),
+        nextStep: round.nextStep,
       },
     };
   }
 
-  const held = real.filter((i) => endOf(i) <= now);
-  const lastHeld = held.at(-1);
-  if (lastHeld) {
-    const heldAt = new Date(lastHeld.scheduledAt);
-    const dayAfter = dayDiff(heldAt, now, tz) >= 1;
-    if (!lastHeld.debriefedAt && dayAfter) {
+  if (current?.phase === 'ended' && round) {
+    const endedAt = new Date(roundEnd(round) ?? Date.parse(round.scheduledAt));
+    const start = handedOverAt && handedOverAt > endedAt ? handedOverAt : endedAt;
+    if (round.type === 'home_assignment') {
+      return waitOrFollowUp(app, start, R.assignmentStaleDays, replyBy, now, tz, {
+        ...base,
+        label: `Assignment submitted ${ago(ageDays(endedAt, now, tz))}`,
+      });
+    }
+    const heldAt = new Date(round.scheduledAt);
+    if (!round.debriefedAt && dayDiff(heldAt, now, tz) >= 1) {
       return action(
         'debrief',
         'soon',
         `Log how the ${app.company.name} interview went`,
         `Interview ${when(heldAt, now, tz)}`,
         heldAt,
-        lastHeld.id,
+        round.id,
       );
     }
-    const start = handedOverAt && handedOverAt > heldAt ? handedOverAt : heldAt;
     const days =
       app.status === 'final_interview' ? R.finalInterviewStaleDays : R.interviewStaleDays;
-    return waitOrFollowUp(app, start, days, now, tz, {
+    return waitOrFollowUp(app, start, days, replyBy, now, tz, {
       ...base,
       label: `Interviewed ${ago(dayDiff(heldAt, now, tz))}`,
     });
@@ -297,7 +299,7 @@ function evaluateRound(
 
   // A round was reached but nobody has given a real time yet.
   if (handedOverAt) {
-    return waitOrFollowUp(app, handedOverAt, R.schedulingStaleDays, now, tz, {
+    return waitOrFollowUp(app, handedOverAt, R.schedulingStaleDays, replyBy, now, tz, {
       ...base,
       label: 'Waiting for them to schedule',
     });
@@ -317,12 +319,13 @@ function waitOrFollowUp(
   app: ApplicationDto,
   start: Date,
   defaultDays: number,
+  /** When they said they'd reply after the current step; replaces the default timer. */
+  replyBy: Date | null,
   now: Date,
   tz: string,
   info: { applicationId: string; company: string; roleName: string; label: string },
 ): Outcome {
   const { label, ...base } = info;
-  const replyBy = app.replyBy ? new Date(app.replyBy) : null;
   const days = app.followUps >= 1 ? R.followUpStaleDays : defaultDays;
   const checkIn = replyBy ?? new Date(start.getTime() + days * DAY);
   const stale = replyBy ? dayDiff(replyBy, now, tz) > 0 : now >= checkIn;
@@ -336,6 +339,7 @@ function waitOrFollowUp(
           ? `${label} · they said by ${when(replyBy, now, tz).replace(/ \d\d:\d\d$/, '')}`
           : label,
         checkInAt: checkIn.toISOString(),
+        nextStep: null,
       },
     };
   }

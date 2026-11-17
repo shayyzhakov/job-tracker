@@ -50,9 +50,7 @@ erDiagram
         string notes "nullable"
         string appliedAt "nullable, ISO 8601"
         list reachedStatuses "milestones ever held"
-        string replyBy "optional, ISO 8601"
-        string dueAt "optional, ISO 8601"
-        string nextStep "optional"
+        string offerExpiresAt "optional, ISO 8601, used while status is offer"
         string snoozedUntil "optional, ISO 8601"
         string statusChangedAt "optional, ISO 8601"
         string waitingOnThemAt "optional, ISO 8601"
@@ -88,6 +86,10 @@ erDiagram
         string location "nullable"
         boolean timeUnknown "optional, placeholder time"
         string debriefedAt "optional, ISO 8601"
+        string nextStep "optional, what to do before the round"
+        string replyBy "optional, ISO 8601, employer's reply date after the round"
+        string dueAt "optional, ISO 8601, home_assignment only"
+        string submittedAt "optional, ISO 8601, home_assignment only"
         string createdAt "ISO 8601"
         string updatedAt "ISO 8601"
     }
@@ -149,7 +151,7 @@ erDiagram
 | Opportunity → Application    | many : 0..1 | `OPPORTUNITY.applicationId` (nullable)        | Set when a suggestion is promoted (`status = promoted`). Reverse lookup (application → opportunity) is served by GSI2.                                                                                                                                                                                                                                                                                                                                          |
 | Scout criteria               | singleton   | none                                          | One item for the whole table (single user). Not related to other entities; it drives which opportunities the scout worker keeps.                                                                                                                                                                                                                                                                                                                                |
 
-Not stored: the **action queue** (what needs doing today) is derived from applications and interviews by `deriveActions` in `packages/shared/src/actions`, and **gamification progress** is derived by `build-progress.ts`. Neither has items in the table.
+Not stored: the **action queue** (what needs doing today) is derived from applications and interviews by `deriveActions` in `packages/shared/src/actions`, and **gamification progress** is derived by `build-progress.ts`. Neither has items in the table. The **current round** (the interview whose timeline counts now, returned as `currentRound` on the application detail) is derived by `currentRound` in the same folder, so a round's next step or reply-by stops counting once a later round takes over, with nothing to clear.
 
 ### Enumerations
 
@@ -263,19 +265,20 @@ Updating an application's `updatedAt` also rewrites its `GSI1SK`, and a status c
 
 ### Multi-item writes
 
-| Operation                           | What is written                                                                                                                                                                                                                                                 |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Create company                      | One transaction: company item + company-name marker (fails if the name exists)                                                                                                                                                                                  |
-| Rename company                      | One transaction: company update + new marker + delete of the old marker                                                                                                                                                                                         |
-| Delete company                      | One transaction: company item + its name marker. Allowed only when no application references the company; that check is a separate read, so an application created in between could slip through (accepted for one user; a per-company counter would close it). |
-| Create application                  | One transaction: application + its contact links (plus the contact item for each new person) + first status history entry (`fromStatus = null`). The company is created beforehand.                                                                             |
-| Change application status           | A milestone: one transaction: application update (`status`, `reachedStatuses`, `GSI1SK`) + new status history entry. A round: creates the interview instead (no status write)                                                                                   |
-| Interview scheduled or round chosen | One update on the application (`statusChangedAt`, hand-over, snooze, applied date); a to-apply application also gets the `applied` milestone through the status-change transaction above                                                                        |
-| Delete interview                    | Not a transaction: the interview is deleted (conditional), then its notes are found with `begins_with(SK, NOTE#<interviewId>#)` and batch-deleted. A failure in between leaves notes that reads ignore (their interview is gone).                               |
-| Attach contact                      | One transaction: the contact item (only when new) + the link item. Attaching an already attached contact writes nothing.                                                                                                                                        |
-| Delete application                  | The whole partition (`PK = APP#<id>`: application, contact links, interviews, notes, history) is batch-deleted, then contacts left with no link are deleted                                                                                                     |
-| Save suggestions                    | One transaction per suggestion: opportunity + listing-URL marker (already-seen URLs are skipped)                                                                                                                                                                |
-| Promote suggestion                  | Application is created as above, then the opportunity is moved to `promoted` and given `applicationId` with a compare-and-set on its old status                                                                                                                 |
+| Operation                           | What is written                                                                                                                                                                                                                                                                                 |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create company                      | One transaction: company item + company-name marker (fails if the name exists)                                                                                                                                                                                                                  |
+| Rename company                      | One transaction: company update + new marker + delete of the old marker                                                                                                                                                                                                                         |
+| Delete company                      | One transaction: company item + its name marker. Allowed only when no application references the company; that check is a separate read, so an application created in between could slip through (accepted for one user; a per-company counter would close it).                                 |
+| Create application                  | One transaction: application + its contact links (plus the contact item for each new person) + first status history entry (`fromStatus = null`). The company is created beforehand.                                                                                                             |
+| Change application status           | A milestone: one transaction: application update (`status`, `reachedStatuses`, `GSI1SK`, `offerExpiresAt` set for offer and cleared otherwise) + new status history entry. A round: creates the interview instead, carrying its `nextStep` (and `dueAt` for a home assignment); no status write |
+| Interview scheduled or round chosen | One update on the application (`statusChangedAt`, hand-over, snooze, applied date); a to-apply application also gets the `applied` milestone through the status-change transaction above                                                                                                        |
+| Hand over "submitted"               | One update on the open home-assignment interview (`submittedAt`); with no open assignment, one update on the application (`waitingOnThemAt`) like the other hand-overs                                                                                                                          |
+| Delete interview                    | Not a transaction: the interview is deleted (conditional), then its notes are found with `begins_with(SK, NOTE#<interviewId>#)` and batch-deleted. A failure in between leaves notes that reads ignore (their interview is gone).                                                               |
+| Attach contact                      | One transaction: the contact item (only when new) + the link item. Attaching an already attached contact writes nothing.                                                                                                                                                                        |
+| Delete application                  | The whole partition (`PK = APP#<id>`: application, contact links, interviews, notes, history) is batch-deleted, then contacts left with no link are deleted                                                                                                                                     |
+| Save suggestions                    | One transaction per suggestion: opportunity + listing-URL marker (already-seen URLs are skipped)                                                                                                                                                                                                |
+| Promote suggestion                  | Application is created as above, then the opportunity is moved to `promoted` and given `applicationId` with a compare-and-set on its old status                                                                                                                                                 |
 
 ## 3. Keeping this document current
 

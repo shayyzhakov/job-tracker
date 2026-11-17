@@ -90,9 +90,8 @@ const applicationFields = {
   methodDetails: optionalText,
   notes: optionalText,
   appliedAt: optional(z.coerce.date()),
-  replyBy: optional(z.coerce.date()),
-  dueAt: optional(z.coerce.date()),
-  nextStep: optionalText,
+  /** When the offer expires; only used while the status is offer. */
+  offerExpiresAt: optional(z.coerce.date()),
 };
 
 export const ApplicationCreateSchema = z.object({
@@ -121,9 +120,7 @@ export const ApplicationUpdateSchema = z
     methodDetails: z.preprocess(blankToNull, z.string().trim().nullable()),
     notes: z.preprocess(blankToNull, z.string().trim().nullable()),
     appliedAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
-    replyBy: z.preprocess(blankToNull, z.coerce.date().nullable()),
-    dueAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
-    nextStep: z.preprocess(blankToNull, z.string().trim().nullable()),
+    offerExpiresAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
     company: CompanyUpdateSchema,
   })
   .partial();
@@ -134,9 +131,12 @@ export const StatusChangeSchema = z.object({
   status: ApplicationStatusSchema,
   /** When the interview for a round stage takes place (past or future); defaults to now. */
   interviewAt: z.coerce.date().optional(),
-  /** Optional timeline the employer gave: when they'll reply by, and the user's own deadline (assignment due / offer expiry). */
-  replyBy: optional(z.coerce.date()),
+  /** For a round: what to do before it (stored on the interview it creates). */
+  nextStep: optionalText,
+  /** For a home assignment: when it is due (stored on the interview it creates). */
   dueAt: optional(z.coerce.date()),
+  /** For an offer: when it expires. */
+  offerExpiresAt: optional(z.coerce.date()),
 });
 export type StatusChange = z.infer<typeof StatusChangeSchema>;
 
@@ -148,14 +148,31 @@ export type HandOverReason = (typeof HAND_OVER_REASONS)[number];
 export const HandOverSchema = z.object({ reason: z.enum(HAND_OVER_REASONS) });
 export type HandOver = z.infer<typeof HandOverSchema>;
 
-export const InterviewInputSchema = z.object({
-  type: InterviewTypeSchema.default('other'),
-  scheduledAt: z.coerce.date(),
-  durationMinutes: z.number().int().positive().optional(),
-  location: optionalText,
-  /** The round exists but nobody has given a real time yet (scheduledAt is a placeholder). */
-  timeUnknown: z.boolean().optional(),
-});
+const ASSIGNMENT_ONLY = 'Only a home assignment has a due date or a submitted date';
+
+/** Due and submitted dates belong to home assignments only (see the round timeline requirement). */
+const assignmentOnly = (v: { type?: string; dueAt?: Date | null; submittedAt?: Date | null }) =>
+  v.type === 'home_assignment' || (v.dueAt == null && v.submittedAt == null);
+
+export const InterviewInputSchema = z
+  .object({
+    type: InterviewTypeSchema.default('other'),
+    /** When the round takes place; for a home assignment, when it was received. */
+    scheduledAt: z.coerce.date(),
+    durationMinutes: z.number().int().positive().optional(),
+    location: optionalText,
+    /** The round exists but nobody has given a real time yet (scheduledAt is a placeholder). */
+    timeUnknown: z.boolean().optional(),
+    /** What to do before this round; current only until the round ends. */
+    nextStep: optionalText,
+    /** When they said they'd reply after this round. */
+    replyBy: optional(z.coerce.date()),
+    /** Home assignment only: when it is due. */
+    dueAt: optional(z.coerce.date()),
+    /** Home assignment only: when it was submitted (the round ends then). */
+    submittedAt: optional(z.coerce.date()),
+  })
+  .refine(assignmentOnly, { message: ASSIGNMENT_ONLY, path: ['dueAt'] });
 export type InterviewInput = z.infer<typeof InterviewInputSchema>;
 export type InterviewCreateInput = z.input<typeof InterviewInputSchema>;
 
@@ -197,8 +214,17 @@ export const InterviewUpdateSchema = z
     location: nullableText,
     /** Set to true to mark the interview debriefed (now), or null to clear. */
     debriefed: z.boolean().nullable(),
+    nextStep: nullableText,
+    replyBy: z.preprocess(blankToNull, z.coerce.date().nullable()),
+    /** Home assignment only (checked against the stored type when `type` is not sent). */
+    dueAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
+    submittedAt: z.preprocess(blankToNull, z.coerce.date().nullable()),
   })
-  .partial();
+  .partial()
+  .refine((v) => v.type === undefined || assignmentOnly(v), {
+    message: ASSIGNMENT_ONLY,
+    path: ['dueAt'],
+  });
 export type InterviewUpdate = z.infer<typeof InterviewUpdateSchema>;
 export type InterviewUpdateInput = z.input<typeof InterviewUpdateSchema>;
 

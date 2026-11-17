@@ -50,10 +50,9 @@ export interface ApplicationItem {
   appliedAt: string | null;
   /** Every status this application has ever had (replaces an aggregate over the history rows). */
   reachedStatuses: ApplicationStatus[];
+  /** When the offer expires; only used while the status is offer. */
+  offerExpiresAt?: string | null;
   /** Action-queue fields; absent on rows written before they existed. */
-  replyBy?: string | null;
-  dueAt?: string | null;
-  nextStep?: string | null;
   snoozedUntil?: string | null;
   statusChangedAt?: string;
   waitingOnThemAt?: string | null;
@@ -92,6 +91,12 @@ export interface InterviewItem {
   location: string | null;
   timeUnknown?: boolean;
   debriefedAt?: string | null;
+  /** Round timeline; absent on rows written before it existed. */
+  nextStep?: string | null;
+  replyBy?: string | null;
+  /** Home assignment only. */
+  dueAt?: string | null;
+  submittedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -168,6 +173,10 @@ export const toInterviewDto = (i: InterviewItem): InterviewDto => ({
   location: i.location,
   timeUnknown: i.timeUnknown ?? false,
   debriefedAt: i.debriefedAt ?? null,
+  nextStep: i.nextStep ?? null,
+  replyBy: i.replyBy ?? null,
+  dueAt: i.dueAt ?? null,
+  submittedAt: i.submittedAt ?? null,
 });
 
 export const toNoteDto = (n: NoteItem): NoteDto => ({
@@ -249,9 +258,7 @@ export const toApplicationDto = (
     nextInterviewAt: timing.next?.at ?? null,
     nextInterviewType: timing.next?.type ?? null,
     interviewsCount: interviewRoundsReached(timing),
-    replyBy: nul(a.replyBy),
-    dueAt: nul(a.dueAt),
-    nextStep: nul(a.nextStep),
+    offerExpiresAt: nul(a.offerExpiresAt),
     snoozedUntil: nul(a.snoozedUntil),
     statusChangedAt,
     waitingOnThemAt: nul(a.waitingOnThemAt),

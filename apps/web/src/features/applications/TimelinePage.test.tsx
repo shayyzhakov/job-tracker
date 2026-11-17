@@ -17,6 +17,10 @@ const round = (id: string, type: TimelineInterviewDto['type'], at: string, compa
     location: null,
     timeUnknown: false,
     debriefedAt: null,
+    nextStep: null,
+    replyBy: null,
+    dueAt: null,
+    submittedAt: null,
     companyName: company,
     roleName: 'Engineer',
   }) satisfies TimelineInterviewDto;

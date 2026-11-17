@@ -173,21 +173,24 @@ export function useChangeStatus() {
       id,
       status,
       interviewAt,
-      replyBy,
+      nextStep,
       dueAt,
+      offerExpiresAt,
     }: {
       id: string;
       status: ApplicationStatus;
       /** When the interview for a round stage takes place; defaults to now on the server. */
       interviewAt?: Date;
-      /** When the employer said they'd reply by. */
-      replyBy?: Date;
-      /** The user's own deadline for this stage (assignment due, offer expiry). */
+      /** For a round: what to do before it (stored on the interview). */
+      nextStep?: string;
+      /** For a home assignment: when it is due (stored on the interview). */
       dueAt?: Date;
+      /** For an offer: when it expires. */
+      offerExpiresAt?: Date;
     }) =>
       api<ApplicationDetailDto>(`/applications/${id}/status`, {
         method: 'PATCH',
-        json: { status, interviewAt, replyBy, dueAt },
+        json: { status, interviewAt, nextStep, dueAt, offerExpiresAt },
       }),
     onSuccess: async (_updated, { id, status }) => {
       await invalidate();

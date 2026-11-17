@@ -21,7 +21,7 @@ export interface ActionDto {
   subtitle: string;
   /** The date that drives ranking, when there is one (deadline, interview time, or when the wait expired). */
   dueAt: string | null;
-  /** The interview a prep/debrief card refers to. */
+  /** The interview a debrief or submit-assignment card refers to. */
   interviewId: string | null;
 }
 
@@ -34,6 +34,8 @@ export interface WaitingDto {
   subtitle: string;
   /** When this is worth looking at again: the interview time, or when the wait runs out. */
   checkInAt: string;
+  /** The scheduled round's next step (what to do before it); null otherwise. */
+  nextStep: string | null;
 }
 
 export interface ActionsDto {

@@ -36,9 +36,7 @@ const app = (status: ApplicationStatus, over: Partial<ApplicationDto> = {}): App
   nextInterviewAt: null,
   nextInterviewType: null,
   interviewsCount: 0,
-  replyBy: null,
-  dueAt: null,
-  nextStep: null,
+  offerExpiresAt: null,
   snoozedUntil: null,
   statusChangedAt: daysAgo(1),
   waitingOnThemAt: null,
@@ -59,6 +57,10 @@ const interview = (
   location: null,
   timeUnknown: false,
   debriefedAt: null,
+  nextStep: null,
+  replyBy: null,
+  dueAt: null,
+  submittedAt: null,
   ...over,
 });
 
@@ -99,16 +101,6 @@ describe('deriveActions', () => {
     it('becomes overdue once the follow-up is ignored for 3 days', () => {
       const r = run([app('applied', { statusChangedAt: daysAgo(17) })]);
       expect(r.needsYou[0]).toMatchObject({ kind: 'follow_up', urgency: 'overdue' });
-    });
-
-    it('replyBy replaces the default timer', () => {
-      const tomorrow = new Date(NOW.getTime() + 86_400_000).toISOString();
-      const waiting = run([app('applied', { statusChangedAt: daysAgo(20), replyBy: tomorrow })]);
-      expect(waiting.needsYou).toEqual([]);
-      expect(waiting.waiting[0]?.subtitle).toContain('they said by');
-
-      const missed = run([app('applied', { statusChangedAt: daysAgo(2), replyBy: daysAgo(1) })]);
-      expect(missed.needsYou[0]).toMatchObject({ kind: 'follow_up' });
     });
 
     it('restarts a 7-day timer after a follow-up', () => {
@@ -190,6 +182,46 @@ describe('deriveActions', () => {
       expect(done.waiting).toHaveLength(1);
     });
 
+    it("the ended round's reply-by replaces the default timer", () => {
+      const tomorrow = new Date(NOW.getTime() + 86_400_000).toISOString();
+      const a = app('phone_interview');
+      const waiting = run(
+        [a],
+        [interview(a, daysAgo(20), { debriefedAt: daysAgo(19), replyBy: tomorrow })],
+      );
+      expect(waiting.needsYou).toEqual([]);
+      expect(waiting.waiting[0]?.subtitle).toContain('they said by');
+
+      const missed = run(
+        [a],
+        [interview(a, daysAgo(2), { debriefedAt: daysAgo(2), replyBy: daysAgo(1) })],
+      );
+      expect(missed.needsYou[0]).toMatchObject({ kind: 'follow_up' });
+    });
+
+    it("ignores an earlier round's reply-by once a later round is scheduled", () => {
+      const a = app('technical_interview');
+      const r = run(
+        [a],
+        [
+          interview(a, daysAgo(10), { debriefedAt: daysAgo(9), replyBy: daysAgo(5) }),
+          interview(a, inHours(48), { type: 'technical', nextStep: 'Revise system design' }),
+        ],
+      );
+      expect(r.needsYou).toEqual([]);
+      expect(r.scheduled[0]).toMatchObject({ nextStep: 'Revise system design' });
+    });
+
+    it('drops the next step once its round has ended', () => {
+      const a = app('phone_interview');
+      const r = run(
+        [a],
+        [interview(a, daysAgo(2), { debriefedAt: daysAgo(1), nextStep: 'Prep questions' })],
+      );
+      expect(r.scheduled).toEqual([]);
+      expect(r.waiting[0]?.nextStep).toBeNull();
+    });
+
     it('goes stale 7 days after an interview, 5 after a final one', () => {
       const phone = app('phone_interview');
       const pi = interview(phone, daysAgo(8), { debriefedAt: daysAgo(7) });
@@ -204,43 +236,72 @@ describe('deriveActions', () => {
   });
 
   describe('home assignment', () => {
-    it('ranks by due date and escalates when past due', () => {
-      const due = app('home_assignment', { dueAt: inHours(20) });
-      expect(run([due]).needsYou[0]).toMatchObject({
-        kind: 'submit_assignment',
-        urgency: 'deadline',
-      });
-      const late = app('home_assignment', { dueAt: inHours(-5) });
-      expect(run([late]).needsYou[0]).toMatchObject({ urgency: 'overdue' });
+    const assignment = (a: ApplicationDto, over: Partial<InterviewDto> = {}) =>
+      interview(a, daysAgo(1), { type: 'home_assignment', ...over });
+
+    it('ranks by the round due date and escalates when past due', () => {
+      const a = app('home_assignment');
+      const due = run([a], [assignment(a, { dueAt: inHours(20) })]);
+      expect(due.needsYou[0]).toMatchObject({ kind: 'submit_assignment', urgency: 'deadline' });
+      expect(due.needsYou[0]?.interviewId).toBeTruthy();
+      const late = run([a], [assignment(a, { dueAt: inHours(-5) })]);
+      expect(late.needsYou[0]).toMatchObject({ urgency: 'overdue' });
     });
 
-    it('without a due date turns amber after 3 days', () => {
-      expect(
-        run([app('home_assignment', { statusChangedAt: daysAgo(1) })]).needsYou[0]?.urgency,
-      ).toBe('nudge');
-      expect(
-        run([app('home_assignment', { statusChangedAt: daysAgo(3) })]).needsYou[0]?.urgency,
-      ).toBe('soon');
+    it('without a due date turns amber 3 days after it was received', () => {
+      const a = app('home_assignment');
+      expect(run([a], [assignment(a)]).needsYou[0]?.urgency).toBe('nudge');
+      expect(run([a], [assignment(a, { scheduledAt: daysAgo(3) })]).needsYou[0]?.urgency).toBe(
+        'soon',
+      );
     });
 
     it('is waiting once submitted, stale after 7 days', () => {
-      const a = app('home_assignment', {
-        statusChangedAt: daysAgo(10),
-        waitingOnThemAt: daysAgo(2),
-      });
-      expect(run([a]).waiting).toHaveLength(1);
-      const stale = { ...a, waitingOnThemAt: daysAgo(8) };
-      expect(run([stale]).needsYou[0]).toMatchObject({ kind: 'follow_up' });
+      const a = app('home_assignment', { statusChangedAt: daysAgo(10) });
+      const fresh = run(
+        [a],
+        [assignment(a, { scheduledAt: daysAgo(10), submittedAt: daysAgo(2) })],
+      );
+      expect(fresh.waiting[0]?.subtitle).toContain('Assignment submitted');
+      const stale = run(
+        [a],
+        [assignment(a, { scheduledAt: daysAgo(10), submittedAt: daysAgo(8) })],
+      );
+      expect(stale.needsYou[0]).toMatchObject({ kind: 'follow_up' });
+    });
+
+    it('stays your move even when a later round is scheduled', () => {
+      const a = app('technical_interview');
+      const r = run(
+        [a],
+        [assignment(a, { dueAt: inHours(30) }), interview(a, inHours(72), { type: 'technical' })],
+      );
+      expect(r.needsYou[0]).toMatchObject({ kind: 'submit_assignment', urgency: 'deadline' });
+    });
+
+    it('counts as done once a later round has been held', () => {
+      const a = app('technical_interview');
+      const r = run(
+        [a],
+        [
+          assignment(a, { scheduledAt: daysAgo(10) }),
+          interview(a, daysAgo(3), { type: 'technical', debriefedAt: daysAgo(2) }),
+        ],
+      );
+      expect(r.needsYou).toEqual([]);
+      expect(r.waiting).toHaveLength(1);
     });
   });
 
   describe('offer', () => {
     it('is a deadline when it has an expiry, overdue once expired', () => {
-      expect(run([app('offer', { dueAt: inHours(48) })]).needsYou[0]).toMatchObject({
+      expect(run([app('offer', { offerExpiresAt: inHours(48) })]).needsYou[0]).toMatchObject({
         kind: 'respond_offer',
         urgency: 'deadline',
       });
-      expect(run([app('offer', { dueAt: inHours(-1) })]).needsYou[0]?.urgency).toBe('overdue');
+      expect(run([app('offer', { offerExpiresAt: inHours(-1) })]).needsYou[0]?.urgency).toBe(
+        'overdue',
+      );
     });
 
     it('without expiry is amber, red after 5 days', () => {
@@ -267,30 +328,36 @@ describe('deriveActions', () => {
 
   describe('ranking and caps', () => {
     it('orders deadlines, overdue, soon, then nudges; earliest date first', () => {
-      const r = run([
-        app('to_apply', {
-          createdAt: daysAgo(1),
-          company: { ...app('to_apply').company, name: 'Nudge' },
-        }),
-        app('home_assignment', {
-          dueAt: inHours(30),
-          company: { ...app('to_apply').company, name: 'Later' },
-        }),
-        app('home_assignment', {
-          dueAt: inHours(10),
-          company: { ...app('to_apply').company, name: 'Sooner' },
-        }),
-        app('to_apply', {
-          createdAt: daysAgo(9),
-          company: { ...app('to_apply').company, name: 'Overdue' },
-        }),
-      ]);
+      const later = app('home_assignment', {
+        company: { ...app('to_apply').company, name: 'Later' },
+      });
+      const sooner = app('home_assignment', {
+        company: { ...app('to_apply').company, name: 'Sooner' },
+      });
+      const r = run(
+        [
+          app('to_apply', {
+            createdAt: daysAgo(1),
+            company: { ...app('to_apply').company, name: 'Nudge' },
+          }),
+          later,
+          sooner,
+          app('to_apply', {
+            createdAt: daysAgo(9),
+            company: { ...app('to_apply').company, name: 'Overdue' },
+          }),
+        ],
+        [
+          interview(later, daysAgo(1), { type: 'home_assignment', dueAt: inHours(30) }),
+          interview(sooner, daysAgo(1), { type: 'home_assignment', dueAt: inHours(10) }),
+        ],
+      );
       expect(r.needsYou.map((a) => a.company)).toEqual(['Sooner', 'Later', 'Overdue', 'Nudge']);
     });
 
     it('caps nudges but never hides deadlines, and counts everything', () => {
       const nudges = Array.from({ length: 8 }, () => app('to_apply', { createdAt: daysAgo(1) }));
-      const deadline = app('offer', { dueAt: inHours(24) });
+      const deadline = app('offer', { offerExpiresAt: inHours(24) });
       const r = run([...nudges, deadline]);
       expect(r.needsYou.filter((a) => a.urgency === 'nudge')).toHaveLength(5);
       expect(r.hiddenNudges).toBe(3);

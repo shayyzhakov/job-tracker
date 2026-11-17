@@ -11,7 +11,12 @@ import type {
   HandOverReason,
   ReferralChannel,
 } from '@job-tracker/shared';
-import { INTERVIEW_TYPE_ROUND_STATUS, statusGroup } from '@job-tracker/shared';
+import {
+  currentRound,
+  INTERVIEW_TYPE_ROUND_STATUS,
+  isOpenStatus,
+  statusGroup,
+} from '@job-tracker/shared';
 import {
   batchDelete,
   batchGet,
@@ -60,9 +65,7 @@ export interface NewApplication {
   methodDetails?: string;
   notes?: string;
   appliedAt: Date | null;
-  replyBy?: Date;
-  dueAt?: Date;
-  nextStep?: string;
+  offerExpiresAt?: Date;
 }
 
 export type ApplicationFieldsPatch = Omit<ApplicationUpdate, 'company'>;
@@ -80,17 +83,14 @@ export interface StatusTransition {
   at: Date;
   /** Interview created for (or behind) this step, if it is an interview round. */
   interviewId?: string | null;
-  /** Timeline the employer gave for the new stage; replaces whatever the previous stage had. */
-  replyBy?: Date | null;
-  dueAt?: Date | null;
+  /** Offer expiry for a move to offer; cleared on any other status change. */
+  offerExpiresAt?: Date | null;
 }
 
 export interface ActivityRecord {
   at: Date;
   /** Applied date to set when the application has none yet. */
   appliedAt?: Date | null;
-  replyBy?: Date | null;
-  dueAt?: Date | null;
 }
 
 export interface ApplicationsRepository {
@@ -106,7 +106,7 @@ export interface ApplicationsRepository {
   /** Updates status (and appliedAt) and appends a history entry atomically. */
   changeStatus(id: string, transition: StatusTransition): Promise<void>;
   /**
-   * An interview round happened or was scheduled: restarts the wait (hand-over, snooze, timeline) and
+   * An interview round happened or was scheduled: restarts the wait (hand-over, snooze, follow-ups) and
    * sets the applied date if it was missing. No status or history change.
    */
   recordActivity(id: string, activity: ActivityRecord): Promise<void>;
@@ -176,9 +176,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       notes: nul(app.notes),
       appliedAt: isoOrNull(app.appliedAt),
       reachedStatuses: [app.status],
-      replyBy: isoOrNull(app.replyBy ?? null),
-      dueAt: isoOrNull(app.dueAt ?? null),
-      nextStep: nul(app.nextStep),
+      offerExpiresAt: isoOrNull(app.offerExpiresAt ?? null),
       snoozedUntil: null,
       // An application added as already applied (appliedAt may be in the past) has been waiting since then.
       statusChangedAt: app.status === 'applied' && app.appliedAt ? iso(app.appliedAt) : now,
@@ -247,13 +245,20 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
       .filter((n) => interviewIds.has(n.interviewId))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
     const history = ofKind<HistoryItem>('HISTORY#'); // sort key already orders by time then id
-    const timing = timingByApplication(interviews, iso(new Date())).get(app.id) ?? NO_TIMING;
+    const now = new Date();
+    const timing = timingByApplication(interviews, iso(now)).get(app.id) ?? NO_TIMING;
+    const dto = toApplicationDto(app, company, timing);
+    const interviewDtos = interviews.map(toInterviewDto);
+    // Offers and closed applications have no current round: their timeline is the offer expiry, or none.
+    const round =
+      isOpenStatus(dto.status) && dto.status !== 'offer' ? currentRound(interviewDtos, now) : null;
     return {
-      ...toApplicationDto(app, company, timing),
+      ...dto,
       contacts,
-      interviews: interviews.map(toInterviewDto),
+      interviews: interviewDtos,
       interviewNotes: notes.map(toNoteDto),
       history: history.map(toHistoryDto),
+      currentRound: round ? { interviewId: round.interview.id, phase: round.phase } : null,
     };
   }
 
@@ -301,7 +306,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
 
   async update(id: string, patch: ApplicationFieldsPatch) {
     if (Object.keys(patch).length === 0) return;
-    const { appliedAt, replyBy, dueAt, ...rest } = patch;
+    const { appliedAt, offerExpiresAt, ...rest } = patch;
     const updatedAt = iso(new Date());
     try {
       await this.db.doc.send(
@@ -312,8 +317,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
           ...buildUpdate({
             ...rest,
             ...(appliedAt !== undefined && { appliedAt: isoOrNull(appliedAt) }),
-            ...(replyBy !== undefined && { replyBy: isoOrNull(replyBy) }),
-            ...(dueAt !== undefined && { dueAt: isoOrNull(dueAt) }),
+            ...(offerExpiresAt !== undefined && { offerExpiresAt: isoOrNull(offerExpiresAt) }),
             updatedAt,
             GSI1SK: appIndexKeys(id, updatedAt).GSI1SK,
           }),
@@ -326,7 +330,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
 
   async changeStatus(
     id: string,
-    { from, to, appliedAt, at, interviewId, replyBy, dueAt }: StatusTransition,
+    { from, to, appliedAt, at, interviewId, offerExpiresAt }: StatusTransition,
   ) {
     const current = (
       await this.db.doc.send(new GetCommand({ TableName: this.db.table, Key: key.app(id) }))
@@ -347,13 +351,12 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
                 status: to,
                 appliedAt: isoOrNull(appliedAt),
                 reachedStatuses: reached,
-                // A new stage starts a new wait: the old hand-over, snooze and timeline no longer apply.
+                // A new stage starts a new wait: the old hand-over and snooze no longer apply.
                 statusChangedAt: changedAt,
                 waitingOnThemAt: null,
                 followUps: 0,
                 snoozedUntil: null,
-                replyBy: isoOrNull(replyBy ?? null),
-                dueAt: isoOrNull(dueAt ?? null),
+                offerExpiresAt: to === 'offer' ? isoOrNull(offerExpiresAt ?? null) : null,
                 updatedAt: changedAt,
                 GSI1SK: appIndexKeys(id, changedAt).GSI1SK,
               }),
@@ -370,7 +373,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     );
   }
 
-  async recordActivity(id: string, { at, appliedAt, replyBy, dueAt }: ActivityRecord) {
+  async recordActivity(id: string, { at, appliedAt }: ActivityRecord) {
     const changedAt = iso(at);
     try {
       await this.db.doc.send(
@@ -384,8 +387,6 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
             waitingOnThemAt: null,
             followUps: 0,
             snoozedUntil: null,
-            replyBy: isoOrNull(replyBy ?? null),
-            dueAt: isoOrNull(dueAt ?? null),
             updatedAt: changedAt,
             GSI1SK: appIndexKeys(id, changedAt).GSI1SK,
           }),

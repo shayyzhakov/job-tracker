@@ -41,9 +41,7 @@ export const application = (overrides: Partial<ApplicationDto> = {}): Applicatio
   nextInterviewAt: null,
   nextInterviewType: null,
   interviewsCount: 0,
-  replyBy: null,
-  dueAt: null,
-  nextStep: null,
+  offerExpiresAt: null,
   snoozedUntil: null,
   statusChangedAt: '2026-11-01T10:00:00.000Z',
   waitingOnThemAt: null,
@@ -69,6 +67,7 @@ export const applicationDetail = (
   ],
   interviews: [],
   interviewNotes: [],
+  currentRound: null,
   history: [
     {
       id: 'h1',
@@ -91,6 +90,10 @@ export const upcomingInterview: UpcomingInterviewDto = {
   location: null,
   timeUnknown: false,
   debriefedAt: null,
+  nextStep: null,
+  replyBy: null,
+  dueAt: null,
+  submittedAt: null,
   companyName: 'Acme',
   roleName: 'Backend Engineer',
 };

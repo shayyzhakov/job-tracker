@@ -31,8 +31,9 @@ export const applicationsRoutes: FastifyPluginAsyncZod<{
 
   app.patch('/:id/status', { schema: { params: IdParams, body: StatusChangeSchema } }, (req) =>
     service.changeStatus(req.params.id, req.body.status, req.body.interviewAt, {
-      replyBy: req.body.replyBy,
+      nextStep: req.body.nextStep,
       dueAt: req.body.dueAt,
+      offerExpiresAt: req.body.offerExpiresAt,
     }),
   );
 

@@ -16,7 +16,7 @@ import { createAuthHook } from './auth/auth.hook.js';
 import { secretMatches } from './auth/bearer.js';
 import type { TokenVerifier } from './auth/token-verifier.js';
 import type { Db } from './db/dynamo.js';
-import { ConflictError, NotFoundError } from './errors.js';
+import { BadRequestError, ConflictError, NotFoundError } from './errors.js';
 import { mcpRoutes } from './mcp/mcp.routes.js';
 import { actionsRoutes } from './modules/actions/actions.routes.js';
 import { applicationsRoutes } from './modules/applications/applications.routes.js';
@@ -79,6 +79,7 @@ export async function buildApp({
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof NotFoundError) return reply.code(404).send({ message: err.message });
     if (err instanceof ConflictError) return reply.code(409).send({ message: err.message });
+    if (err instanceof BadRequestError) return reply.code(400).send({ message: err.message });
     if (hasZodFastifySchemaValidationErrors(err)) {
       return reply.code(400).send({ message: 'Validation failed', issues: err.validation });
     }

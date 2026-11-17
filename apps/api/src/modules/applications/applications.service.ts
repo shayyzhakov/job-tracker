@@ -8,8 +8,10 @@ import type {
   HandOverReason,
   InterviewDto,
   InterviewInput,
+  InterviewUpdate,
 } from '@job-tracker/shared';
 import {
+  currentRound,
   INITIAL_STATUSES,
   isOpenStatus,
   isRoundStatus,
@@ -22,7 +24,10 @@ import type { ApplicationsRepository } from './applications.repository.js';
 export interface ApplicationsServiceDeps {
   applications: ApplicationsRepository;
   companies: CompaniesRepository;
-  interviews: { create(applicationId: string, input: InterviewInput): Promise<InterviewDto> };
+  interviews: {
+    create(applicationId: string, input: InterviewInput): Promise<InterviewDto>;
+    update(applicationId: string, id: string, patch: InterviewUpdate): Promise<InterviewDto | null>;
+  };
   now?: () => Date;
 }
 
@@ -92,20 +97,25 @@ export class ApplicationsService {
   /**
    * Only milestones (to apply, applied, offer, closed outcomes) are stored. Choosing a round adds the
    * interview behind it (at `interviewAt`, default now), and the round shown follows the interviews.
+   * The round's timeline (next step, and a due date for a home assignment) goes on that interview;
+   * an offer's expiry goes on the application.
    */
   async changeStatus(
     id: string,
     status: ApplicationStatus,
     interviewAt?: Date,
-    timeline: { replyBy?: Date; dueAt?: Date } = {},
+    timeline: { nextStep?: string; dueAt?: Date; offerExpiresAt?: Date } = {},
   ): Promise<ApplicationDetailDto> {
     const state = await this.requireState(id);
     const now = this.now();
     if (isRoundStatus(status)) {
+      const type = ROUND_STATUS_INTERVIEW_TYPE[status];
       await this.interviews.create(id, {
-        type: ROUND_STATUS_INTERVIEW_TYPE[status],
+        type,
         scheduledAt: interviewAt ?? now,
         timeUnknown: !interviewAt,
+        nextStep: timeline.nextStep,
+        dueAt: type === 'home_assignment' ? timeline.dueAt : undefined,
       });
       // Rounds need an applied application; picking one explicitly also reopens an offer or a close.
       if (state.status === 'to_apply' || !isOpenStatus(state.status) || state.status === 'offer') {
@@ -114,15 +124,11 @@ export class ApplicationsService {
           to: 'applied',
           appliedAt: state.appliedAt ?? now,
           at: now,
-          replyBy: timeline.replyBy ?? null,
-          dueAt: timeline.dueAt ?? null,
         });
       } else {
         await this.apps.recordActivity(id, {
           at: now,
           appliedAt: state.appliedAt ? null : now,
-          replyBy: timeline.replyBy ?? null,
-          dueAt: timeline.dueAt ?? null,
         });
       }
     } else if (state.status !== status) {
@@ -137,9 +143,10 @@ export class ApplicationsService {
         to: status,
         appliedAt: state.appliedAt ?? (status === 'to_apply' ? null : now),
         at: now,
-        replyBy: timeline.replyBy ?? null,
-        dueAt: timeline.dueAt ?? null,
+        offerExpiresAt: timeline.offerExpiresAt ?? null,
       });
+    } else if (status === 'offer' && timeline.offerExpiresAt) {
+      await this.apps.update(id, { offerExpiresAt: timeline.offerExpiresAt });
     }
     return this.get(id);
   }
@@ -149,8 +156,21 @@ export class ApplicationsService {
     return this.get(id);
   }
 
+  /**
+   * "Submitted" marks the open home assignment submitted (the round ends then). Any other hand-over,
+   * or "submitted" with no open assignment, records that the ball is with the employer.
+   */
   async handOver(id: string, reason: HandOverReason): Promise<ApplicationDetailDto> {
-    if (!(await this.apps.handOver(id, reason, this.now()))) {
+    const now = this.now();
+    if (reason === 'submitted') {
+      const app = await this.get(id);
+      const round = currentRound(app.interviews, now);
+      if (round?.phase === 'open') {
+        await this.interviews.update(id, round.interview.id, { submittedAt: now });
+        return this.get(id);
+      }
+    }
+    if (!(await this.apps.handOver(id, reason, now))) {
       throw new NotFoundError('Application', id);
     }
     return this.get(id);

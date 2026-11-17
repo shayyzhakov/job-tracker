@@ -41,10 +41,8 @@ const method = z
 const channel = z
   .enum(REFERRAL_CHANNELS)
   .describe(`How the user and the referrer spoke: ${REFERRAL_CHANNELS.join(' | ')}`);
-const REPLY_BY =
-  'ISO 8601 date the employer said they would reply by; replaces the default waiting timer on the Tasks list';
-const DUE_AT =
-  "ISO 8601 date-time of the user's own deadline: home-assignment due date or offer expiry";
+const OFFER_EXPIRES_AT =
+  'ISO 8601 date-time when the offer expires; used only while the status is offer (ranks the offer on the Tasks list)';
 const nullable = <T extends z.ZodType>(schema: T) => schema.nullable().optional();
 
 export function registerApplicationTools(server: McpServer, s: Services, logger?: ToolLogger) {
@@ -89,7 +87,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     {
       title: 'Get application',
       description:
-        'Get one application with its company, contacts, interviews, interview notes and status history.',
+        "Get one application with its company, contacts, interviews, interview notes and status history. currentRound names the interview whose timeline (nextStep, replyBy, dueAt) counts now and its phase (upcoming, unscheduled, open = home assignment not submitted, ended); other rounds' values are history. offerExpiresAt applies only while the status is offer.",
       inputSchema: { id },
       annotations: { readOnlyHint: true },
     },
@@ -171,9 +169,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         methodDetails: nullable(z.string()),
         notes: nullable(z.string()).describe(NOTE_FIELD),
         appliedAt: nullable(z.string()).describe('ISO 8601 date'),
-        replyBy: nullable(z.string()).describe(REPLY_BY),
-        dueAt: nullable(z.string()).describe(DUE_AT),
-        nextStep: nullable(z.string()).describe('One-line note on what the user should do next'),
+        offerExpiresAt: nullable(z.string()).describe(OFFER_EXPIRES_AT),
         company: z
           .object({
             name: z.string().optional(),
@@ -205,15 +201,28 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .describe(
             'For interview-round statuses: ISO 8601 date-time with a UTC offset of the interview (past or future). Defaults to now.',
           ),
-        replyBy: z.string().optional().describe(REPLY_BY),
-        dueAt: z.string().optional().describe(DUE_AT),
+        nextStep: z
+          .string()
+          .optional()
+          .describe(
+            'For interview-round statuses: one line on what the user should do before this round. Stored on the interview it creates.',
+          ),
+        dueAt: z
+          .string()
+          .optional()
+          .describe(
+            'For home_assignment only: ISO 8601 date-time the assignment is due. Stored on the interview it creates.',
+          ),
+        offerExpiresAt: z.string().optional().describe(`For offer only: ${OFFER_EXPIRES_AT}`),
       },
     },
     ({ id, ...body }) => {
-      const { status, interviewAt, replyBy, dueAt } = StatusChangeSchema.parse(body);
+      const { status, interviewAt, nextStep, dueAt, offerExpiresAt } =
+        StatusChangeSchema.parse(body);
       return s.applications.changeStatus(id, status, interviewAt, {
-        replyBy,
+        nextStep,
         dueAt,
+        offerExpiresAt,
       });
     },
     logger,
@@ -241,7 +250,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     {
       title: 'Hand ball to employer',
       description:
-        'Record that the user did their part and is now waiting on the employer: followed_up (a follow-up was sent), submitted (home assignment handed in) or they_scheduling (the employer will propose an interview time). Starts the waiting timer.',
+        'Record that the user did their part and is now waiting on the employer: followed_up (a follow-up was sent), submitted (home assignment handed in: sets submittedAt on the open home-assignment interview) or they_scheduling (the employer will propose an interview time). Starts the waiting timer.',
       inputSchema: { id, reason: z.enum(HAND_OVER_REASONS) },
     },
     ({ id, reason }) => s.applications.handOver(id, HandOverSchema.parse({ reason }).reason),

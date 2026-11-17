@@ -32,8 +32,8 @@ const samples: Array<{
   input: ApplicationCreateInput;
   path?: Parameters<ApplicationsService['changeStatus']>[1][];
   interviewInDays?: number;
-  /** Replies/deadlines for the last status in `path`. */
-  timeline?: { replyBy?: Date; dueAt?: Date };
+  /** Timeline for the last status in `path`: a round's next step and due date, or an offer's expiry. */
+  timeline?: { nextStep?: string; dueAt?: Date; offerExpiresAt?: Date };
   /** An interview round at a given offset (negative = already happened), after `path`. */
   round?: { status: Parameters<ApplicationsService['changeStatus']>[1]; days: number };
 }> = [
@@ -140,7 +140,7 @@ const samples: Array<{
       expectedSalaryIls: 45000,
     },
     path: ['offer'],
-    timeline: { dueAt: at(2, 18) },
+    timeline: { offerExpiresAt: at(2, 18) },
   },
   {
     input: {
@@ -150,7 +150,7 @@ const samples: Array<{
       appliedAt: at(-9),
     },
     path: ['home_assignment'],
-    timeline: { dueAt: at(1, 18) },
+    timeline: { nextStep: 'Write the README last', dueAt: at(1, 18) },
   },
   {
     input: {
@@ -174,7 +174,9 @@ for (const { input, path = [], interviewInDays, timeline, round } of samples) {
   if (round) await service.changeStatus(id, round.status, at(round.days, 14));
   // The upcoming technical round is a status step too: it creates the interview record.
   if (interviewInDays !== undefined) {
-    await service.changeStatus(id, 'technical_interview', at(interviewInDays, 14));
+    await service.changeStatus(id, 'technical_interview', at(interviewInDays, 14), {
+      nextStep: 'Review caching trade-offs',
+    });
   }
   // Sample notes: how a past round went, and prep for an upcoming one.
   const { interviews } = await service.get(id);

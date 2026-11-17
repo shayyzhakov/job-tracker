@@ -1,4 +1,5 @@
 import {
+  hasEnded,
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_TYPES,
   type InterviewDto,
@@ -23,7 +24,7 @@ import { useForm } from '@mantine/form';
 import { IconNotes, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useInterviewMutations } from '../../api/hooks';
-import { formatDateTime } from '../../lib/format';
+import { formatDate, formatDateTime } from '../../lib/format';
 import { NoteList } from './NoteList';
 
 interface InterviewFormValues {
@@ -32,6 +33,13 @@ interface InterviewFormValues {
   scheduledAt: string;
   durationMinutes: number | string;
   location: string;
+  /** What to do before this round. */
+  nextStep: string;
+  /** Local date-time values like scheduledAt; blank when unset. */
+  replyBy: string;
+  /** Home assignment only. */
+  dueAt: string;
+  submittedAt: string;
 }
 
 /** ISO instant -> value for <input type="datetime-local"> in the user's local time. */
@@ -46,7 +54,14 @@ const EMPTY: InterviewFormValues = {
   scheduledAt: '',
   durationMinutes: 60,
   location: '',
+  nextStep: '',
+  replyBy: '',
+  dueAt: '',
+  submittedAt: '',
 };
+
+const localOrBlank = (iso: string | null) => (iso ? toLocalInput(iso) : '');
+const dateOrNull = (v: string) => (v ? new Date(v) : null); // parsed as local time
 
 export function InterviewsSection({
   applicationId,
@@ -84,15 +99,26 @@ export function InterviewsSection({
       scheduledAt: toLocalInput(i.scheduledAt),
       durationMinutes: i.durationMinutes ?? '',
       location: i.location ?? '',
+      nextStep: i.nextStep ?? '',
+      replyBy: localOrBlank(i.replyBy),
+      dueAt: localOrBlank(i.dueAt),
+      submittedAt: localOrBlank(i.submittedAt),
     });
   };
 
   const submit = (v: InterviewFormValues) => {
+    const assignment = v.type === 'home_assignment';
     const base = {
       type: v.type,
       scheduledAt: new Date(v.scheduledAt), // parsed as local time
       durationMinutes: typeof v.durationMinutes === 'number' ? v.durationMinutes : undefined,
       location: v.location || undefined,
+      nextStep: v.nextStep.trim() || undefined,
+    };
+    const timeline = {
+      replyBy: dateOrNull(v.replyBy),
+      dueAt: assignment ? dateOrNull(v.dueAt) : null,
+      submittedAt: assignment ? dateOrNull(v.submittedAt) : null,
     };
     if (editingId) {
       update.mutate(
@@ -102,14 +128,29 @@ export function InterviewsSection({
             ...base,
             durationMinutes: base.durationMinutes ?? null,
             location: base.location ?? null,
+            nextStep: base.nextStep ?? null,
+            ...timeline,
           },
         },
         { onSuccess: close },
       );
     } else {
-      create.mutate(base, { onSuccess: close });
+      create.mutate(
+        {
+          ...base,
+          replyBy: timeline.replyBy ?? undefined,
+          dueAt: timeline.dueAt ?? undefined,
+          submittedAt: timeline.submittedAt ?? undefined,
+        },
+        { onSuccess: close },
+      );
     }
   };
+
+  const isAssignment = form.values.type === 'home_assignment';
+  const editing = interviews.find((i) => i.id === editingId);
+  // Reply-by belongs after a round: offered once the round being edited is over.
+  const showReplyBy = !!editing && hasEnded(editing, new Date(now));
 
   const formEl = (
     <form noValidate onSubmit={form.onSubmit(submit)}>
@@ -126,10 +167,26 @@ export function InterviewsSection({
           />
           <TextInput
             type="datetime-local"
-            label="Date & time"
+            label={isAssignment ? 'Received' : 'Date & time'}
             withAsterisk
             {...form.getInputProps('scheduledAt')}
           />
+          {isAssignment && (
+            <TextInput
+              type="datetime-local"
+              label="Due by"
+              description="Ranks it on Tasks until it is submitted."
+              {...form.getInputProps('dueAt')}
+            />
+          )}
+          {isAssignment && editingId && (
+            <TextInput
+              type="datetime-local"
+              label="Submitted"
+              description="The round ends when it is submitted."
+              {...form.getInputProps('submittedAt')}
+            />
+          )}
           <NumberInput
             label="Duration (minutes)"
             min={5}
@@ -141,7 +198,20 @@ export function InterviewsSection({
             placeholder="Zoom, office…"
             {...form.getInputProps('location')}
           />
+          {showReplyBy && (
+            <TextInput
+              type="datetime-local"
+              label="They'll reply by"
+              description="Replaces the default follow-up timer."
+              {...form.getInputProps('replyBy')}
+            />
+          )}
         </SimpleGrid>
+        <TextInput
+          label="Next step"
+          description="What to do before this round. Stops showing once the round is over."
+          {...form.getInputProps('nextStep')}
+        />
         <Group justify="flex-end">
           <Button variant="default" size="xs" onClick={close}>
             Cancel
@@ -177,7 +247,11 @@ export function InterviewsSection({
         )}
         {interviews.map((i) => {
           if (editingId === i.id) return <div key={i.id}>{formEl}</div>;
-          const past = new Date(i.scheduledAt).getTime() < now;
+          const assignment = i.type === 'home_assignment';
+          const past = assignment
+            ? hasEnded(i, new Date(now))
+            : new Date(i.scheduledAt).getTime() < now;
+          const ended = hasEnded(i, new Date(now));
           return (
             <Group key={i.id} justify="space-between" wrap="nowrap">
               <Stack gap={2}>
@@ -190,17 +264,32 @@ export function InterviewsSection({
                   </Badge>
                   {past ? (
                     <Badge color="gray" size="sm">
-                      Past
+                      {assignment ? 'Submitted' : 'Past'}
                     </Badge>
                   ) : (
                     <Badge variant="outline" color="gray" size="sm">
-                      Scheduled
+                      {assignment ? 'To submit' : 'Scheduled'}
                     </Badge>
                   )}
                 </Group>
                 {i.location && (
                   <Text size="sm" c="dimmed">
                     {i.location}
+                  </Text>
+                )}
+                {assignment && i.dueAt && (
+                  <Text size="sm" c={ended ? 'dimmed' : undefined}>
+                    Due by {formatDateTime(i.dueAt)}
+                  </Text>
+                )}
+                {i.nextStep && (
+                  <Text size="sm" c={ended ? 'dimmed' : undefined}>
+                    Next step: {i.nextStep}
+                  </Text>
+                )}
+                {ended && i.replyBy && (
+                  <Text size="sm" c="dimmed">
+                    They'll reply by {formatDate(i.replyBy)}
                   </Text>
                 )}
               </Stack>

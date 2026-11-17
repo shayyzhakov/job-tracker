@@ -15,6 +15,10 @@ const interview = (id: string, type: 'phone' | 'technical', scheduledAt: string)
   location: null,
   timeUnknown: false,
   debriefedAt: null,
+  nextStep: null,
+  replyBy: null,
+  dueAt: null,
+  submittedAt: null,
 });
 const note = (id: string, interviewId: string, text: string, createdAt: string) => ({
   id,

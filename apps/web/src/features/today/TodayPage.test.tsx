@@ -22,6 +22,7 @@ describe('TodayPage', () => {
             state: 'waiting',
             subtitle: 'Applied 3 days ago',
             checkInAt: '2026-11-16T10:00:00.000Z',
+            nextStep: null,
           },
         ],
         counts: { needsYou: 0, overdue: 0, waiting: 1 },

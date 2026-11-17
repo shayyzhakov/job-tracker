@@ -29,6 +29,10 @@ const interview = (inDays: number): UpcomingInterviewDto => ({
   location: null,
   timeUnknown: false,
   debriefedAt: null,
+  nextStep: null,
+  replyBy: null,
+  dueAt: null,
+  submittedAt: null,
   companyName: 'Acme',
   roleName: 'Engineer',
 });

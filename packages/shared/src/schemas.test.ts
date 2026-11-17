@@ -112,6 +112,32 @@ describe('InterviewInputSchema', () => {
     expect(parsed.scheduledAt).toBeInstanceOf(Date);
     expect(parsed.type).toBe('other');
   });
+
+  it('accepts a due or submitted date only on a home assignment', () => {
+    const at = '2026-11-10T09:00:00.000Z';
+    expect(
+      InterviewInputSchema.safeParse({ type: 'phone', scheduledAt: at, dueAt: at }).success,
+    ).toBe(false);
+    expect(
+      InterviewInputSchema.safeParse({ type: 'phone', scheduledAt: at, submittedAt: at }).success,
+    ).toBe(false);
+    const ok = InterviewInputSchema.parse({
+      type: 'home_assignment',
+      scheduledAt: at,
+      dueAt: at,
+      nextStep: ' Write tests ',
+    });
+    expect(ok.dueAt).toBeInstanceOf(Date);
+    expect(ok.nextStep).toBe('Write tests');
+  });
+
+  it('on update, checks the type only when it is sent', async () => {
+    const { InterviewUpdateSchema } = await import('./schemas.js');
+    const at = '2026-11-10T09:00:00.000Z';
+    expect(InterviewUpdateSchema.safeParse({ dueAt: at }).success).toBe(true);
+    expect(InterviewUpdateSchema.safeParse({ type: 'technical', dueAt: at }).success).toBe(false);
+    expect(InterviewUpdateSchema.safeParse({ type: 'technical', dueAt: null }).success).toBe(true);
+  });
 });
 
 describe('ApplicationUpdateSchema clearing', () => {

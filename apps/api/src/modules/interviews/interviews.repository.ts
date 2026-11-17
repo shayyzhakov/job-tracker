@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import type { InterviewDto, InterviewInput, InterviewUpdate } from '@job-tracker/shared';
 import {
   batchDelete,
   type Db,
   isConditionFailed,
   iso,
+  isoOrNull,
   key,
   queryPartition,
   updateExisting,
@@ -27,6 +28,10 @@ export class DynamoInterviewsRepository {
       location: nul(input.location),
       timeUnknown: input.timeUnknown ?? false,
       debriefedAt: null,
+      nextStep: nul(input.nextStep),
+      replyBy: isoOrNull(input.replyBy),
+      dueAt: isoOrNull(input.dueAt),
+      submittedAt: isoOrNull(input.submittedAt),
       createdAt: now,
       updatedAt: now,
     };
@@ -44,10 +49,26 @@ export class DynamoInterviewsRepository {
   }
 
   /** Returns null when the interview doesn't exist under this application. */
+  async find(applicationId: string, id: string): Promise<InterviewDto | null> {
+    const res = await this.db.doc.send(
+      new GetCommand({ TableName: this.db.table, Key: key.interview(applicationId, id) }),
+    );
+    return res.Item ? toInterviewDto(res.Item as InterviewItem) : null;
+  }
+
+  /** Returns null when the interview doesn't exist under this application. */
   async update(applicationId: string, id: string, patch: InterviewUpdate) {
-    const { scheduledAt, debriefed, ...rest } = patch;
+    const { scheduledAt, debriefed, replyBy, dueAt, submittedAt, ...rest } = patch;
     const set: Record<string, unknown> = { ...rest };
     if (debriefed !== undefined) set.debriefedAt = debriefed ? iso(new Date()) : null;
+    if (replyBy !== undefined) set.replyBy = isoOrNull(replyBy);
+    if (dueAt !== undefined) set.dueAt = isoOrNull(dueAt);
+    if (submittedAt !== undefined) set.submittedAt = isoOrNull(submittedAt);
+    // Due and submitted dates belong to home assignments: a type change away from one clears them.
+    if (patch.type !== undefined && patch.type !== 'home_assignment') {
+      set.dueAt = null;
+      set.submittedAt = null;
+    }
     if (scheduledAt) {
       set.scheduledAt = iso(scheduledAt);
       set.timeUnknown = false;

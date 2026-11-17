@@ -72,6 +72,27 @@ export interface InterviewDto {
   timeUnknown: boolean;
   /** When the user logged how the interview went (or dismissed the prompt); null until then. */
   debriefedAt: string | null;
+  /** What to do before this round; current only until the round ends. */
+  nextStep: string | null;
+  /** When they said they'd reply after this round; replaces the default follow-up timer. */
+  replyBy: string | null;
+  /** Home assignment only: when it is due. */
+  dueAt: string | null;
+  /** Home assignment only: when it was submitted (the round ends then). */
+  submittedAt: string | null;
+}
+
+/**
+ * Where a round stands relative to now. `upcoming`: a live round still ahead (or in progress).
+ * `unscheduled`: a live round with no real time yet. `open`: a home assignment received and not
+ * submitted. `ended`: the round is over (time plus duration passed, or the assignment was submitted).
+ */
+export type RoundPhase = 'upcoming' | 'unscheduled' | 'open' | 'ended';
+
+/** The round whose timeline counts right now (see `currentRound`). */
+export interface CurrentRoundDto {
+  interviewId: string;
+  phase: RoundPhase;
 }
 
 export interface NoteDto {
@@ -120,12 +141,8 @@ export interface ApplicationDto {
   nextInterviewType: InterviewType | null;
   /** Interview rounds reached so far, derived from the status history. */
   interviewsCount: number;
-  /** When the employer said they'd reply by (ISO date); overrides the default waiting timer. */
-  replyBy: string | null;
-  /** The user's own deadline: home-assignment due date or offer expiry. */
-  dueAt: string | null;
-  /** One-line manual "what I should do next". */
-  nextStep: string | null;
+  /** When the offer expires; only meaningful while the status is offer. */
+  offerExpiresAt: string | null;
   /** The action card for this application is hidden until this time. */
   snoozedUntil: string | null;
   /** When the application last moved to its current status. */
@@ -142,6 +159,8 @@ export interface ApplicationDetailDto extends ApplicationDto {
   /** Interview notes of the whole application, newest first. */
   interviewNotes: NoteDto[];
   history: StatusHistoryDto[];
+  /** The round whose timeline (next step, due date, reply-by) counts now; null for offers, closed and no rounds. */
+  currentRound: CurrentRoundDto | null;
 }
 
 export interface UpcomingInterviewDto extends InterviewDto {

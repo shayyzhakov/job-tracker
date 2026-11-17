@@ -11,6 +11,7 @@ import type {
   HandOverReason,
   InterviewDto,
   InterviewInput,
+  InterviewUpdate,
   OpportunityDto,
   OpportunityListQuery,
   ScoutCriteria,
@@ -104,9 +105,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       nextInterviewAt: null,
       nextInterviewType: null,
       interviewsCount: 0,
-      replyBy: app.replyBy?.toISOString() ?? null,
-      dueAt: app.dueAt?.toISOString() ?? null,
-      nextStep: app.nextStep ?? null,
+      offerExpiresAt: app.offerExpiresAt?.toISOString() ?? null,
       snoozedUntil: null,
       statusChangedAt: (app.status === 'applied' && app.appliedAt
         ? app.appliedAt
@@ -126,6 +125,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
       })),
       interviews: [],
       interviewNotes: [],
+      currentRound: null,
       history: [
         {
           id: randomUUID(),
@@ -171,22 +171,13 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
   async update(id: string, patch: ApplicationFieldsPatch) {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return;
-    const { appliedAt, replyBy, dueAt, ...rest } = patch;
+    const { appliedAt, offerExpiresAt, ...rest } = patch;
     Object.assign(row, rest);
     if (appliedAt !== undefined) row.appliedAt = appliedAt?.toISOString() ?? null;
-    if (replyBy !== undefined) row.replyBy = replyBy?.toISOString() ?? null;
-    if (dueAt !== undefined) row.dueAt = dueAt?.toISOString() ?? null;
+    if (offerExpiresAt !== undefined) row.offerExpiresAt = offerExpiresAt?.toISOString() ?? null;
   }
 
-  async recordActivity(
-    id: string,
-    {
-      at,
-      appliedAt,
-      replyBy,
-      dueAt,
-    }: { at: Date; appliedAt?: Date | null; replyBy?: Date | null; dueAt?: Date | null },
-  ) {
+  async recordActivity(id: string, { at, appliedAt }: { at: Date; appliedAt?: Date | null }) {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return;
     if (appliedAt) row.appliedAt = appliedAt.toISOString();
@@ -194,8 +185,6 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     row.waitingOnThemAt = null;
     row.followUps = 0;
     row.snoozedUntil = null;
-    row.replyBy = replyBy?.toISOString() ?? null;
-    row.dueAt = dueAt?.toISOString() ?? null;
   }
 
   async snooze(id: string, until: Date) {
@@ -214,7 +203,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
 
   async changeStatus(
     id: string,
-    { from, to, appliedAt, at, interviewId, replyBy, dueAt }: StatusTransition,
+    { from, to, appliedAt, at, interviewId, offerExpiresAt }: StatusTransition,
   ) {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return;
@@ -224,8 +213,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     row.waitingOnThemAt = null;
     row.followUps = 0;
     row.snoozedUntil = null;
-    row.replyBy = replyBy?.toISOString() ?? null;
-    row.dueAt = dueAt?.toISOString() ?? null;
+    row.offerExpiresAt = to === 'offer' ? (offerExpiresAt?.toISOString() ?? null) : null;
     row.history.push({
       id: randomUUID(),
       applicationId: id,
@@ -243,8 +231,15 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
   }
 }
 
-/** Records the interviews the service creates; nothing reads them back. */
+/** Records the interviews the service creates and the updates it makes. */
 export class FakeInterviewsRepository {
+  updated: { applicationId: string; id: string; patch: InterviewUpdate }[] = [];
+
+  async update(applicationId: string, id: string, patch: InterviewUpdate) {
+    this.updated.push({ applicationId, id, patch });
+    return this.created.find((i) => i.id === id) ?? null;
+  }
+
   created: InterviewDto[] = [];
 
   async create(applicationId: string, input: InterviewInput): Promise<InterviewDto> {
@@ -257,6 +252,10 @@ export class FakeInterviewsRepository {
       location: input.location ?? null,
       timeUnknown: input.timeUnknown ?? false,
       debriefedAt: null,
+      nextStep: input.nextStep ?? null,
+      replyBy: input.replyBy?.toISOString() ?? null,
+      dueAt: input.dueAt?.toISOString() ?? null,
+      submittedAt: input.submittedAt?.toISOString() ?? null,
     };
     this.created.push(dto);
     return dto;

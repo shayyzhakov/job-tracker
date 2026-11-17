@@ -38,6 +38,13 @@ export const contactFields = {
   notes: z.string().optional().describe(NOTE_FIELD),
 };
 
+const NEXT_STEP =
+  'One line on what the user should do before this round (prep). Shown only until the round ends.';
+const REPLY_BY =
+  'ISO 8601 date the employer said they would reply by after this round; replaces the default follow-up timer while this is the current round';
+const DUE_AT = 'home_assignment only: ISO 8601 date-time the assignment is due';
+const SUBMITTED_AT =
+  'home_assignment only: ISO 8601 date-time it was handed in (the round ends then)';
 const SCHEDULED_AT =
   'ISO 8601 date-time with a UTC offset, e.g. 2026-11-08T10:00:00+02:00. The user is in Israel (UTC+2, or UTC+3 in summer).';
 
@@ -147,7 +154,8 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     'schedule_interview',
     {
       title: 'Schedule interview',
-      description: 'Add an interview to an application.',
+      description:
+        "Add an interview round to an application. Its timeline lives on the round: nextStep (what to do before it), replyBy (what the employer said after it), and for home_assignment the dueAt and submittedAt. Only the current round's values are shown, so never copy them onto other rounds. For a home_assignment, scheduledAt is when it was received.",
       inputSchema: {
         applicationId,
         type: z.enum(INTERVIEW_TYPES).optional().describe('Defaults to other'),
@@ -157,6 +165,10 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
           .string()
           .optional()
           .describe('Office address or video link. Keep it here, not in notes.'),
+        nextStep: z.string().optional().describe(NEXT_STEP),
+        replyBy: z.string().optional().describe(REPLY_BY),
+        dueAt: z.string().optional().describe(DUE_AT),
+        submittedAt: z.string().optional().describe(SUBMITTED_AT),
       },
     },
     ({ applicationId, ...input }) =>
@@ -169,7 +181,8 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
     'update_interview',
     {
       title: 'Update interview',
-      description: 'Reschedule or edit an interview. Send null to clear a field.',
+      description:
+        'Reschedule or edit an interview, including its timeline (nextStep, replyBy, and for home_assignment dueAt and submittedAt). Send null to clear a field.',
       inputSchema: {
         applicationId,
         interviewId: z.uuid(),
@@ -180,6 +193,10 @@ export function registerChildTools(server: McpServer, s: Services, logger?: Tool
         debriefed: nullable(z.boolean()).describe(
           'true: mark the interview as debriefed (the user logged how it went); null clears it',
         ),
+        nextStep: nullable(z.string()).describe(NEXT_STEP),
+        replyBy: nullable(z.string()).describe(REPLY_BY),
+        dueAt: nullable(z.string()).describe(DUE_AT),
+        submittedAt: nullable(z.string()).describe(SUBMITTED_AT),
       },
     },
     ({ applicationId, interviewId, ...patch }) =>

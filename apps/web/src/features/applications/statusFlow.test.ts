@@ -11,6 +11,10 @@ const interview = (id: string, type: 'phone' | 'coffee' | 'other', scheduledAt: 
   location: null,
   timeUnknown: false,
   debriefedAt: null,
+  nextStep: null,
+  replyBy: null,
+  dueAt: null,
+  submittedAt: null,
 });
 const row = (
   id: string,

@@ -31,9 +31,9 @@ describe('action queue', () => {
   it('ranks an offer with an expiry first and a to-apply nudge after it', async () => {
     await createApplication(t.app, { company: { name: 'Nudge' }, status: 'to_apply' });
     const offer = await createApplication(t.app, { company: { name: 'Offerco' } });
-    expect((await changeStatus(offer.id, { status: 'offer', dueAt: inHours(30) })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await changeStatus(offer.id, { status: 'offer', offerExpiresAt: inHours(30) })).statusCode,
+    ).toBe(200);
 
     const a = await actions();
     expect(a.needsYou.map((x) => [x.company, x.kind, x.urgency])).toEqual([
@@ -78,7 +78,10 @@ describe('action queue', () => {
     expect((await actions()).needsYou[0]).toMatchObject({ kind: 'submit_assignment' });
 
     const submitted = await post(app.id, 'hand-over', { reason: 'submitted' });
-    expect(submitted.json<ApplicationDetailDto>()).toMatchObject({ followUps: 0 });
+    const afterSubmit = submitted.json<ApplicationDetailDto>();
+    expect(afterSubmit).toMatchObject({ followUps: 0, currentRound: { phase: 'ended' } });
+    expect(afterSubmit.interviews[0]?.submittedAt).not.toBeNull();
+    expect(afterSubmit.interviews[0]?.dueAt).not.toBeNull();
     const a = await actions();
     expect(a.needsYou).toEqual([]);
     expect(a.waiting).toHaveLength(1);
@@ -90,7 +93,7 @@ describe('action queue', () => {
     const reset = (
       await t.app.inject({ method: 'GET', url: `/api/v1/applications/${app.id}` })
     ).json<ApplicationDetailDto>();
-    expect(reset).toMatchObject({ followUps: 0, waitingOnThemAt: null, dueAt: null });
+    expect(reset).toMatchObject({ followUps: 0, waitingOnThemAt: null });
   });
 
   it('marks an interview debriefed and returns 404 for unknown applications', async () => {
@@ -118,25 +121,74 @@ describe('action queue', () => {
     expect(missing.statusCode).toBe(404);
   });
 
-  it('stores replyBy, dueAt and nextStep through PATCH and clears them with null', async () => {
+  it('stores the offer expiry on the application and clears it with null', async () => {
     const app = await createApplication(t.app);
-    const set = await t.app.inject({
-      method: 'PATCH',
-      url: `/api/v1/applications/${app.id}`,
-      payload: { replyBy: inHours(72), dueAt: inHours(24), nextStep: 'Send portfolio' },
-    });
-    expect(set.json<ApplicationDetailDto>()).toMatchObject({ nextStep: 'Send portfolio' });
-    expect(set.json<ApplicationDetailDto>().replyBy).not.toBeNull();
+    await changeStatus(app.id, { status: 'offer', offerExpiresAt: inHours(48) });
+    const set = await t.app.inject({ method: 'GET', url: `/api/v1/applications/${app.id}` });
+    expect(set.json<ApplicationDetailDto>().offerExpiresAt).not.toBeNull();
 
     const cleared = await t.app.inject({
       method: 'PATCH',
       url: `/api/v1/applications/${app.id}`,
-      payload: { replyBy: null, dueAt: null, nextStep: null },
+      payload: { offerExpiresAt: null },
     });
-    expect(cleared.json<ApplicationDetailDto>()).toMatchObject({
-      replyBy: null,
-      dueAt: null,
-      nextStep: null,
+    expect(cleared.json<ApplicationDetailDto>().offerExpiresAt).toBeNull();
+  });
+
+  it('keeps the timeline on the round and drops the next step once the round ends', async () => {
+    const app = await createApplication(t.app);
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/api/v1/applications/${app.id}/interviews`,
+      payload: { type: 'phone', scheduledAt: inHours(30), nextStep: 'Prep questions' },
     });
+    const phone = res.json<{ id: string; nextStep: string | null }>();
+    expect(phone.nextStep).toBe('Prep questions');
+    expect((await actions()).scheduled[0]).toMatchObject({ nextStep: 'Prep questions' });
+    const upcoming = (
+      await t.app.inject({ method: 'GET', url: `/api/v1/applications/${app.id}` })
+    ).json<ApplicationDetailDto>();
+    expect(upcoming.currentRound).toEqual({ interviewId: phone.id, phase: 'upcoming' });
+
+    await t.app.inject({
+      method: 'PATCH',
+      url: `/api/v1/applications/${app.id}/interviews/${phone.id}`,
+      payload: { scheduledAt: inHours(-3), replyBy: inHours(72) },
+    });
+    const ended = (
+      await t.app.inject({ method: 'GET', url: `/api/v1/applications/${app.id}` })
+    ).json<ApplicationDetailDto>();
+    expect(ended.currentRound).toEqual({ interviewId: phone.id, phase: 'ended' });
+    expect(ended.interviews[0]).toMatchObject({ nextStep: 'Prep questions' });
+    expect((await actions()).waiting[0]?.subtitle).toContain('they said by');
+  });
+
+  it('accepts a due date only on a home assignment', async () => {
+    const app = await createApplication(t.app);
+    const create = (payload: Record<string, unknown>) =>
+      t.app.inject({
+        method: 'POST',
+        url: `/api/v1/applications/${app.id}/interviews`,
+        payload,
+      });
+    const patch = (id: string, payload: Record<string, unknown>) =>
+      t.app.inject({
+        method: 'PATCH',
+        url: `/api/v1/applications/${app.id}/interviews/${id}`,
+        payload,
+      });
+
+    expect(
+      (await create({ type: 'phone', scheduledAt: inHours(5), dueAt: inHours(48) })).statusCode,
+    ).toBe(400);
+    const phone = (await create({ type: 'phone', scheduledAt: inHours(5) })).json<{ id: string }>();
+    expect((await patch(phone.id, { dueAt: inHours(48) })).statusCode).toBe(400);
+
+    const assignment = (
+      await create({ type: 'home_assignment', scheduledAt: inHours(-1), dueAt: inHours(48) })
+    ).json<{ id: string; dueAt: string | null }>();
+    expect(assignment.dueAt).not.toBeNull();
+    const retyped = await patch(assignment.id, { type: 'technical' });
+    expect(retyped.json<{ dueAt: string | null }>().dueAt).toBeNull();
   });
 });

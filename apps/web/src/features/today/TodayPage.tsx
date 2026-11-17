@@ -48,14 +48,21 @@ function WaitingList({
           py={6}
           style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}
         >
-          <Text size="sm">
-            <Anchor component={Link} to={`/applications/${w.applicationId}`} size="sm">
-              {w.company}
-            </Anchor>{' '}
-            <Text span c="dimmed">
-              · {w.subtitle}
+          <Stack gap={0}>
+            <Text size="sm">
+              <Anchor component={Link} to={`/applications/${w.applicationId}`} size="sm">
+                {w.company}
+              </Anchor>{' '}
+              <Text span c="dimmed">
+                · {w.subtitle}
+              </Text>
             </Text>
-          </Text>
+            {w.nextStep && (
+              <Text size="xs" c="dimmed" data-testid="waiting-next-step">
+                Next step: {w.nextStep}
+              </Text>
+            )}
+          </Stack>
           <Text size="sm" c="dimmed">
             check-in {formatDate(w.checkInAt)}
           </Text>

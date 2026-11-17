@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import { ZodError, type z } from 'zod';
-import { ConflictError, NotFoundError } from '../errors.js';
+import { BadRequestError, ConflictError, NotFoundError } from '../errors.js';
 
 export interface ToolLogger {
   error(obj: unknown, msg?: string): void;
@@ -21,7 +21,13 @@ export const fail = (message: string): CallToolResult => ({
 
 /** Turns domain and validation errors into tool errors the model can act on. */
 export function toToolError(err: unknown, logger?: ToolLogger): CallToolResult {
-  if (err instanceof NotFoundError || err instanceof ConflictError) return fail(err.message);
+  if (
+    err instanceof NotFoundError ||
+    err instanceof ConflictError ||
+    err instanceof BadRequestError
+  ) {
+    return fail(err.message);
+  }
   if (err instanceof ZodError) {
     const issues = err.issues.map((i) => `${i.path.join('.') || 'input'}: ${i.message}`);
     return fail(`Invalid input. ${issues.join('; ')}`);

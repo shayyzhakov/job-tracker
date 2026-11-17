@@ -33,6 +33,10 @@ describe('ApplicationDetailPage', () => {
       location: null,
       timeUnknown: false,
       debriefedAt: null,
+      nextStep: null,
+      replyBy: null,
+      dueAt: null,
+      submittedAt: null,
     });
     server.use(
       http.get('/api/v1/applications/:id', () =>
@@ -80,11 +84,13 @@ describe('ApplicationDetailPage', () => {
     await user.click(await screen.findByRole('combobox', { name: 'Change status' }));
     await user.click(await screen.findByRole('option', { name: 'Technical interview' }));
     expect(await screen.findByText(/when is the technical interview/i)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/next step/i), 'Revise graphs');
     await user.click(screen.getByRole('button', { name: /^save$/i }));
     await waitFor(() =>
       expect(body).toMatchObject({
         status: 'technical_interview',
         interviewAt: expect.any(String),
+        nextStep: 'Revise graphs',
       }),
     );
   });
@@ -165,34 +171,100 @@ describe('ApplicationDetailPage', () => {
     expect(body).not.toHaveProperty('contacts');
   });
 
-  it('shows the timeline the employer gave and sends a typed next step', async () => {
+  const round = (over: Record<string, unknown>) => ({
+    id: 'r1',
+    applicationId: 'a1',
+    type: 'technical' as const,
+    scheduledAt: '2999-01-01T10:00:00.000Z',
+    durationMinutes: 60,
+    location: null,
+    timeUnknown: false,
+    debriefedAt: null,
+    nextStep: null,
+    replyBy: null,
+    dueAt: null,
+    submittedAt: null,
+    ...over,
+  });
+
+  it("shows the current round's next step, not an earlier round's", async () => {
+    server.use(
+      http.get('/api/v1/applications/:id', () =>
+        HttpResponse.json(
+          applicationDetail({
+            status: 'technical_interview',
+            interviews: [
+              round({
+                id: 'old',
+                type: 'phone',
+                scheduledAt: '2020-01-01T10:00:00.000Z',
+                nextStep: 'Old prep',
+              }),
+              round({ id: 'r1', nextStep: 'Review system design' }),
+            ],
+            currentRound: { interviewId: 'r1', phase: 'upcoming' },
+          }),
+        ),
+      ),
+    );
+    renderDetail();
+    const step = await screen.findByTestId('current-step');
+    expect(step).toHaveTextContent('Review system design');
+    expect(step).not.toHaveTextContent('Old prep');
+  });
+
+  it('shows an open home assignment with its due date and marks it submitted', async () => {
     let body: Record<string, unknown> | undefined;
     server.use(
       http.get('/api/v1/applications/:id', () =>
         HttpResponse.json(
           applicationDetail({
-            replyBy: '2026-11-20T00:00:00.000Z',
-            nextStep: 'Send portfolio link',
+            status: 'home_assignment',
+            interviews: [
+              round({
+                type: 'home_assignment',
+                scheduledAt: '2020-01-01T10:00:00.000Z',
+                dueAt: '2999-01-05T18:00:00.000Z',
+              }),
+            ],
+            currentRound: { interviewId: 'r1', phase: 'open' },
           }),
         ),
       ),
-      http.patch('/api/v1/applications/:id', async ({ request }) => {
+      http.post('/api/v1/applications/:id/hand-over', async ({ request }) => {
         body = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json({});
+        return HttpResponse.json(applicationDetail());
       }),
     );
     const { user } = renderDetail();
-    expect(await screen.findByText('Reply expected by')).toBeInTheDocument();
-    expect(screen.getByText('Send portfolio link')).toBeInTheDocument();
+    const step = await screen.findByTestId('current-step');
+    expect(step).toHaveTextContent('Due by');
+    await user.click(screen.getByRole('button', { name: /mark submitted/i }));
+    await waitFor(() => expect(body).toEqual({ reason: 'submitted' }));
+  });
+
+  it('asks for the expiry when moving to offer, and has no timeline card in the form', async () => {
+    let body: Record<string, unknown> | undefined;
+    server.use(
+      http.patch('/api/v1/applications/:id/status', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(applicationDetail());
+      }),
+    );
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('combobox', { name: 'Change status' }));
+    await user.click(await screen.findByRole('option', { name: 'Offer' }));
+    fireEvent.change(await screen.findByLabelText(/offer expires/i), {
+      target: { value: '2999-01-10T18:00' },
+    });
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+    await waitFor(() =>
+      expect(body).toMatchObject({ status: 'offer', offerExpiresAt: expect.any(String) }),
+    );
 
     await user.click(screen.getByRole('button', { name: /^edit$/i }));
-    const step = screen.getByLabelText(/next step/i);
-    await user.clear(step);
-    await user.type(step, 'Prepare questions');
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
-    await waitFor(() => expect(body).toBeDefined());
-    expect(body).toMatchObject({ nextStep: 'Prepare questions', dueAt: null });
-    expect(typeof body?.replyBy).toBe('string');
+    expect(screen.queryByText('Timeline')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/next step/i)).not.toBeInTheDocument();
   });
 
   it('shows not found for a missing application', async () => {

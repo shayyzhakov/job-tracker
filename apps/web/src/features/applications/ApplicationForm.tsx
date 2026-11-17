@@ -64,11 +64,8 @@ export interface ApplicationFormValues {
   referrerChannel: ReferralChannel | null;
   methodDetails: string;
   appliedAt: string | null;
-  /** When the employer said they'd reply by (YYYY-MM-DD). */
-  replyBy: string | null;
-  /** The user's own deadline: assignment due date or offer expiry (YYYY-MM-DD). */
-  dueAt: string | null;
-  nextStep: string;
+  /** When the offer expires (YYYY-MM-DD); only shown and sent while the status is offer. */
+  offerExpiresAt: string | null;
   notes: string;
   contacts: ContactRow[];
 }
@@ -105,9 +102,7 @@ const blankValues: ApplicationFormValues = {
   referrerChannel: null,
   methodDetails: '',
   appliedAt: null,
-  replyBy: null,
-  dueAt: null,
-  nextStep: '',
+  offerExpiresAt: null,
   notes: '',
   contacts: [],
 };
@@ -119,7 +114,7 @@ const localDate = (iso: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-/** A deadline set as a date means the end of that day, local time. */
+/** An expiry set as a date means the end of that day, local time. */
 const endOfDay = (date: string | null) => (date ? new Date(`${date}T23:59:00`) : null);
 
 export const valuesFromApplication = (a: ApplicationDetailDto): ApplicationFormValues => ({
@@ -141,9 +136,7 @@ export const valuesFromApplication = (a: ApplicationDetailDto): ApplicationFormV
   referrerChannel: a.referrerChannel,
   methodDetails: a.methodDetails ?? '',
   appliedAt: a.appliedAt ? a.appliedAt.slice(0, 10) : null,
-  replyBy: a.replyBy ? localDate(a.replyBy) : null,
-  dueAt: a.dueAt ? localDate(a.dueAt) : null,
-  nextStep: a.nextStep ?? '',
+  offerExpiresAt: a.offerExpiresAt ? localDate(a.offerExpiresAt) : null,
   notes: a.notes ?? '',
   contacts: [],
 });
@@ -161,8 +154,7 @@ export const toCreatePayload = (v: ApplicationFormValues) => ({
   company: { ...v.company, size: v.company.size ?? undefined },
   expectedSalaryIls: salary(v.expectedSalaryIls),
   appliedAt: v.appliedAt ?? undefined,
-  replyBy: v.replyBy ?? undefined,
-  dueAt: endOfDay(v.dueAt) ?? undefined,
+  offerExpiresAt: v.status === 'offer' ? (endOfDay(v.offerExpiresAt) ?? undefined) : undefined,
 });
 
 /** Create validation with field-level errors on new contact rows (reused rows only carry an id). */
@@ -187,8 +179,8 @@ export const toUpdatePayload = (v: ApplicationFormValues) => {
     ...rest,
     expectedSalaryIls: salary(v.expectedSalaryIls) ?? null,
     appliedAt: v.appliedAt ?? null,
-    replyBy: v.replyBy ?? null,
-    dueAt: endOfDay(v.dueAt),
+    // The expiry only means something on an offer; other statuses leave the stored value alone.
+    offerExpiresAt: v.status === 'offer' ? endOfDay(v.offerExpiresAt) : undefined,
   };
 };
 
@@ -326,33 +318,20 @@ export function ApplicationForm({
           <Textarea label="Notes" autosize minRows={3} mt="sm" {...form.getInputProps('notes')} />
         </Card>
 
-        <Card withBorder padding="lg">
-          <Text fw={600} mb="sm">
-            Timeline
-          </Text>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+        {form.values.status === 'offer' && (
+          <Card withBorder padding="lg">
+            <Text fw={600} mb="sm">
+              Offer
+            </Text>
             <DateInput
-              label="They said they'd reply by"
-              description="Replaces the default waiting time before a follow-up is suggested."
+              label="Offer expires"
+              description="Ranks the offer on Tasks. Interview timelines live on each interview."
               clearable
               valueFormat="DD MMM YYYY"
-              {...form.getInputProps('replyBy')}
+              {...form.getInputProps('offerExpiresAt')}
             />
-            <DateInput
-              label="Your deadline"
-              description="Home assignment due date or offer expiry."
-              clearable
-              valueFormat="DD MMM YYYY"
-              {...form.getInputProps('dueAt')}
-            />
-          </SimpleGrid>
-          <TextInput
-            label="Next step"
-            description="Anything you want to remember to do."
-            mt="sm"
-            {...form.getInputProps('nextStep')}
-          />
-        </Card>
+          </Card>
+        )}
 
         <Card withBorder padding="lg">
           <Text fw={600} mb="sm">

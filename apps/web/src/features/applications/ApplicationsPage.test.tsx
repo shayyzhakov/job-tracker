@@ -46,6 +46,7 @@ describe('ApplicationsPage', () => {
                 state: 'scheduled',
                 subtitle: 'Interview in 5 days',
                 checkInAt: '2026-11-12T10:00:00.000Z',
+                nextStep: null,
               },
             ],
             waiting: [
@@ -56,6 +57,7 @@ describe('ApplicationsPage', () => {
                 state: 'waiting',
                 subtitle: 'Applied 3 days ago',
                 checkInAt: '2026-11-16T10:00:00.000Z',
+                nextStep: null,
               },
             ],
           }),

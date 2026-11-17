@@ -447,7 +447,7 @@ describe('MCP server', () => {
     await call('change_application_status', {
       id: created.id,
       status: 'offer',
-      dueAt: new Date(Date.now() + 36 * 3_600_000).toISOString(),
+      offerExpiresAt: new Date(Date.now() + 36 * 3_600_000).toISOString(),
     });
     const actions = await call<ActionsDto>('get_actions');
     expect(actions.needsYou[0]).toMatchObject({

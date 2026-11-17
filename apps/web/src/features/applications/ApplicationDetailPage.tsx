@@ -41,6 +41,7 @@ import { Slot } from '../../lib/extensions';
 import { formatDate, formatDateMaybeTime, formatDateTime, formatIls } from '../../lib/format';
 import { ApplicationForm, toUpdatePayload, valuesFromApplication } from './ApplicationForm';
 import { ContactsSection } from './ContactsSection';
+import { CurrentStep } from './CurrentStep';
 import { InterviewsSection } from './InterviewsSection';
 import { NotesTab } from './NotesTab';
 import { buildStatusFlow } from './statusFlow';
@@ -68,9 +69,6 @@ function Details({ app }: { app: ApplicationDetailDto }) {
         <Field label="Management role">{app.isManagement ? 'Yes' : 'No'}</Field>
         <Field label="Expected salary">{formatIls(app.expectedSalaryIls)}</Field>
         <Field label="Applied on">{formatDate(app.appliedAt)}</Field>
-        {app.replyBy && <Field label="Reply expected by">{formatDate(app.replyBy)}</Field>}
-        {app.dueAt && <Field label="Your deadline">{formatDateTime(app.dueAt)}</Field>}
-        {app.nextStep && <Field label="Next step">{app.nextStep}</Field>}
         <Field label="Application method">
           {app.applicationMethod ? APPLICATION_METHOD_LABELS[app.applicationMethod] : null}
         </Field>
@@ -122,6 +120,12 @@ function Details({ app }: { app: ApplicationDetailDto }) {
 const toLocalInput = (d: Date) =>
   new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
+export interface RoundTimeline {
+  interviewAt: Date;
+  nextStep?: string;
+  dueAt?: Date;
+}
+
 function RoundTimeModal({
   round,
   submitting,
@@ -131,37 +135,109 @@ function RoundTimeModal({
   round: { status: ApplicationStatus } | null;
   submitting: boolean;
   onClose: () => void;
-  onSubmit: (interviewAt: Date) => void;
+  onSubmit: (timeline: RoundTimeline) => void;
 }) {
   const [value, setValue] = useState(() => toLocalInput(new Date()));
+  const [nextStep, setNextStep] = useState('');
+  const [dueAt, setDueAt] = useState('');
+  const assignment = round?.status === 'home_assignment';
   return (
     <Modal
       opened={round !== null}
       onClose={onClose}
-      title={round ? `When is the ${STATUS_LABELS[round.status].toLowerCase()}?` : ''}
+      title={
+        round
+          ? assignment
+            ? 'When did you get the home assignment?'
+            : `When is the ${STATUS_LABELS[round.status].toLowerCase()}?`
+          : ''
+      }
       centered
     >
       <form
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          if (value) onSubmit(new Date(value)); // parsed as local time
+          if (!value) return;
+          onSubmit({
+            interviewAt: new Date(value), // parsed as local time
+            nextStep: nextStep.trim() || undefined,
+            dueAt: assignment && dueAt ? new Date(dueAt) : undefined,
+          });
         }}
       >
         <Stack>
           <TextInput
             type="datetime-local"
-            label="Date & time"
-            description="Past or future. Future ones show as scheduled."
+            label={assignment ? 'Received' : 'Date & time'}
+            description={assignment ? undefined : 'Past or future. Future ones show as scheduled.'}
             value={value}
             onChange={(e) => setValue(e.currentTarget.value)}
             required
+          />
+          {assignment && (
+            <TextInput
+              type="datetime-local"
+              label="Due by"
+              description="Ranks it on Tasks until you mark it submitted."
+              value={dueAt}
+              onChange={(e) => setDueAt(e.currentTarget.value)}
+            />
+          )}
+          <TextInput
+            label="Next step"
+            description="What to do before this round. Stops showing once the round is over."
+            value={nextStep}
+            onChange={(e) => setNextStep(e.currentTarget.value)}
           />
           <Group justify="flex-end">
             <Button variant="default" onClick={onClose}>
               Cancel
             </Button>
             <Button type="submit" loading={submitting} disabled={!value}>
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
+function OfferModal({
+  opened,
+  submitting,
+  onClose,
+  onSubmit,
+}: {
+  opened: boolean;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmit: (offerExpiresAt: Date | undefined) => void;
+}) {
+  const [value, setValue] = useState('');
+  return (
+    <Modal opened={opened} onClose={onClose} title="When does the offer expire?" centered>
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(value ? new Date(value) : undefined); // parsed as local time
+        }}
+      >
+        <Stack>
+          <TextInput
+            type="datetime-local"
+            label="Offer expires"
+            description="Optional. Ranks the offer on Tasks."
+            value={value}
+            onChange={(e) => setValue(e.currentTarget.value)}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submitting}>
               Save
             </Button>
           </Group>
@@ -183,15 +259,18 @@ export function ApplicationDetailPage() {
   const [pendingRound, setPendingRound] = useState<{
     status: ApplicationStatus;
   } | null>(null);
+  const [offerOpen, offer] = useDisclosure(false);
 
   if (isPending) return <PageLoader />;
   if (error) return <ErrorAlert error={error} what="application" />;
 
   // Interview-round stages are interviews: ask when it takes place before recording the step.
-  const requestStatus = (status: ApplicationStatus) =>
-    isRoundStatus(status)
-      ? setPendingRound({ status })
-      : changeStatus.mutate({ id: app.id, status });
+  // An offer asks for its expiry.
+  const requestStatus = (status: ApplicationStatus) => {
+    if (isRoundStatus(status)) setPendingRound({ status });
+    else if (status === 'offer') offer.open();
+    else changeStatus.mutate({ id: app.id, status });
+  };
   const steps = buildStatusFlow(app, Date.now());
   const lastDone = steps.reduce((last, s, i) => (s.scheduled ? last : i), -1);
 
@@ -275,7 +354,10 @@ export function ApplicationDetailPage() {
                     }
                   />
                 ) : (
-                  <Details app={app} />
+                  <>
+                    <CurrentStep app={app} />
+                    <Details app={app} />
+                  </>
                 )}
                 {!editing && (
                   <>
@@ -339,17 +421,26 @@ export function ApplicationDetailPage() {
         round={pendingRound}
         submitting={changeStatus.isPending}
         onClose={() => setPendingRound(null)}
-        onSubmit={(interviewAt) => {
+        onSubmit={(timeline) => {
           if (!pendingRound) return;
           changeStatus.mutate(
-            {
-              id: app.id,
-              status: pendingRound.status,
-              interviewAt,
-            },
+            { id: app.id, status: pendingRound.status, ...timeline },
             { onSuccess: () => setPendingRound(null) },
           );
         }}
+      />
+
+      <OfferModal
+        key={offerOpen ? 'open' : 'closed'}
+        opened={offerOpen}
+        submitting={changeStatus.isPending}
+        onClose={offer.close}
+        onSubmit={(offerExpiresAt) =>
+          changeStatus.mutate(
+            { id: app.id, status: 'offer', offerExpiresAt },
+            { onSuccess: offer.close },
+          )
+        }
       />
 
       <Modal opened={confirmOpen} onClose={confirm.close} title="Delete application?" centered>
