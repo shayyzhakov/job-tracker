@@ -2,8 +2,8 @@ import {
   COMPANY_PRIORITIES,
   COMPANY_PRIORITY_LABELS,
   COMPANY_SIZE_LABELS,
-  DEFAULT_COMPANY_PRIORITY,
   type CompanyPriority,
+  DEFAULT_COMPANY_PRIORITY,
   type OpportunityDto,
 } from '@job-tracker/shared';
 import {
@@ -24,8 +24,8 @@ import {
   IconBuildingSkyscraper,
   IconCheck,
   IconChevronDown,
-  IconFlag,
   IconExternalLink,
+  IconFlag,
   IconSettings,
   IconX,
 } from '@tabler/icons-react';
@@ -40,8 +40,8 @@ import {
 } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { RoleTitle } from '../../components/RoleTitle';
-import { BUCKET_COLORS, BUCKET_HINTS } from '../scout/priorityMeta';
 import { formatDateMaybeTime, formatFullDateTime } from '../../lib/format';
+import { BUCKET_COLORS, BUCKET_HINTS } from '../scout/priorityMeta';
 
 const scoreColor = (score: number) => (score >= 80 ? 'teal' : score >= 60 ? 'yellow' : 'gray');
 
