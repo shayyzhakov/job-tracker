@@ -27,13 +27,14 @@ describe('application statuses', () => {
   });
 
   it('treats initial and active statuses as open', () => {
-    for (const s of ['to_apply', 'applied', 'hr_screening', 'offer'] as const) {
+    for (const s of ['to_apply', 'on_hold', 'applied', 'hr_screening', 'offer'] as const) {
       expect(isOpenStatus(s)).toBe(true);
     }
   });
 
   it('puts every status in exactly one group', () => {
     expect(statusGroup('to_apply')).toBe('initial');
+    expect(statusGroup('on_hold')).toBe('initial');
     expect(statusGroup('applied')).toBe('initial');
     for (const s of ['hr_screening', 'onsite_interview', 'final_interview', 'offer'] as const) {
       expect(statusGroup(s)).toBe('active');

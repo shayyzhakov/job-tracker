@@ -1,5 +1,6 @@
 export const APPLICATION_STATUSES = [
   'to_apply',
+  'on_hold',
   'applied',
   'coffee_chat',
   'hr_screening',
@@ -36,9 +37,13 @@ export const CLOSED_STATUSES = [
   'ghosted',
 ] as const satisfies readonly ApplicationStatus[];
 
-/** Nothing has happened with the employer yet: not applied, or applied with no interview. */
+/**
+ * Nothing has happened with the employer yet: not applied (to apply, or deliberately parked on hold),
+ * or applied with no interview.
+ */
 export const INITIAL_STATUSES = [
   'to_apply',
+  'on_hold',
   'applied',
 ] as const satisfies readonly ApplicationStatus[];
 
@@ -64,6 +69,16 @@ export function statusGroup(status: ApplicationStatus): StatusGroup {
   return 'active';
 }
 
+/** Not submitted yet: still to apply, or deliberately put on hold. */
+export const NOT_SUBMITTED_STATUSES = [
+  'to_apply',
+  'on_hold',
+] as const satisfies readonly ApplicationStatus[];
+
+export function isNotSubmittedStatus(status: ApplicationStatus): boolean {
+  return (NOT_SUBMITTED_STATUSES as readonly ApplicationStatus[]).includes(status);
+}
+
 /** Open = still in play (initial or active), i.e. not closed. */
 export function isOpenStatus(status: ApplicationStatus): boolean {
   return statusGroup(status) !== 'closed';
@@ -71,6 +86,7 @@ export function isOpenStatus(status: ApplicationStatus): boolean {
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   to_apply: 'To apply',
+  on_hold: 'On hold',
   applied: 'Applied',
   coffee_chat: 'Coffee chat',
   hr_screening: 'HR screening',
@@ -238,7 +254,7 @@ export interface InterviewMoment {
 
 /**
  * The status to show for an application: what's next, otherwise what was last.
- * Only milestones (to apply, applied, offer, closed outcomes) are stored; rounds come from interviews.
+ * Only milestones (to apply, on hold, applied, offer, closed outcomes) are stored; rounds come from interviews.
  * - Offer, closed outcomes and anything not open are shown as recorded.
  * - An upcoming interview with a stage wins (earliest first), even if that goes back to an earlier stage.
  * - Otherwise the latest past interview with a stage (`lastPast`).

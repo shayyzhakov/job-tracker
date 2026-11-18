@@ -13,6 +13,7 @@ Each open application is in one state: **your move**, **scheduled** (an intervie
 | Situation                         | Whose move | Card                                                                                                                       |
 | --------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
 | To apply                          | You        | Apply or drop; amber after 3 days, red after 7                                                                             |
+| On hold                           | Nobody     | No card: parked on purpose, so there is no "apply or drop" warning and it never goes stale                                 |
 | Applied                           | Them       | Follow up after 14 days                                                                                                    |
 | Interview stage, no real time yet | You        | Schedule or confirm; amber after 2 days. "They're scheduling" hands over (3-day timer)                                     |
 | Interview upcoming                | Scheduled  | Listed under scheduled                                                                                                     |

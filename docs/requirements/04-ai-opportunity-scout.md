@@ -3,7 +3,7 @@
 Status: **Built** (open-web search source); watchlist job-board sources are **Planned**
 
 - Once a day the scout finds new job listings, scores each against the user's criteria with an AI model, and stores the matches as **suggestions**.
-- The user edits the criteria on a **Scout settings** page: roles, seniority, IC or management, locations, company sizes and a minimum match score. Which companies to favour or never suggest is set separately, per company, on the **Prioritize companies** page (see [12](12-company-priority.md)). The scout doesn't run until criteria are saved once.
+- The user edits the criteria on a **Scout settings** page: roles, seniority, IC or management, locations, company sizes and a minimum match score. Which companies to favour or never suggest is set separately, per company, on the **Prioritize companies** page (see [12](12-company-priority.md)). The scout doesn't run until criteria are saved once. Saving returns the user to the page they came from; a **Cancel** button does the same without saving.
 - Each suggestion shows its match score, a short summary and the reasons for the score.
 - On the **Suggestions** page the user can add a suggestion to applications (it becomes a "to apply" application) or dismiss it.
 - A listing is never suggested twice: listings are recognised by their normalised URL, and each is scored only once.

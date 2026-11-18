@@ -175,6 +175,9 @@ function evaluate(
     );
   }
 
+  // On hold is intentional: the user parked it, so there is nothing to nudge.
+  if (status === 'on_hold') return null;
+
   if (status === 'offer') {
     const due = app.offerExpiresAt ? new Date(app.offerExpiresAt) : null;
     if (due) {

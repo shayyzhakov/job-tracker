@@ -83,8 +83,8 @@ One table, keys `PK`/`SK`, two indexes (`GSI1`, `GSI2`). An application and its 
 
 ## Domain notes
 
-- **Status pipeline:** to apply → applied → HR screening → phone → technical → home assignment → onsite → final → offer → accepted. Closed outcomes are rejected, withdrawn and ghosted, and "active" means not closed.
-- Status changes go through `PATCH /api/v1/applications/:id/status`, which records `status_history`. `appliedAt` is set automatically the first time an application leaves `to_apply`.
+- **Status pipeline:** to apply → applied → HR screening → phone → technical → home assignment → onsite → final → offer → accepted. Closed outcomes are rejected, withdrawn and ghosted, and "active" means not closed. **On hold** is a side status next to to apply for an opportunity the user keeps in view on purpose without acting on it yet; it never produces a reminder.
+- Status changes go through `PATCH /api/v1/applications/:id/status`, which records `status_history`. `appliedAt` is set automatically the first time an application leaves `to_apply` or `on_hold`.
 - Companies are deduplicated by case-insensitive name. The **Companies** page lists them with size, type and active / total applications, and adds, edits and deletes them (delete only when a company has no applications); editing a company changes it on all of its applications.
 - **Salary** is expected monthly gross base salary in ILS.
 - **Response rate** is the share of submitted applications that reached any stage beyond "applied". Rejections count as a response; ghosted and withdrawn don't.

@@ -2,14 +2,19 @@ import { APPLICATION_STATUSES, type ApplicationStatus, STATUS_LABELS } from '@jo
 import { Group, Text } from '@mantine/core';
 import { useGamificationEnabled } from './enabled';
 
-/** The happy path, in order; closed statuses (rejected, withdrawn, ghosted) sit off it. */
-const PATH = APPLICATION_STATUSES.slice(0, APPLICATION_STATUSES.indexOf('accepted') + 1);
+/**
+ * The happy path, in order; closed statuses (rejected, withdrawn, ghosted) sit off it.
+ * On hold is not a step of its own: it shows on the first stage (not applied yet).
+ */
+const PATH = APPLICATION_STATUSES.slice(0, APPLICATION_STATUSES.indexOf('accepted') + 1).filter(
+  (s) => s !== 'on_hold',
+);
 
 /** application.detail.top slot: where this application is on the way to an offer. */
 export function StageProgress({ status }: { status?: ApplicationStatus }) {
   const [enabled] = useGamificationEnabled();
   if (!enabled || !status) return null;
-  const rank = PATH.indexOf(status);
+  const rank = status === 'on_hold' ? 0 : PATH.indexOf(status);
   const closed = rank === -1;
   return (
     <div

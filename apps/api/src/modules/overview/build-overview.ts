@@ -2,6 +2,7 @@ import {
   APPLICATION_STATUSES,
   type ApplicationMethod,
   type ApplicationStatus,
+  isNotSubmittedStatus,
   isOpenStatus,
   type MethodStatDto,
   type OverviewDto,
@@ -30,6 +31,7 @@ const WEEKS = 8;
 /** Statuses that don't indicate the company responded. */
 const NO_RESPONSE: ReadonlySet<ApplicationStatus> = new Set([
   'to_apply',
+  'on_hold',
   'applied',
   'ghosted',
   'withdrawn',
@@ -86,7 +88,7 @@ export function buildOverview(input: OverviewInput, now: Date): OverviewDto {
   for (const a of applications) countsByStatus[a.status]++;
 
   const open = applications.filter((a) => isOpenStatus(a.status));
-  const submitted = applications.filter((a) => a.status !== 'to_apply');
+  const submitted = applications.filter((a) => !isNotSubmittedStatus(a.status));
   const responded = submitted.filter((a) => a.reachedStatuses.some((s) => !NO_RESPONSE.has(s)));
 
   const salaries = open.map((a) => a.expectedSalaryIls).filter((s): s is number => s !== null);

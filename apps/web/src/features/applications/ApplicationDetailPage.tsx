@@ -34,6 +34,7 @@ import {
   useDeleteApplication,
   useUpdateApplication,
 } from '../../api/hooks';
+import { LinkifiedText } from '../../components/LinkifiedText';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StatusSelect } from '../../components/StatusSelect';
@@ -101,7 +102,7 @@ function Details({ app }: { app: ApplicationDetailDto }) {
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
             Method details
           </Text>
-          <Text style={{ whiteSpace: 'pre-wrap' }}>{app.methodDetails}</Text>
+          <LinkifiedText text={app.methodDetails} />
         </Stack>
       )}
       {app.notes && (
@@ -109,7 +110,7 @@ function Details({ app }: { app: ApplicationDetailDto }) {
           <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
             Notes
           </Text>
-          <Text style={{ whiteSpace: 'pre-wrap' }}>{app.notes}</Text>
+          <LinkifiedText text={app.notes} />
         </Stack>
       )}
     </Card>

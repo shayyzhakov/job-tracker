@@ -21,7 +21,7 @@ The timeline now sits on the step it describes. Each interview round (see [02](0
    | **Live round**: coffee chat, HR, phone, technical, system design, onsite, managerial, final, home assignment review, other | Next step (prep note) | its time plus its duration (60 minutes if unset) | They'll reply by |
    | **Home assignment**                                                                                                        | Next step, **due by** | it is marked submitted                           | They'll reply by |
    | **Offer** (a milestone, not a round)                                                                                       | Offer expires         | the user accepts, declines or it closes          | none             |
-   | **To apply, applied** (milestones)                                                                                         | none                  | none                                             | none             |
+   | **To apply, on hold, applied** (milestones)                                                                                | none                  | none                                             | none             |
    - A home assignment's time is **when it was received**; its due date and submitted date are separate. "Due by" and "submitted" exist only on home assignments: the API rejects them on any other type (400), and changing a round's type away from home assignment clears them.
    - **Next step exists only on rounds.** Milestones have no next-step note (the Tasks queue already says what to do for them).
    - **Applied has no "they'll reply by".** The default 14-day follow-up timer and snooze cover it.

@@ -30,7 +30,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useSaveScoutCriteria, useScoutCriteria } from '../../api/hooks';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { formatDateTime } from '../../lib/format';
@@ -62,13 +62,19 @@ const toValues = ({ updatedAt: _updatedAt, ...criteria }: ScoutCriteriaDto): Sco
 
 function CriteriaForm({ saved }: { saved: ScoutCriteriaDto }) {
   const save = useSaveScoutCriteria();
+  const navigate = useNavigate();
   const form = useForm<ScoutCriteria>({
     initialValues: toValues(saved),
     validate: (values) => zodErrors(ScoutCriteriaSchema, values),
   });
 
   const onSubmit = form.onSubmit((values) =>
-    save.mutate(values, { onSuccess: (next) => form.resetDirty(toValues(next)) }),
+    save.mutate(values, {
+      onSuccess: (next) => {
+        form.resetDirty(toValues(next));
+        navigate(-1);
+      },
+    }),
   );
 
   return (
@@ -170,9 +176,14 @@ function CriteriaForm({ saved }: { saved: ScoutCriteriaDto }) {
                 ? `Last saved ${formatDateTime(saved.updatedAt)}`
                 : ''}
           </Text>
-          <Button type="submit" loading={save.isPending}>
-            Save
-          </Button>
+          <Group gap="xs">
+            <Button variant="default" onClick={() => navigate(-1)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={save.isPending}>
+              Save
+            </Button>
+          </Group>
         </Group>
       </Stack>
     </form>

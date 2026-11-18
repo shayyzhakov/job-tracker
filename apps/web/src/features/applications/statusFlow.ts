@@ -32,7 +32,7 @@ export function buildStatusFlow(
     (h) => h.toStatus === 'applied' && h.fromStatus !== 'rejected',
   );
   const firstRecorded = app.history
-    .filter((h) => h.fromStatus === null || h.toStatus === 'to_apply')
+    .filter((h) => h.fromStatus === null || h.toStatus === 'to_apply' || h.toStatus === 'on_hold')
     .map((h) => h.changedAt)
     .sort()[0];
   const appliedSort =

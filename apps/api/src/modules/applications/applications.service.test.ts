@@ -142,6 +142,17 @@ describe('ApplicationsService', () => {
       expect(app.history.map((h) => h.toStatus)).toEqual(['to_apply', 'applied']);
     });
 
+    it('keeps an on-hold application unsubmitted and applies it when an interview is scheduled', async () => {
+      const { id } = await service.create(input({ status: 'on_hold' }));
+      const created = await service.get(id);
+      expect(created.status).toBe('on_hold');
+      expect(created.appliedAt).toBeNull();
+      await service.onInterviewScheduled(id);
+      const app = await service.get(id);
+      expect(app.status).toBe('applied');
+      expect(app.history.map((h) => h.toStatus)).toEqual(['on_hold', 'applied']);
+    });
+
     it('does not record history when the status is unchanged', async () => {
       const { id } = await service.create(input({ status: 'applied' }));
       const updated = await service.changeStatus(id, 'applied');

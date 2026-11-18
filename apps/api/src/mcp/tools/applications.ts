@@ -16,7 +16,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Services } from '../../services.js';
 import { defineTool, type ToolLogger } from '../tool.js';
-import { contactFields, contactRef, NOTE_FIELD } from './children.js';
+import { contactFields, contactRef } from './children.js';
+
+/** The application's own notes describe the opportunity, never our progress with it. */
+const APPLICATION_NOTES_FIELD =
+  'Free text about the opportunity itself: role details, team, tech stack, compensation hints, why it is interesting, and relevant links (job post, company pages). Do NOT put progress here (applied or not, status, interviews, next steps, follow-ups, "no application submitted"): status, interviews and the action queue hold that. Keep it short.';
 
 const id = z.uuid().describe('Application id');
 const status = z.enum(APPLICATION_STATUSES);
@@ -59,7 +63,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .array(z.enum(STATUS_GROUPS))
           .optional()
           .describe(
-            'Only applications in these status groups. initial: to apply, applied (no interview yet). active: HR screening through final, and offer. closed: accepted, rejected, withdrawn, ghosted. Omit for all.',
+            'Only applications in these status groups. initial: to apply, on hold, applied (no interview yet). active: HR screening through final, and offer. closed: accepted, rejected, withdrawn, ghosted. Omit for all.',
           ),
         q: z.string().optional().describe('Search company name or role name'),
       },
@@ -135,7 +139,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
           .string()
           .optional()
           .describe('Other info about the method: job board name, recruiter, event, …'),
-        notes: z.string().optional().describe(NOTE_FIELD),
+        notes: z.string().optional().describe(APPLICATION_NOTES_FIELD),
         appliedAt: z.string().optional().describe('ISO 8601 date; set automatically if omitted'),
         contacts: z
           .array(z.union([z.object(contactRef), z.object(contactFields)]))
@@ -167,7 +171,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
         referrerName: nullable(z.string()),
         referrerChannel: nullable(channel),
         methodDetails: nullable(z.string()),
-        notes: nullable(z.string()).describe(NOTE_FIELD),
+        notes: nullable(z.string()).describe(APPLICATION_NOTES_FIELD),
         appliedAt: nullable(z.string()).describe('ISO 8601 date'),
         offerExpiresAt: nullable(z.string()).describe(OFFER_EXPIRES_AT),
         company: z
@@ -191,7 +195,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     'change_application_status',
     {
       title: 'Change application status',
-      description: `Move an application to a new status. Only to_apply, applied, offer and the closed outcomes are stored (and recorded in the history). An interview-round status (coffee_chat, hr_screening, ... final_interview) adds that interview instead, so do not call schedule_interview for the same round; the status an application shows follows its interviews: the next upcoming one, else the last one held. Going back to to_apply or applied is refused while the application has interviews. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
+      description: `Move an application to a new status. Only to_apply, on_hold (parked on purpose, no reminders), applied, offer and the closed outcomes are stored (and recorded in the history). An interview-round status (coffee_chat, hr_screening, ... final_interview) adds that interview instead, so do not call schedule_interview for the same round; the status an application shows follows its interviews: the next upcoming one, else the last one held. Going back to to_apply, on_hold or applied is refused while the application has interviews. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
       inputSchema: {
         id,
         status: z.string().describe(APPLICATION_STATUSES.join(' | ')),

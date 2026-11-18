@@ -3,6 +3,7 @@ import { Badge, type MantineColor } from '@mantine/core';
 
 export const STATUS_COLORS: Record<ApplicationStatus, MantineColor> = {
   to_apply: 'gray',
+  on_hold: 'orange',
   applied: 'blue',
   coffee_chat: 'yellow',
   hr_screening: 'cyan',

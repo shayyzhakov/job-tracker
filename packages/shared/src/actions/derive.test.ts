@@ -88,6 +88,14 @@ describe('deriveActions', () => {
     });
   });
 
+  describe('on_hold', () => {
+    it('is intentional, so it never asks to apply or drop, however old', () => {
+      const r = run([app('on_hold', { createdAt: daysAgo(60) })]);
+      expect(r.needsYou).toEqual([]);
+      expect(r.waiting).toEqual([]);
+    });
+  });
+
   describe('applied', () => {
     it('waits until 14 days, then asks for a follow-up', () => {
       const early = run([app('applied', { statusChangedAt: daysAgo(5) })]);

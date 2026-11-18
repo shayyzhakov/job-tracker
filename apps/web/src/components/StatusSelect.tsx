@@ -14,7 +14,7 @@ export const STATUS_OPTIONS = APPLICATION_STATUSES.map((s) => ({
 interface Props extends Omit<SelectProps, 'data' | 'value' | 'onChange'> {
   value: ApplicationStatus | null;
   onChange: (status: ApplicationStatus) => void;
-  /** The application has interviews: going back to to apply / applied is not offered. */
+  /** The application has interviews: going back to to apply / on hold / applied is not offered. */
   hasInterviews?: boolean;
 }
 

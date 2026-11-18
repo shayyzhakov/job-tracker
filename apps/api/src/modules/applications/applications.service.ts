@@ -13,6 +13,7 @@ import type {
 import {
   currentRound,
   INITIAL_STATUSES,
+  isNotSubmittedStatus,
   isOpenStatus,
   isRoundStatus,
   ROUND_STATUS_INTERVIEW_TYPE,
@@ -71,7 +72,7 @@ export class ApplicationsService {
         ...fields,
         status,
         companyId: company.id,
-        appliedAt: appliedAt ?? (status === 'to_apply' ? null : now),
+        appliedAt: appliedAt ?? (isNotSubmittedStatus(status) ? null : now),
       },
       contacts,
       now,
@@ -95,7 +96,7 @@ export class ApplicationsService {
   }
 
   /**
-   * Only milestones (to apply, applied, offer, closed outcomes) are stored. Choosing a round adds the
+   * Only milestones (to apply, on hold, applied, offer, closed outcomes) are stored. Choosing a round adds the
    * interview behind it (at `interviewAt`, default now), and the round shown follows the interviews.
    * The round's timeline (next step, and a due date for a home assignment) goes on that interview;
    * an offer's expiry goes on the application.
@@ -118,7 +119,7 @@ export class ApplicationsService {
         dueAt: type === 'home_assignment' ? timeline.dueAt : undefined,
       });
       // Rounds need an applied application; picking one explicitly also reopens an offer or a close.
-      if (state.status === 'to_apply' || !isOpenStatus(state.status) || state.status === 'offer') {
+      if (isNotSubmittedStatus(state.status) || !isOpenStatus(state.status) || state.status === 'offer') {
         await this.apps.changeStatus(id, {
           from: state.status,
           to: 'applied',
@@ -136,12 +137,12 @@ export class ApplicationsService {
         (INITIAL_STATUSES as readonly ApplicationStatus[]).includes(status) &&
         (await this.get(id)).interviews.length > 0
       ) {
-        throw new ConflictError('Remove the interviews before moving back to to apply or applied');
+        throw new ConflictError('Remove the interviews before moving back to to apply, on hold or applied');
       }
       await this.apps.changeStatus(id, {
         from: state.status,
         to: status,
-        appliedAt: state.appliedAt ?? (status === 'to_apply' ? null : now),
+        appliedAt: state.appliedAt ?? (isNotSubmittedStatus(status) ? null : now),
         at: now,
         offerExpiresAt: timeline.offerExpiresAt ?? null,
       });
@@ -184,9 +185,9 @@ export class ApplicationsService {
     const state = await this.apps.getState(id);
     if (!state || !isOpenStatus(state.status) || state.status === 'offer') return;
     const now = this.now();
-    if (state.status === 'to_apply') {
+    if (isNotSubmittedStatus(state.status)) {
       await this.apps.changeStatus(id, {
-        from: 'to_apply',
+        from: state.status,
         to: 'applied',
         appliedAt: state.appliedAt ?? now,
         at: now,

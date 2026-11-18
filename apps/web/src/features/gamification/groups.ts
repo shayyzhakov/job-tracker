@@ -15,8 +15,8 @@ export const GROUPS: StageGroup[] = [
   {
     id: 'todo',
     title: 'To do',
-    hint: 'Not submitted yet',
-    statuses: ['to_apply'],
+    hint: 'Not submitted yet, or on hold',
+    statuses: ['to_apply', 'on_hold'],
     dropStatus: 'to_apply',
   },
   {
