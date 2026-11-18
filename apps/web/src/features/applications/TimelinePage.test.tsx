@@ -49,6 +49,19 @@ describe('buildEntries', () => {
     const entries = buildEntries([round('1', 'phone', '2026-11-07T09:00:00Z')], NOW);
     expect(entries.at(-1)?.kind).toBe('now');
   });
+
+  it('keeps a round that is happening now below the now marker, flagged active', () => {
+    const entries = buildEntries(
+      [
+        round('1', 'phone', '2026-11-09T11:30:00Z'),
+        round('2', 'technical', '2026-11-09T10:00:00Z'),
+      ].reverse(),
+      NOW,
+    );
+    expect(entries.map((e) => e.kind)).toEqual(['day', 'interview', 'now', 'interview']);
+    const rounds = entries.filter((e) => e.kind === 'interview');
+    expect(rounds.map((e) => e.kind === 'interview' && e.active)).toEqual([false, true]);
+  });
 });
 
 describe('TimelinePage', () => {

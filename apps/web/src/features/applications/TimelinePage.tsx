@@ -1,4 +1,4 @@
-import { INTERVIEW_TYPE_LABELS, type TimelineInterviewDto } from '@job-tracker/shared';
+import { INTERVIEW_TYPE_LABELS, roundEnd, type TimelineInterviewDto } from '@job-tracker/shared';
 import { Anchor, Badge, Box, Button, Card, Group, Stack, Text, Title } from '@mantine/core';
 import { IconMapPin, IconPlus } from '@tabler/icons-react';
 import { Fragment, useMemo } from 'react';
@@ -32,6 +32,8 @@ type Entry =
       key: string;
       interview: TimelineInterviewDto;
       past: boolean;
+      /** Started but not over yet: sits under the "now" marker with an In progress badge. */
+      active: boolean;
     };
 
 /** Flattens the rounds into day headings, the rounds themselves, and a "now" marker between past and upcoming. */
@@ -46,20 +48,31 @@ export function buildEntries(rows: TimelineInterviewDto[], now: Date): Entry[] {
   };
   for (const interview of rows) {
     const at = new Date(interview.scheduledAt);
-    const past = at.getTime() < now.getTime();
+    const started = at.getTime() <= now.getTime();
+    const end = interview.type === 'home_assignment' ? null : roundEnd(interview);
+    const active = started && end !== null && end > now.getTime();
+    const past = started && !active;
     if (!past) placeNow();
     const key = dayKey(at);
     if (key !== lastDay) {
       lastDay = key;
       entries.push({ kind: 'day', key: `day-${key}`, date: at });
     }
-    entries.push({ kind: 'interview', key: interview.id, interview, past });
+    entries.push({ kind: 'interview', key: interview.id, interview, past, active });
   }
   placeNow();
   return entries;
 }
 
-function Round({ interview, past }: { interview: TimelineInterviewDto; past: boolean }) {
+function Round({
+  interview,
+  past,
+  active,
+}: {
+  interview: TimelineInterviewDto;
+  past: boolean;
+  active: boolean;
+}) {
   const label = INTERVIEW_TYPE_LABELS[interview.type];
   return (
     <Card
@@ -81,6 +94,11 @@ function Round({ interview, past }: { interview: TimelineInterviewDto; past: boo
             <Badge variant="outline" size="sm">
               {label}
             </Badge>
+            {active && (
+              <Badge color="red" size="sm">
+                In progress
+              </Badge>
+            )}
           </Group>
           <Text size="sm" c="dimmed">
             {interview.roleName}
@@ -174,7 +192,7 @@ export function TimelinePage() {
               )}
               {e.kind === 'interview' && (
                 <Box component="li" mb={6}>
-                  <Round interview={e.interview} past={e.past} />
+                  <Round interview={e.interview} past={e.past} active={e.active} />
                 </Box>
               )}
             </Fragment>
