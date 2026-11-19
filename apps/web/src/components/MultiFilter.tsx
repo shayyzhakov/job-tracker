@@ -1,4 +1,4 @@
-import { Button, Checkbox, CloseButton, Group, Popover, Stack } from '@mantine/core';
+import { Button, Checkbox, CloseButton, Popover, Stack } from '@mantine/core';
 import { IconChevronDown } from '@tabler/icons-react';
 
 interface Props<T extends string> {

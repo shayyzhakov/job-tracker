@@ -17,6 +17,8 @@ pnpm db:seed      # optional: wipe the dev table and load sample applications
 
 Open http://localhost:5173.
 
+`pnpm install` also installs a Git pre-commit hook (husky, `.husky/pre-commit`) that runs Biome on the staged files, so a commit with lint or formatting errors is refused. Fix with `pnpm check:fix` and stage again. Bypass once with `git commit --no-verify`.
+
 ### Fully containerized
 
 ```bash

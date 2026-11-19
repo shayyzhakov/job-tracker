@@ -21,12 +21,14 @@
     "db:migrate-round-timeline": "pnpm --filter @job-tracker/api db:migrate-round-timeline",
     "deploy:aws": "scripts/deploy.sh",
     "deploy:code": "scripts/deploy-code.sh",
-    "infra:init": "scripts/infra-init.sh"
+    "infra:init": "scripts/infra-init.sh",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",
     "@types/node": "^26.6.6",
     "esbuild": "^0.28.2",
+    "husky": "^9.1.7",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
   }
