@@ -45,6 +45,58 @@ resource "aws_cloudfront_origin_access_control" "site" {
   signing_protocol                  = "sigv4"
 }
 
+data "aws_region" "current" {}
+
+locals {
+  region = data.aws_region.current.region
+
+  # Cognito endpoints the SPA talks to: the pool's OIDC discovery/JWKS and the hosted UI (token, logout, silent renew).
+  cognito_origins = "https://cognito-idp.${local.region}.amazonaws.com https://*.auth.${local.region}.amazoncognito.com"
+
+  # No inline scripts (index.html loads /boot.js instead). Styles allow inline because Mantine and Recharts set them.
+  content_security_policy = join("; ", [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self' data:",
+    "connect-src 'self' ${local.cognito_origins}",
+    "frame-src ${local.cognito_origins}",
+    "form-action 'self' ${local.cognito_origins}",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+  ])
+}
+
+# Security headers on every response (SPA and API): CSP, HSTS, no framing, no MIME sniffing, no referrer leaks.
+resource "aws_cloudfront_response_headers_policy" "security" {
+  name = "${var.name}-security-headers"
+
+  security_headers_config {
+    content_security_policy {
+      content_security_policy = local.content_security_policy
+      override                = true
+    }
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      override                   = true
+    }
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+    content_type_options {
+      override = true
+    }
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+  }
+}
+
 # SPA routing: any path without a file extension serves index.html. Done on the default behaviour only,
 # so API 404s are never rewritten (a distribution-wide custom error response would do that).
 resource "aws_cloudfront_function" "spa_rewrite" {
@@ -95,12 +147,13 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   default_cache_behavior {
-    target_origin_id       = "site"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.optimized.id
+    target_origin_id           = "site"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.optimized.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
     function_association {
       event_type   = "viewer-request"
       function_arn = aws_cloudfront_function.spa_rewrite.arn
@@ -111,14 +164,15 @@ resource "aws_cloudfront_distribution" "this" {
     # /.well-known/* and /oauth/* are the MCP OAuth discovery documents and dynamic client registration.
     for_each = ["/api/*", "/mcp", "/mcp/*", "/health", "/.well-known/*", "/oauth/*"]
     content {
-      path_pattern             = ordered_cache_behavior.value
-      target_origin_id         = "api"
-      viewer_protocol_policy   = "redirect-to-https"
-      allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-      cached_methods           = ["GET", "HEAD"]
-      compress                 = true
-      cache_policy_id          = data.aws_cloudfront_cache_policy.disabled.id
-      origin_request_policy_id = data.aws_cloudfront_origin_request_policy.all_viewer.id
+      path_pattern               = ordered_cache_behavior.value
+      target_origin_id           = "api"
+      viewer_protocol_policy     = "redirect-to-https"
+      allowed_methods            = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+      cached_methods             = ["GET", "HEAD"]
+      compress                   = true
+      cache_policy_id            = data.aws_cloudfront_cache_policy.disabled.id
+      origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.all_viewer.id
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
     }
   }
 

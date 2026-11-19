@@ -17,7 +17,11 @@ export interface McpOAuthOptions {
   redirectAllowlist: string[];
 }
 
-/** Dynamically registered clients kept at once; the oldest are deleted to make room (Cognito allows ~1000 per pool). */
+/**
+ * Dynamically registered clients allowed at once (Cognito allows ~1000 per pool). Registration is unauthenticated, so
+ * at the cap it is refused rather than pruning old clients: pruning would let anyone delete the owner's working
+ * connectors by registering junk clients. The owner clears unused `mcp-dcr-*` clients in Cognito to make room.
+ */
 export const MAX_REGISTERED_CLIENTS = 50;
 const MAX_REGISTRATIONS_PER_MINUTE = 10;
 
@@ -122,9 +126,15 @@ export const oauthRoutes: FastifyPluginAsync<{ oauth: McpOAuthOptions }> = async
     }
 
     const existing = await oauth.registry.list();
-    const excess = existing.length - (MAX_REGISTERED_CLIENTS - 1);
-    for (const old of excess > 0 ? existing.slice(0, excess) : []) {
-      await oauth.registry.remove(old.clientId);
+    if (existing.length >= MAX_REGISTERED_CLIENTS) {
+      req.log.error(
+        { registered: existing.length },
+        'registration refused: client cap reached; delete unused mcp-dcr-* app clients in Cognito',
+      );
+      return reply
+        .code(503)
+        .header('retry-after', '3600')
+        .send({ error: 'temporarily_unavailable', error_description: 'Registration is full' });
     }
 
     let clientId: string;

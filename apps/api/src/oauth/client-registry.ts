@@ -1,7 +1,6 @@
 import {
   CognitoIdentityProviderClient,
   CreateUserPoolClientCommand,
-  DeleteUserPoolClientCommand,
   InvalidParameterException,
   ListUserPoolClientsCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
@@ -18,7 +17,6 @@ export interface ClientRegistry {
   create(input: { displayName: string; redirectUris: string[] }): Promise<RegisteredClient>;
   /** Dynamically registered clients only, oldest first. */
   list(): Promise<RegisteredClient[]>;
-  remove(clientId: string): Promise<void>;
 }
 
 /** Prefix that marks app clients created by dynamic registration; the rest of the name starts with the epoch ms. */
@@ -97,12 +95,6 @@ export function createCognitoClientRegistry(opts: {
       return found
         .sort((a, b) => created(a.name) - created(b.name))
         .map((c) => ({ clientId: c.clientId }));
-    },
-
-    async remove(clientId) {
-      await cognito.send(
-        new DeleteUserPoolClientCommand({ UserPoolId: opts.userPoolId, ClientId: clientId }),
-      );
     },
   };
 }

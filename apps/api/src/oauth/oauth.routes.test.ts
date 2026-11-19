@@ -129,13 +129,14 @@ describe('OAuth discovery and dynamic client registration', () => {
     expect((await register({ redirect_uris: [uri] })).statusCode).toBe(400);
   });
 
-  it('deletes the oldest clients beyond the cap', async () => {
+  it('refuses registration at the cap and keeps every existing client', async () => {
     for (let i = 0; i < MAX_REGISTERED_CLIENTS; i++) {
       await registry.create({ displayName: 'x', redirectUris: ['http://localhost:1/cb'] });
     }
     const res = await register({ redirect_uris: ['http://localhost:2/cb'] });
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error).toBe('temporarily_unavailable');
     expect(registry.clients).toHaveLength(MAX_REGISTERED_CLIENTS);
-    expect(registry.clients.some((c) => c.clientId === 'client-1')).toBe(false);
+    expect(registry.clients.some((c) => c.clientId === 'client-1')).toBe(true);
   });
 });

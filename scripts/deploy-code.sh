@@ -61,9 +61,11 @@ VITE_COGNITO_USER_POOL_ID="$(cog user_pool_id)" \
 VITE_COGNITO_CLIENT_ID="$(cog client_id)" \
 VITE_COGNITO_DOMAIN="$(cog domain)" \
   pnpm --filter @job-tracker/web build
-aws s3 sync apps/web/dist "s3://$BUCKET" --delete --exclude index.html \
+aws s3 sync apps/web/dist "s3://$BUCKET" --delete --exclude index.html --exclude boot.js \
   --cache-control "public,max-age=31536000,immutable" --only-show-errors
 aws s3 cp apps/web/dist/index.html "s3://$BUCKET/index.html" --cache-control "no-cache" --content-type "text/html" --only-show-errors
+# boot.js has a fixed name (it must run before first paint, so Vite does not bundle it): never cache it long.
+aws s3 cp apps/web/dist/boot.js "s3://$BUCKET/boot.js" --cache-control "no-cache" --content-type "text/javascript" --only-show-errors
 aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION" --paths "/*" >/dev/null
 
 echo "==> Smoke test"
