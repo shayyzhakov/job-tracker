@@ -110,12 +110,21 @@ describe('ApplicationsService', () => {
       expect(interviews.created.map((i) => i.type)).toEqual(['coffee']);
     });
 
-    it('reopens an offer or a close when a round is chosen, undoing the close', async () => {
+    it('reopens a close when a round is chosen, undoing the close', async () => {
       const { id } = await service.create(input({ status: 'applied' }));
       await service.changeStatus(id, 'rejected');
       const updated = await service.changeStatus(id, 'phone_interview');
       expect(updated.status).toBe('applied');
       expect(updated.history.map((h) => h.toStatus)).toEqual(['applied']);
+    });
+
+    it('keeps the offer when a round is chosen at offer', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'offer');
+      const updated = await service.changeStatus(id, 'final_interview');
+      expect(updated.status).toBe('offer');
+      expect(updated.history.map((h) => h.toStatus)).toEqual(['applied', 'offer']);
+      expect(interviews.created.map((i) => i.type)).toEqual(['final']);
     });
 
     it('drops ghosted when the application goes back to applied', async () => {

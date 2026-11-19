@@ -119,14 +119,11 @@ export class ApplicationsService {
         nextStep: timeline.nextStep,
         dueAt: type === 'home_assignment' ? timeline.dueAt : undefined,
       });
-      // Rounds need an applied application; picking one explicitly also reopens an offer or a close.
-      if (
-        isNotSubmittedStatus(state.status) ||
-        !isOpenStatus(state.status) ||
-        state.status === 'offer'
-      ) {
+      // Rounds need an applied application; picking one explicitly also reopens a close. At offer the
+      // round is just added (a last chat before signing): the offer stays.
+      if (isNotSubmittedStatus(state.status) || !isOpenStatus(state.status)) {
         await this.moveTo(id, 'applied', { appliedAt: state.appliedAt ?? now, at: now });
-      } else {
+      } else if (state.status !== 'offer') {
         await this.apps.recordActivity(id, {
           at: now,
           appliedAt: state.appliedAt ? null : now,
