@@ -205,7 +205,7 @@ Defined with OpenTofu in `infra/` (single `prod` environment; remote state in S3
 | Web                       | Vitest, React Testing Library, user-event, MSW | API mocked at the network edge.                                                                           |
 | Lambda entry, SSM, config | Vitest                                         | Focused unit tests (`lambda.test.ts`, `ssm.test.ts`, `config.test.ts`).                                   |
 
-Development is test-first. Quality gates: `pnpm test` (workspace packages run sequentially because they share one DynamoDB Local), `pnpm typecheck` and `pnpm check` (Biome lint and format). API integration tests need DynamoDB Local (`docker compose up -d dynamodb`).
+Development is test-first. Quality gates: `pnpm test` (workspace packages run sequentially because they share one DynamoDB Local), `pnpm typecheck` and `pnpm check` (Biome lint and format). API integration tests need DynamoDB Local (`docker compose up -d dynamodb`). A husky pre-commit hook (installed by `pnpm install` through the root `prepare` script) runs `biome check --staged`, so formatting and lint errors are caught before they reach CI; CI still runs the full `pnpm check`.
 
 ## 9. Security model
 

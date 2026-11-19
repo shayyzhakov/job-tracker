@@ -136,7 +136,6 @@ function Bucket({
 }) {
   const label = COMPANY_PRIORITY_LABELS[priority];
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: native drag-and-drop target; each card's menu is the keyboard path
     <Card
       withBorder
       padding="sm"
