@@ -203,10 +203,12 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
 
   async changeStatus(
     id: string,
-    { from, to, appliedAt, at, interviewId, offerExpiresAt }: StatusTransition,
+    { from, to, appliedAt, at, interviewId, offerExpiresAt, rewrite }: StatusTransition,
   ) {
     const row = this.rows.find((r) => r.id === id);
     if (!row) return;
+    const dropped = new Set(rewrite?.drop.map((h) => h.id));
+    row.history = row.history.filter((h) => !dropped.has(h.id));
     row.status = to;
     row.appliedAt = appliedAt?.toISOString() ?? null;
     row.statusChangedAt = at.toISOString();
@@ -214,6 +216,7 @@ export class FakeApplicationsRepository implements ApplicationsRepository {
     row.followUps = 0;
     row.snoozedUntil = null;
     row.offerExpiresAt = to === 'offer' ? (offerExpiresAt?.toISOString() ?? null) : null;
+    if (rewrite?.append === false) return;
     row.history.push({
       id: randomUUID(),
       applicationId: id,
