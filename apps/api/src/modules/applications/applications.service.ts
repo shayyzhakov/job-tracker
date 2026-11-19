@@ -119,7 +119,11 @@ export class ApplicationsService {
         dueAt: type === 'home_assignment' ? timeline.dueAt : undefined,
       });
       // Rounds need an applied application; picking one explicitly also reopens an offer or a close.
-      if (isNotSubmittedStatus(state.status) || !isOpenStatus(state.status) || state.status === 'offer') {
+      if (
+        isNotSubmittedStatus(state.status) ||
+        !isOpenStatus(state.status) ||
+        state.status === 'offer'
+      ) {
         await this.apps.changeStatus(id, {
           from: state.status,
           to: 'applied',
@@ -137,7 +141,9 @@ export class ApplicationsService {
         (INITIAL_STATUSES as readonly ApplicationStatus[]).includes(status) &&
         (await this.get(id)).interviews.length > 0
       ) {
-        throw new ConflictError('Remove the interviews before moving back to to apply, on hold or applied');
+        throw new ConflictError(
+          'Remove the interviews before moving back to to apply, on hold or applied',
+        );
       }
       await this.apps.changeStatus(id, {
         from: state.status,
