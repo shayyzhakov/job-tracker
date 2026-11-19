@@ -16,7 +16,7 @@ One user. The app is private: nothing except a basic health check is available w
 ## Claude integration
 
 - The assistant connection uses OAuth, the standard sign-in flow for MCP. The owner signs in on the same sign-in page as the web app (including two-step verification if enabled); nothing is copied or stored by hand.
-- An assistant needs only the server URL. It registers itself automatically, and each registration is limited to approved redirect addresses (Claude's own, and the local machine for command-line tools). At most 50 registrations are kept; the oldest are removed.
+- An assistant needs only the server URL. It registers itself automatically, and each registration is limited to approved redirect addresses (Claude's own, and the local machine for command-line tools). At most 50 registrations are kept. When that limit is reached, new registrations are refused and existing ones keep working; unused ones are removed by hand in Cognito.
 - Access is granted through a dedicated permission (scope) that the web app's own sign-in does not carry, so a web session cannot be used as an assistant connection and the reverse.
 - Assistant sign-ins last as long as web sign-ins (access 60 minutes, refresh 30 days) and can be revoked.
 - Locally it needs no sign-in and only accepts connections from the same machine.
