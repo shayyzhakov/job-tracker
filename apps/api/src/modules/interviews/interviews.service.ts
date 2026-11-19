@@ -21,7 +21,7 @@ export class InterviewsService extends ChildService<InterviewInput, InterviewUpd
 
   override async create(applicationId: string, input: InterviewInput): Promise<InterviewDto> {
     const interview = await super.create(applicationId, input);
-    await this.stages.onInterviewScheduled(applicationId);
+    await this.stages.onInterviewScheduled(applicationId, new Date(interview.scheduledAt));
     return interview;
   }
 

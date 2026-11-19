@@ -195,7 +195,7 @@ export function registerApplicationTools(server: McpServer, s: Services, logger?
     'change_application_status',
     {
       title: 'Change application status',
-      description: `Move an application to a new status. Only to_apply, on_hold (parked on purpose, no reminders), applied, offer and the closed outcomes are stored (and recorded in the history). An interview-round status (coffee_chat, hr_screening, ... final_interview) adds that interview instead, so do not call schedule_interview for the same round; the status an application shows follows its interviews: the next upcoming one, else the last one held. Going back to to_apply, on_hold or applied is refused while the application has interviews. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
+      description: `Move an application to a new status. Only to_apply, on_hold (parked on purpose, no reminders), applied, offer and the closed outcomes are stored (and recorded in the history). An interview-round status (coffee_chat, hr_screening, ... final_interview) adds that interview instead, so do not call schedule_interview for the same round; the status an application shows follows its interviews: the next upcoming one, else the last one held. Going back to to_apply, on_hold or applied is refused while the application has interviews. The history stays one logical path: moving back to a status already in it drops what came after (e.g. ghosted then applied removes ghosted), a new closed outcome replaces the previous one, and reopening a closed application undoes the close. Pipeline: ${APPLICATION_STATUSES.join(', ')}.`,
       inputSchema: {
         id,
         status: z.string().describe(APPLICATION_STATUSES.join(' | ')),

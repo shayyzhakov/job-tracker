@@ -17,6 +17,7 @@ import {
   isOpenStatus,
   isRoundStatus,
   ROUND_STATUS_INTERVIEW_TYPE,
+  rewriteHistory,
 } from '@job-tracker/shared';
 import { ConflictError, NotFoundError } from '../../errors.js';
 import type { CompaniesRepository } from '../companies/companies.repository.js';
@@ -124,12 +125,7 @@ export class ApplicationsService {
         !isOpenStatus(state.status) ||
         state.status === 'offer'
       ) {
-        await this.apps.changeStatus(id, {
-          from: state.status,
-          to: 'applied',
-          appliedAt: state.appliedAt ?? now,
-          at: now,
-        });
+        await this.moveTo(id, 'applied', { appliedAt: state.appliedAt ?? now, at: now });
       } else {
         await this.apps.recordActivity(id, {
           at: now,
@@ -145,10 +141,9 @@ export class ApplicationsService {
           'Remove the interviews before moving back to to apply, on hold or applied',
         );
       }
-      await this.apps.changeStatus(id, {
-        from: state.status,
-        to: status,
-        appliedAt: state.appliedAt ?? (isNotSubmittedStatus(status) ? null : now),
+      await this.moveTo(id, status, {
+        // Back to not submitted (only possible without interviews) undoes applying, so its date goes too.
+        appliedAt: isNotSubmittedStatus(status) ? null : (state.appliedAt ?? now),
         at: now,
         offerExpiresAt: timeline.offerExpiresAt ?? null,
       });
@@ -185,19 +180,20 @@ export class ApplicationsService {
 
   /**
    * A scheduled interview never writes a round status: the status shown follows the calendar. It does
-   * make the application "applied", set the applied date, and restart the wait.
+   * make the application "applied", set the applied date, and restart the wait. A future interview on a
+   * ghosted application means they came back: it reopens it (and ghosted leaves the history).
    */
-  async onInterviewScheduled(id: string): Promise<void> {
+  async onInterviewScheduled(id: string, scheduledAt?: Date): Promise<void> {
     const state = await this.apps.getState(id);
-    if (!state || !isOpenStatus(state.status) || state.status === 'offer') return;
+    if (!state) return;
     const now = this.now();
+    if (state.status === 'ghosted' && scheduledAt && scheduledAt.getTime() > now.getTime()) {
+      await this.moveTo(id, 'applied', { appliedAt: state.appliedAt ?? now, at: now });
+      return;
+    }
+    if (!isOpenStatus(state.status) || state.status === 'offer') return;
     if (isNotSubmittedStatus(state.status)) {
-      await this.apps.changeStatus(id, {
-        from: state.status,
-        to: 'applied',
-        appliedAt: state.appliedAt ?? now,
-        at: now,
-      });
+      await this.moveTo(id, 'applied', { appliedAt: state.appliedAt ?? now, at: now });
     } else {
       await this.apps.recordActivity(id, { at: now, appliedAt: state.appliedAt ? null : now });
     }
@@ -205,6 +201,22 @@ export class ApplicationsService {
 
   async remove(id: string): Promise<void> {
     if (!(await this.apps.delete(id))) throw new NotFoundError('Application', id);
+  }
+
+  /** Changes a stored status, keeping the history one logical path (see `rewriteHistory`). */
+  private async moveTo(
+    id: string,
+    to: ApplicationStatus,
+    fields: { appliedAt: Date | null; at: Date; offerExpiresAt?: Date | null },
+  ): Promise<void> {
+    const { history } = await this.get(id);
+    const rewrite = rewriteHistory(history, to);
+    await this.apps.changeStatus(id, {
+      ...fields,
+      from: rewrite.from,
+      to,
+      rewrite,
+    });
   }
 
   private async requireState(id: string) {
