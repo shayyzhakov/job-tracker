@@ -91,6 +91,10 @@ describe('cleanHistory', () => {
     expect(r.relink.map(({ row, fromStatus }) => [row.id, fromStatus])).toEqual([['r1', null]]);
   });
 
+  it('keeps a legacy round row as the row before the next one', () => {
+    expect(cleanHistory(rows('technical_interview', 'rejected'))).toEqual({ drop: [], relink: [] });
+  });
+
   it('leaves a logical history alone', () => {
     expect(cleanHistory(rows('to_apply', 'applied', 'offer', 'accepted'))).toEqual({
       drop: [],

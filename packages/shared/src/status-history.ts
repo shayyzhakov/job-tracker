@@ -28,7 +28,7 @@ export interface HistoryRewrite<T extends HistoryStep> {
   drop: T[];
   /** False when the target is already in the path (it keeps its first row and date): nothing to append. */
   append: boolean;
-  /** The last milestone left in the path, the `fromStatus` of a row appended after it. */
+  /** The status of the last row left (a legacy round row included), the `fromStatus` of a row appended after it. */
   from: ApplicationStatus | null;
   /** The milestones the path holds afterwards, in order, including the target. */
   path: ApplicationStatus[];
@@ -67,10 +67,13 @@ export function rewriteHistory<T extends HistoryStep>(
     append = true;
   }
   const keptSet = new Set<T>(kept);
+  const drop = milestones.filter((h) => !keptSet.has(h));
+  // The row before the appended one: the last row left, a legacy round row included.
+  const before = history.filter((h) => !drop.includes(h)).at(-1);
   return {
-    drop: milestones.filter((h) => !keptSet.has(h)),
+    drop,
     append,
-    from: append ? (kept.at(-1)?.toStatus ?? null) : null,
+    from: append ? (before?.toStatus ?? null) : null,
     path: [...kept.map((h) => h.toStatus), ...(append ? [to] : [])],
   };
 }
