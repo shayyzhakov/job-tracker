@@ -286,11 +286,7 @@ export function InterviewsSection({
                   <Badge variant="outline" size="sm">
                     {INTERVIEW_TYPE_LABELS[i.type]}
                   </Badge>
-                  {past ? (
-                    <Badge color="gray" size="sm">
-                      {assignment ? 'Submitted' : 'Past'}
-                    </Badge>
-                  ) : (
+                  {!past && (
                     <Badge variant="outline" color="gray" size="sm">
                       {assignment ? 'To submit' : 'Scheduled'}
                     </Badge>
