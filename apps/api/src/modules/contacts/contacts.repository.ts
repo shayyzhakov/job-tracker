@@ -23,6 +23,7 @@ import {
   key,
   queryAll,
   queryGsi1,
+  queryPartition,
   updateExisting,
 } from '../../db/dynamo.js';
 import {
@@ -30,6 +31,7 @@ import {
   type CompanyItem,
   type ContactItem,
   type ContactLinkItem,
+  type InterviewItem,
   nul,
   toContactDto,
 } from '../../db/mappers.js';
@@ -299,8 +301,28 @@ export class DynamoContactsRepository {
       if (isConditionFailed(err)) return false;
       throw err;
     }
+    await this.removeFromInterviews(applicationId, id);
     await this.deleteOrphans([id]);
     return true;
+  }
+
+  /** Takes a contact off the interviewer lists of one application's interviews. */
+  private async removeFromInterviews(applicationId: string, id: string) {
+    const interviews = await queryPartition<InterviewItem>(
+      this.db,
+      `APP#${applicationId}`,
+      'INTERVIEW#',
+    );
+    await Promise.all(
+      interviews
+        .filter((i) => i.interviewerIds?.includes(id))
+        .map((i) =>
+          updateExisting(this.db, key.interview(applicationId, i.id), {
+            interviewerIds: (i.interviewerIds ?? []).filter((c) => c !== id),
+            updatedAt: iso(new Date()),
+          }),
+        ),
+    );
   }
 
   /** Deletes the given contacts that are no longer attached to any application. */

@@ -55,6 +55,7 @@ const interview = (
   scheduledAt,
   durationMinutes: 60,
   location: null,
+  interviewerIds: [],
   timeUnknown: false,
   debriefedAt: null,
   nextStep: null,

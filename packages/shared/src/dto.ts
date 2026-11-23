@@ -68,6 +68,8 @@ export interface InterviewDto {
   scheduledAt: string;
   durationMinutes: number | null;
   location: string | null;
+  /** Contacts who interview in this round (many to many: a contact can be on several rounds). Each one is attached to the application. */
+  interviewerIds: string[];
   /** True when the round was created from a status change without a real time; the time is a placeholder. */
   timeUnknown: boolean;
   /** When the user logged how the interview went (or dismissed the prompt); null until then. */

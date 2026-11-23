@@ -39,6 +39,7 @@ export function createServices(db: Db): Services {
   const companies = new DynamoCompaniesRepository(db);
   const applicationsRepo = new DynamoApplicationsRepository(db);
   const interviewsRepo = new DynamoInterviewsRepository(db);
+  const contactsRepo = new DynamoContactsRepository(db);
   const applications = new ApplicationsService({
     applications: applicationsRepo,
     companies,
@@ -48,8 +49,8 @@ export function createServices(db: Db): Services {
     actions: new ActionsService(new DynamoActionsRepository(db, applicationsRepo)),
     applications,
     companies: new CompaniesService(companies),
-    contacts: new ContactsService(new DynamoContactsRepository(db), applicationsRepo),
-    interviews: new InterviewsService(interviewsRepo, applicationsRepo, applications),
+    contacts: new ContactsService(contactsRepo, applicationsRepo),
+    interviews: new InterviewsService(interviewsRepo, applicationsRepo, applications, contactsRepo),
     notes: new NotesService(new DynamoNotesRepository(db)),
     overview: new OverviewService(new DynamoOverviewRepository(db)),
     opportunities: new OpportunitiesService({

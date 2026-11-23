@@ -260,7 +260,12 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     const now = new Date();
     const timing = timingByApplication(interviews, iso(now)).get(app.id) ?? NO_TIMING;
     const dto = toApplicationDto(app, company, timing);
-    const interviewDtos = interviews.map(toInterviewDto);
+    // Interviewers are contacts on this application; an id left behind by a failed detach is dropped.
+    const attached = new Set(contacts.map((c) => c.id));
+    const interviewDtos = interviews.map((i) => {
+      const dto = toInterviewDto(i);
+      return { ...dto, interviewerIds: dto.interviewerIds.filter((id) => attached.has(id)) };
+    });
     // Offers and closed applications have no current round: their timeline is the offer expiry, or none.
     const round =
       isOpenStatus(dto.status) && dto.status !== 'offer' ? currentRound(interviewDtos, now) : null;

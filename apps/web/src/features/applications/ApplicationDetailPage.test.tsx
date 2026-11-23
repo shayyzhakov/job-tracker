@@ -31,6 +31,7 @@ describe('ApplicationDetailPage', () => {
       scheduledAt,
       durationMinutes: null,
       location: null,
+      interviewerIds: [],
       timeUnknown: false,
       debriefedAt: null,
       nextStep: null,
@@ -178,6 +179,7 @@ describe('ApplicationDetailPage', () => {
     scheduledAt: '2999-01-01T10:00:00.000Z',
     durationMinutes: 60,
     location: null,
+    interviewerIds: [],
     timeUnknown: false,
     debriefedAt: null,
     nextStep: null,
@@ -211,6 +213,23 @@ describe('ApplicationDetailPage', () => {
     const step = await screen.findByTestId('current-step');
     expect(step).toHaveTextContent('Review system design');
     expect(step).not.toHaveTextContent('Old prep');
+  });
+
+  it("shows a round's interviewers by their contact names", async () => {
+    server.use(
+      http.get('/api/v1/applications/:id', () =>
+        HttpResponse.json(
+          applicationDetail({
+            status: 'technical_interview',
+            interviews: [round({ id: 'r1', interviewerIds: ['ct1', 'gone'] })],
+            currentRound: { interviewId: 'r1', phase: 'upcoming' },
+          }),
+        ),
+      ),
+    );
+    renderDetail();
+    // an id that is not a contact of the application is skipped
+    expect(await screen.findByText('With Dana Levi')).toBeInTheDocument();
   });
 
   it('shows an open home assignment with its due date and marks it submitted', async () => {

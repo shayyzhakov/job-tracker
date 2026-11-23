@@ -3,23 +3,46 @@ import { BadRequestError, NotFoundError } from '../../errors.js';
 import type { ApplicationsRepository } from '../applications/applications.repository.js';
 import type { ApplicationsService } from '../applications/applications.service.js';
 import { type ChildRepository, ChildService } from '../child-service.js';
+import type { DynamoContactsRepository } from '../contacts/contacts.repository.js';
 
 export interface InterviewsRepository
   extends ChildRepository<InterviewInput, InterviewUpdate, InterviewDto> {
   find(applicationId: string, id: string): Promise<InterviewDto | null>;
 }
 
+/** What interviews need from contacts: interviewers must be attached to the application. */
+export type InterviewerContacts = Pick<DynamoContactsRepository, 'isAttached' | 'attach'>;
+
 /** Interviews are the single record of an interview round; scheduling one makes the application show that round while it is upcoming. */
 export class InterviewsService extends ChildService<InterviewInput, InterviewUpdate, InterviewDto> {
   constructor(
     private readonly interviews: InterviewsRepository,
-    applicationsRepo: Pick<ApplicationsRepository, 'getState'>,
+    private readonly applicationsRepo: Pick<ApplicationsRepository, 'getState'>,
     private readonly stages: Pick<ApplicationsService, 'onInterviewScheduled'>,
+    private readonly contacts: InterviewerContacts,
   ) {
     super('Interview', interviews, applicationsRepo);
   }
 
+  /**
+   * Interviewers are contacts on the application. A known contact who is not on it yet is attached
+   * first; an unknown id fails with 404 before anything is written for the interview.
+   */
+  private async attachInterviewers(applicationId: string, ids: readonly string[] | undefined) {
+    for (const contactId of ids ?? []) {
+      if (!(await this.contacts.isAttached(applicationId, contactId))) {
+        await this.contacts.attach(applicationId, { contactId });
+      }
+    }
+  }
+
   override async create(applicationId: string, input: InterviewInput): Promise<InterviewDto> {
+    if (input.interviewerIds?.length) {
+      if (!(await this.applicationsRepo.getState(applicationId))) {
+        throw new NotFoundError('Application', applicationId);
+      }
+      await this.attachInterviewers(applicationId, input.interviewerIds);
+    }
     const interview = await super.create(applicationId, input);
     await this.stages.onInterviewScheduled(applicationId, new Date(interview.scheduledAt));
     return interview;
@@ -31,13 +54,16 @@ export class InterviewsService extends ChildService<InterviewInput, InterviewUpd
     id: string,
     patch: InterviewUpdate,
   ): Promise<InterviewDto> {
-    if (patch.type === undefined && (patch.dueAt != null || patch.submittedAt != null)) {
+    const checkType =
+      patch.type === undefined && (patch.dueAt != null || patch.submittedAt != null);
+    if (checkType || patch.interviewerIds?.length) {
       const current = await this.interviews.find(applicationId, id);
       if (!current) throw new NotFoundError('Interview', id);
-      if (current.type !== 'home_assignment') {
+      if (checkType && current.type !== 'home_assignment') {
         throw new BadRequestError('Only a home assignment has a due date or a submitted date');
       }
     }
+    await this.attachInterviewers(applicationId, patch.interviewerIds);
     return super.update(applicationId, id, patch);
   }
 }
