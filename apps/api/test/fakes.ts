@@ -253,6 +253,7 @@ export class FakeInterviewsRepository {
       scheduledAt: input.scheduledAt.toISOString(),
       durationMinutes: input.durationMinutes ?? null,
       location: input.location ?? null,
+      interviewerIds: input.interviewerIds ?? [],
       timeUnknown: input.timeUnknown ?? false,
       debriefedAt: null,
       nextStep: input.nextStep ?? null,

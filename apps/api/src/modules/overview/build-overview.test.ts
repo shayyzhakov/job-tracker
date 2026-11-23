@@ -27,6 +27,7 @@ const interview = (inDays: number): UpcomingInterviewDto => ({
   scheduledAt: new Date(NOW.getTime() + inDays * 86_400_000).toISOString(),
   durationMinutes: null,
   location: null,
+  interviewerIds: [],
   timeUnknown: false,
   debriefedAt: null,
   nextStep: null,

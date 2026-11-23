@@ -1,4 +1,5 @@
 import {
+  type ContactDto,
   hasEnded,
   INTERVIEW_TYPE_LABELS,
   INTERVIEW_TYPES,
@@ -13,6 +14,7 @@ import {
   Card,
   Group,
   Modal,
+  MultiSelect,
   NumberInput,
   Select,
   SimpleGrid,
@@ -33,6 +35,8 @@ interface InterviewFormValues {
   scheduledAt: string;
   durationMinutes: number | string;
   location: string;
+  /** Contact ids of the interviewers, in order. */
+  interviewerIds: string[];
   /** What to do before this round. */
   nextStep: string;
   /** Local date-time values like scheduledAt; blank when unset. */
@@ -54,6 +58,7 @@ const EMPTY: InterviewFormValues = {
   scheduledAt: '',
   durationMinutes: 60,
   location: '',
+  interviewerIds: [],
   nextStep: '',
   replyBy: '',
   dueAt: '',
@@ -66,10 +71,13 @@ const dateOrNull = (v: string) => (v ? new Date(v) : null); // parsed as local t
 export function InterviewsSection({
   applicationId,
   interviews,
+  contacts,
   notes,
 }: {
   applicationId: string;
   interviews: InterviewDto[];
+  /** The application's contacts: the people who can be picked as interviewers. */
+  contacts: ContactDto[];
   notes: NoteDto[];
 }) {
   const [notesFor, setNotesFor] = useState<string | null>(null);
@@ -84,6 +92,7 @@ export function InterviewsSection({
   const now = Date.now();
   const count = (interviewId: string) => notes.filter((n) => n.interviewId === interviewId).length;
   const notesInterview = interviews.find((i) => i.id === notesFor);
+  const contactName = new Map(contacts.map((c) => [c.id, c.name]));
 
   const close = () => {
     setAdding(false);
@@ -99,6 +108,7 @@ export function InterviewsSection({
       scheduledAt: toLocalInput(i.scheduledAt),
       durationMinutes: i.durationMinutes ?? '',
       location: i.location ?? '',
+      interviewerIds: i.interviewerIds,
       nextStep: i.nextStep ?? '',
       replyBy: localOrBlank(i.replyBy),
       dueAt: localOrBlank(i.dueAt),
@@ -113,6 +123,7 @@ export function InterviewsSection({
       scheduledAt: new Date(v.scheduledAt), // parsed as local time
       durationMinutes: typeof v.durationMinutes === 'number' ? v.durationMinutes : undefined,
       location: v.location || undefined,
+      interviewerIds: v.interviewerIds,
       nextStep: v.nextStep.trim() || undefined,
     };
     const timeline = {
@@ -207,6 +218,19 @@ export function InterviewsSection({
             />
           )}
         </SimpleGrid>
+        {contacts.length > 0 && (
+          <MultiSelect
+            label="Interviewers"
+            description="Pick from this application's contacts. Add a new person under Contacts first."
+            placeholder={form.values.interviewerIds.length ? undefined : 'Who interviews?'}
+            searchable
+            data={contacts.map((c) => ({
+              value: c.id,
+              label: c.role ? `${c.name} (${c.role})` : c.name,
+            }))}
+            {...form.getInputProps('interviewerIds')}
+          />
+        )}
         <TextInput
           label="Next step"
           description="What to do before this round. Stops showing once the round is over."
@@ -272,6 +296,17 @@ export function InterviewsSection({
                     </Badge>
                   )}
                 </Group>
+                {i.interviewerIds.some((id) => contactName.has(id)) && (
+                  <Text size="sm" c="dimmed">
+                    With{' '}
+                    {i.interviewerIds
+                      .flatMap((id) => {
+                        const name = contactName.get(id);
+                        return name ? [name] : [];
+                      })
+                      .join(', ')}
+                  </Text>
+                )}
                 {i.location && (
                   <Text size="sm" c="dimmed">
                     {i.location}

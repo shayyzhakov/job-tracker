@@ -13,6 +13,7 @@ const interview = (id: string, type: 'phone' | 'technical', scheduledAt: string)
   scheduledAt,
   durationMinutes: null,
   location: null,
+  interviewerIds: [],
   timeUnknown: false,
   debriefedAt: null,
   nextStep: null,

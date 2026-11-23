@@ -162,11 +162,18 @@ describe('MCP server', () => {
       companyName: 'OrbitPay',
     });
 
-    await call<InterviewDto>('update_interview', {
+    const interviewer = await call<{ id: string }>('add_contact', {
+      applicationId: created.id,
+      name: 'Dana Levi',
+      role: 'Engineering manager',
+    });
+    const withInterviewer = await call<InterviewDto>('update_interview', {
       applicationId: created.id,
       interviewId: interview.id,
       location: 'Zoom',
+      interviewerIds: [interviewer.id],
     });
+    expect(withInterviewer.interviewerIds).toEqual([interviewer.id]);
 
     const note = await call<NoteDto>('add_note', {
       applicationId: created.id,
@@ -230,7 +237,7 @@ describe('MCP server', () => {
     const detail = await call<ApplicationDetailDto>('get_application', {
       id: created.id,
     });
-    expect(detail.contacts.map((c) => c.name)).toEqual(['Dana']);
+    expect(detail.contacts.map((c) => c.name)).toEqual(['Dana', 'Dana Levi']);
     expect(detail.interviews).toEqual(moved.interviews);
 
     const rows = await call<Record<string, unknown>[]>('list_applications', {

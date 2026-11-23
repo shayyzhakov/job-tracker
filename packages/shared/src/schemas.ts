@@ -154,6 +154,9 @@ const ASSIGNMENT_ONLY = 'Only a home assignment has a due date or a submitted da
 const assignmentOnly = (v: { type?: string; dueAt?: Date | null; submittedAt?: Date | null }) =>
   v.type === 'home_assignment' || (v.dueAt == null && v.submittedAt == null);
 
+/** Contact ids of a round's interviewers; repeats are dropped, order is kept. */
+const interviewerIds = z.array(z.uuid()).transform((ids) => [...new Set(ids)]);
+
 export const InterviewInputSchema = z
   .object({
     type: InterviewTypeSchema.default('other'),
@@ -161,6 +164,8 @@ export const InterviewInputSchema = z
     scheduledAt: z.coerce.date(),
     durationMinutes: z.number().int().positive().optional(),
     location: optionalText,
+    /** Contacts who interview in this round, in order (see `interviewerIds` on the DTO). */
+    interviewerIds: interviewerIds.optional(),
     /** The round exists but nobody has given a real time yet (scheduledAt is a placeholder). */
     timeUnknown: z.boolean().optional(),
     /** What to do before this round; current only until the round ends. */
@@ -212,6 +217,8 @@ export const InterviewUpdateSchema = z
     scheduledAt: z.coerce.date(),
     durationMinutes: z.number().int().positive().nullable(),
     location: nullableText,
+    /** Replaces the whole list of interviewers; [] clears it. */
+    interviewerIds,
     /** Set to true to mark the interview debriefed (now), or null to clear. */
     debriefed: z.boolean().nullable(),
     nextStep: nullableText,

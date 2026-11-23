@@ -365,6 +365,7 @@ export function ApplicationDetailPage() {
                     <InterviewsSection
                       applicationId={app.id}
                       interviews={app.interviews}
+                      contacts={app.contacts}
                       notes={app.interviewNotes}
                     />
                     <ContactsSection applicationId={app.id} contacts={app.contacts} />
