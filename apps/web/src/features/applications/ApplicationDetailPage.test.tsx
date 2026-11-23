@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
 import { describe, expect, it } from 'vitest';
 import { applicationDetail } from '../../../test/fixtures';
@@ -110,6 +110,38 @@ describe('ApplicationDetailPage', () => {
     await user.type(screen.getByLabelText(/contact role/i), 'Hiring manager');
     await user.click(screen.getByRole('button', { name: /save contact/i }));
     await waitFor(() => expect(body).toMatchObject({ name: 'Avi', role: 'Hiring manager' }));
+  });
+
+  it('adds and edits sub-entities in a dialog, leaving the page as it was', async () => {
+    let patched: unknown;
+    server.use(
+      http.patch('/api/v1/applications/:id/contacts/:cid', async ({ request }) => {
+        patched = await request.json();
+        return HttpResponse.json({});
+      }),
+    );
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('button', { name: /schedule interview/i }));
+    const interview = await screen.findByRole('dialog', { name: /schedule interview/i });
+    expect(within(interview).getByLabelText(/date & time/i)).toBeInTheDocument();
+    // The contacts list behind the dialog is untouched.
+    expect(screen.getByText('Dana Levi')).toBeInTheDocument();
+    await user.click(within(interview).getByRole('button', { name: /cancel/i }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /schedule interview/i })).not.toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole('button', { name: /edit contact dana levi/i }));
+    const contact = within(await screen.findByRole('dialog', { name: /edit contact/i }));
+    const name = contact.getByLabelText(/contact name/i);
+    expect(name).toHaveValue('Dana Levi');
+    await user.clear(name);
+    await user.type(name, 'Dana Cohen');
+    await user.click(contact.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(patched).toMatchObject({ name: 'Dana Cohen' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /edit contact/i })).not.toBeInTheDocument(),
+    );
   });
 
   it('schedules an interview', async () => {

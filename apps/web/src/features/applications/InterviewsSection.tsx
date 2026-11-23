@@ -26,6 +26,7 @@ import { useForm } from '@mantine/form';
 import { IconNotes, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useInterviewMutations } from '../../api/hooks';
+import { FormModal } from '../../components/FormModal';
 import { formatDate, formatDateTime } from '../../lib/format';
 import { NoteList } from './NoteList';
 
@@ -81,7 +82,10 @@ export function InterviewsSection({
   notes: NoteDto[];
 }) {
   const [notesFor, setNotesFor] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  // The form dialog: `editingId` is the interview being edited, or null when scheduling a new one.
+  // It is kept while the dialog closes so the title does not change during the transition.
+  const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { create, update, remove } = useInterviewMutations(applicationId);
   const form = useForm<InterviewFormValues>({
@@ -94,15 +98,25 @@ export function InterviewsSection({
   const notesInterview = interviews.find((i) => i.id === notesFor);
   const contactName = new Map(contacts.map((c) => [c.id, c.name]));
 
-  const close = () => {
-    setAdding(false);
-    setEditingId(null);
-    form.reset();
+  const close = () => setFormOpen(false);
+
+  const open = (id: string | null) => {
+    create.reset();
+    update.reset();
+    setEditingId(id);
+    setFormOpen(true);
+  };
+
+  const startAdd = () => {
+    form.setValues(EMPTY);
+    form.resetDirty(EMPTY);
+    form.clearErrors();
+    open(null);
   };
 
   const startEdit = (i: InterviewDto) => {
-    setAdding(false);
-    setEditingId(i.id);
+    form.clearErrors();
+    open(i.id);
     form.setValues({
       type: i.type,
       scheduledAt: toLocalInput(i.scheduledAt),
@@ -163,114 +177,105 @@ export function InterviewsSection({
   // Reply-by belongs after a round: offered once the round being edited is over.
   const showReplyBy = !!editing && hasEnded(editing, new Date(now));
 
-  const formEl = (
-    <form noValidate onSubmit={form.onSubmit(submit)}>
-      <Stack gap="xs">
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <Select
-            label="Interview type"
-            allowDeselect={false}
-            data={INTERVIEW_TYPES.map((t) => ({
-              value: t,
-              label: INTERVIEW_TYPE_LABELS[t],
-            }))}
-            {...form.getInputProps('type')}
-          />
+  const formModal = (
+    <FormModal
+      opened={formOpen}
+      onClose={close}
+      title={editingId ? 'Edit interview' : 'Schedule interview'}
+      onSubmit={form.onSubmit(submit)}
+      submitLabel={editingId ? 'Save changes' : 'Save interview'}
+      submitting={create.isPending || update.isPending}
+      error={(create.error ?? update.error)?.message}
+    >
+      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+        <Select
+          label="Interview type"
+          allowDeselect={false}
+          data={INTERVIEW_TYPES.map((t) => ({
+            value: t,
+            label: INTERVIEW_TYPE_LABELS[t],
+          }))}
+          data-autofocus
+          {...form.getInputProps('type')}
+        />
+        <TextInput
+          type="datetime-local"
+          label={isAssignment ? 'Received' : 'Date & time'}
+          withAsterisk
+          {...form.getInputProps('scheduledAt')}
+        />
+        {isAssignment && (
           <TextInput
             type="datetime-local"
-            label={isAssignment ? 'Received' : 'Date & time'}
-            withAsterisk
-            {...form.getInputProps('scheduledAt')}
-          />
-          {isAssignment && (
-            <TextInput
-              type="datetime-local"
-              label="Due by"
-              description="Ranks it on Tasks until it is submitted."
-              {...form.getInputProps('dueAt')}
-            />
-          )}
-          {isAssignment && editingId && (
-            <TextInput
-              type="datetime-local"
-              label="Submitted"
-              description="The round ends when it is submitted."
-              {...form.getInputProps('submittedAt')}
-            />
-          )}
-          <NumberInput
-            label="Duration (minutes)"
-            min={5}
-            step={15}
-            {...form.getInputProps('durationMinutes')}
-          />
-          <TextInput
-            label="Location / link"
-            placeholder="Zoom, office…"
-            {...form.getInputProps('location')}
-          />
-          {showReplyBy && (
-            <TextInput
-              type="datetime-local"
-              label="They'll reply by"
-              description="Replaces the default follow-up timer."
-              {...form.getInputProps('replyBy')}
-            />
-          )}
-        </SimpleGrid>
-        {contacts.length > 0 && (
-          <MultiSelect
-            label="Interviewers"
-            description="Pick from this application's contacts. Add a new person under Contacts first."
-            placeholder={form.values.interviewerIds.length ? undefined : 'Who interviews?'}
-            searchable
-            data={contacts.map((c) => ({
-              value: c.id,
-              label: c.role ? `${c.name} (${c.role})` : c.name,
-            }))}
-            {...form.getInputProps('interviewerIds')}
+            label="Due by"
+            description="Ranks it on Tasks until it is submitted."
+            {...form.getInputProps('dueAt')}
           />
         )}
-        <TextInput
-          label="Next step"
-          description="What to do before this round. Stops showing once the round is over."
-          {...form.getInputProps('nextStep')}
+        {isAssignment && editingId && (
+          <TextInput
+            type="datetime-local"
+            label="Submitted"
+            description="The round ends when it is submitted."
+            {...form.getInputProps('submittedAt')}
+          />
+        )}
+        <NumberInput
+          label="Duration (minutes)"
+          min={5}
+          step={15}
+          {...form.getInputProps('durationMinutes')}
         />
-        <Group justify="flex-end">
-          <Button variant="default" size="xs" onClick={close}>
-            Cancel
-          </Button>
-          <Button type="submit" size="xs" loading={create.isPending || update.isPending}>
-            {editingId ? 'Save changes' : 'Save interview'}
-          </Button>
-        </Group>
-      </Stack>
-    </form>
+        <TextInput
+          label="Location / link"
+          placeholder="Zoom, office…"
+          {...form.getInputProps('location')}
+        />
+        {showReplyBy && (
+          <TextInput
+            type="datetime-local"
+            label="They'll reply by"
+            description="Replaces the default follow-up timer."
+            {...form.getInputProps('replyBy')}
+          />
+        )}
+      </SimpleGrid>
+      {contacts.length > 0 && (
+        <MultiSelect
+          label="Interviewers"
+          description="Pick from this application's contacts. Add a new person under Contacts first."
+          placeholder={form.values.interviewerIds.length ? undefined : 'Who interviews?'}
+          searchable
+          data={contacts.map((c) => ({
+            value: c.id,
+            label: c.role ? `${c.name} (${c.role})` : c.name,
+          }))}
+          {...form.getInputProps('interviewerIds')}
+        />
+      )}
+      <TextInput
+        label="Next step"
+        description="What to do before this round. Stops showing once the round is over."
+        {...form.getInputProps('nextStep')}
+      />
+    </FormModal>
   );
 
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">
         <Text fw={600}>Interviews</Text>
-        {!adding && !editingId && (
-          <Button
-            variant="light"
-            size="xs"
-            leftSection={<IconPlus size={14} />}
-            onClick={() => setAdding(true)}
-          >
-            Schedule interview
-          </Button>
-        )}
+        <Button variant="light" size="xs" leftSection={<IconPlus size={14} />} onClick={startAdd}>
+          Schedule interview
+        </Button>
       </Group>
       <Stack>
-        {interviews.length === 0 && !adding && (
+        {interviews.length === 0 && (
           <Text size="sm" c="dimmed">
             No interviews scheduled.
           </Text>
         )}
         {interviews.map((i) => {
-          if (editingId === i.id) return <div key={i.id}>{formEl}</div>;
           const assignment = i.type === 'home_assignment';
           const past = assignment
             ? hasEnded(i, new Date(now))
@@ -341,7 +346,6 @@ export function InterviewsSection({
                 <ActionIcon
                   variant="subtle"
                   aria-label="Edit interview"
-                  disabled={adding}
                   onClick={() => startEdit(i)}
                 >
                   <IconPencil size={16} />
@@ -358,8 +362,8 @@ export function InterviewsSection({
             </Group>
           );
         })}
-        {adding && formEl}
       </Stack>
+      {formModal}
       <Modal
         opened={!!notesInterview}
         onClose={() => setNotesFor(null)}
@@ -369,6 +373,8 @@ export function InterviewsSection({
             : 'Notes'
         }
         size="lg"
+        // Escape closes only the note dialog on top, not this dialog as well.
+        closeOnEscape={!noteDialogOpen}
       >
         {notesInterview && (
           <NoteList
@@ -376,6 +382,7 @@ export function InterviewsSection({
             interviewId={notesInterview.id}
             notes={notes.filter((n) => n.interviewId === notesInterview.id)}
             allowAdd
+            onDialogOpenChange={setNoteDialogOpen}
           />
         )}
       </Modal>
