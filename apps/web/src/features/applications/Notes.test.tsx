@@ -94,9 +94,10 @@ describe('interview notes', () => {
     ).toHaveTextContent('Notes (2)');
     await user.click(screen.getByRole('button', { name: /notes for technical interview/i }));
     await user.click(await screen.findByRole('button', { name: /^add note$/i }));
-    const save = screen.getByRole('button', { name: /^add note$/i });
+    const form = within(await screen.findByRole('dialog', { name: /^add note$/i }));
+    const save = form.getByRole('button', { name: /^save note$/i });
     expect(save).toBeDisabled();
-    await user.type(screen.getByLabelText('Note'), 'line one{enter}line two');
+    await user.type(form.getByLabelText('Note'), 'line one{enter}line two');
     await user.click(save);
     await waitFor(() => expect(body).toBeDefined());
     expect(body).toEqual({ text: 'line one\nline two' });
@@ -122,10 +123,11 @@ describe('interview notes', () => {
     const group = within((await screen.findAllByTestId('notes-group'))[0] as HTMLElement);
 
     await user.click(group.getByRole('button', { name: /edit note/i }));
-    const box = screen.getByLabelText('Note');
+    const form = within(await screen.findByRole('dialog', { name: /edit note/i }));
+    const box = form.getByLabelText('Note');
     await user.clear(box);
     await user.type(box, 'Updated prep');
-    await user.click(screen.getByRole('button', { name: /save note/i }));
+    await user.click(form.getByRole('button', { name: /save note/i }));
     await waitFor(() => expect(patched).toEqual({ text: 'Updated prep' }));
 
     await user.click(group.getByRole('button', { name: /delete note/i }));
@@ -133,6 +135,19 @@ describe('interview notes', () => {
     const dialog = await screen.findByRole('dialog', { name: /delete note/i });
     await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
     await waitFor(() => expect(deleted).toBe(true));
+  });
+
+  it('Escape in the note form closes only that form, not the interview notes', async () => {
+    withNotes();
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('button', { name: /notes for technical interview/i }));
+    await user.click(await screen.findByRole('button', { name: /^add note$/i }));
+    await screen.findByRole('dialog', { name: /^add note$/i });
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /^add note$/i })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Prep: ask about the team')).toBeVisible();
   });
 
   it('no longer has a single-line notes field in the interview form', async () => {

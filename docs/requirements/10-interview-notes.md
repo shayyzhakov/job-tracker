@@ -10,9 +10,9 @@ Remember how each interview went: the technical questions asked, new facts about
 
 1. **Notes attach to an interview, never directly to an application.** An interview has zero or more notes. Notes are independent records, shown newest first.
 2. **A note is multi-line plain text.** There is no title and there are no categories in v1. A note records when it was created and last edited. Empty notes are rejected.
-3. **Add, edit and delete** a note from the interview on the application page. Deleting asks for confirmation.
+3. **Add, edit and delete** a note from the interview on the application page. Adding and editing open a note dialog on top of the interview's notes; deleting asks for confirmation.
 4. **Any interview can have notes, whatever its timing.** That includes upcoming interviews (prep, questions to ask, things learned from the recruiter), past ones, and placeholder-time interviews created by a status change. This matches [02](02-contacts-and-interviews.md): an interview is one record, upcoming or past, so nothing gates notes on the interview having happened. A note never changes the interview's Scheduled or Past label or the action queue.
-5. **Notes tab on the application page.** It lists every note of the application in one view, grouped by interview (type and date, newest interview first; newest note first within a group). Each note can be edited or deleted in place. Interviews without notes are not listed. An empty state explains how to add the first note.
+5. **Notes tab on the application page.** It lists every note of the application in one view, grouped by interview (type and date, newest interview first; newest note first within a group). Each note can be edited (in a dialog) or deleted from there. Interviews without notes are not listed. An empty state explains how to add the first note.
 6. **The interview card shows a note count** and opens its notes.
 7. **Replaces the old interview notes field.** The single-line `notes` field is removed from the interview form and API. Existing text is migrated to one note per interview (created time = the interview's last update) so nothing is lost.
 8. **Cascade.** Deleting an interview deletes its notes. Deleting an application deletes all of its notes.

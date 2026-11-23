@@ -1,5 +1,5 @@
 import { type ContactDto, ContactInputSchema, ContactUpdateSchema } from '@job-tracker/shared';
-import { ActionIcon, Anchor, Button, Card, Group, Stack, Text } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Button, Card, Group, Stack, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import {
   IconBrandLinkedin,
@@ -9,61 +9,93 @@ import {
   IconPlus,
   IconTrash,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useContactMutations, useContacts } from '../../api/hooks';
+import { FormModal } from '../../components/FormModal';
 import { zodErrors } from '../../lib/zod-form';
 import { ContactFields, type ContactFormValues, emptyContact } from './ContactFields';
 import { SimilarContactBanner } from './SimilarContactBanner';
 
-function EditContactForm({
+/** Add a contact to the application (contact === null) or edit one, in a dialog. */
+function ContactFormModal({
+  opened,
   contact,
   applicationId,
-  onDone,
+  attached,
+  onClose,
 }: {
-  contact: ContactDto;
+  opened: boolean;
+  contact: ContactDto | null;
   applicationId: string;
-  onDone: () => void;
+  /** Ids already on the application, left out of the similar-contact suggestions. */
+  attached: Set<string>;
+  onClose: () => void;
 }) {
-  const { update } = useContactMutations(applicationId);
+  const { create, update } = useContactMutations(applicationId);
+  const { data: known = [] } = useContacts();
+  const schema = contact ? ContactUpdateSchema : ContactInputSchema;
   const form = useForm<ContactFormValues>({
     mode: 'controlled',
-    initialValues: {
-      name: contact.name,
-      role: contact.role ?? '',
-      email: contact.email ?? '',
-      phone: contact.phone ?? '',
-      linkedinUrl: contact.linkedinUrl ?? '',
-    },
-    validate: (values) => zodErrors(ContactUpdateSchema, values),
+    initialValues: emptyContact(),
+    validate: (values) => zodErrors(schema, values),
   });
-  return (
-    <form
-      noValidate
-      onSubmit={form.onSubmit((values) =>
-        update.mutate(
+  const { setValues, resetDirty, clearErrors } = form;
+
+  // Reset every time the dialog opens, for a different contact or a blank one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: form and mutation helpers are stable
+  useEffect(() => {
+    if (!opened) return;
+    const values: ContactFormValues = contact
+      ? {
+          name: contact.name,
+          role: contact.role ?? '',
+          email: contact.email ?? '',
+          phone: contact.phone ?? '',
+          linkedinUrl: contact.linkedinUrl ?? '',
+        }
+      : emptyContact();
+    setValues(values);
+    resetDirty(values);
+    clearErrors();
+    create.reset();
+    update.reset();
+  }, [opened, contact]);
+
+  const submit = form.onSubmit((values) =>
+    contact
+      ? update.mutate(
           { id: contact.id, patch: ContactUpdateSchema.parse(values) },
-          { onSuccess: onDone },
-        ),
-      )}
+          { onSuccess: onClose },
+        )
+      : create.mutate(ContactInputSchema.parse(values), { onSuccess: onClose }),
+  );
+
+  return (
+    <FormModal
+      opened={opened}
+      onClose={onClose}
+      title={contact ? 'Edit contact' : 'Add contact'}
+      onSubmit={submit}
+      submitLabel={contact ? 'Save changes' : 'Save contact'}
+      submitting={create.isPending || update.isPending}
+      error={(create.error ?? update.error)?.message}
     >
-      <Stack gap="xs">
-        {contact.applicationCount > 1 && (
-          <Text size="xs" c="dimmed">
-            Shared: changes apply to all {contact.applicationCount} applications this contact is on.
-          </Text>
-        )}
-        <ContactFields form={form} prefix="" />
-        <Group justify="flex-end">
-          <Button variant="default" size="xs" onClick={onDone}>
-            Cancel
-          </Button>
-          <Button type="submit" size="xs" loading={update.isPending}>
-            Save changes
-          </Button>
-        </Group>
-      </Stack>
-    </form>
+      {contact && contact.applicationCount > 1 && (
+        <Alert variant="light" color="blue" role="status">
+          Shared: changes apply to all {contact.applicationCount} applications this contact is on.
+        </Alert>
+      )}
+      <ContactFields form={form} prefix="" autofocus />
+      {!contact && (
+        <SimilarContactBanner
+          name={form.values.name}
+          known={known}
+          excludeIds={attached}
+          onUse={(k) => create.mutate({ contactId: k.id }, { onSuccess: onClose })}
+        />
+      )}
+    </FormModal>
   );
 }
 
@@ -153,97 +185,52 @@ export function ContactsSection({
   applicationId: string;
   contacts: ContactDto[];
 }) {
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const { create, remove } = useContactMutations(applicationId);
-  const { data: known = [] } = useContacts();
+  // The form dialog: `editing` is the contact being edited, or null when adding one. It is kept
+  // while the dialog closes so the title does not change during the transition.
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<ContactDto | null>(null);
+  const { remove } = useContactMutations(applicationId);
   const attached = new Set(contacts.map((c) => c.id));
-  const form = useForm<ContactFormValues>({
-    mode: 'controlled',
-    initialValues: emptyContact(),
-    validate: (values) => zodErrors(ContactInputSchema, values),
-  });
+  const open = (contact: ContactDto | null) => {
+    setEditing(contact);
+    setFormOpen(true);
+  };
 
   return (
     <Card withBorder padding="lg">
       <Group justify="space-between" mb="sm">
         <Text fw={600}>Contacts</Text>
-        {!adding && (
-          <Button
-            variant="light"
-            size="xs"
-            leftSection={<IconPlus size={14} />}
-            onClick={() => setAdding(true)}
-          >
-            Add contact
-          </Button>
-        )}
+        <Button
+          variant="light"
+          size="xs"
+          leftSection={<IconPlus size={14} />}
+          onClick={() => open(null)}
+        >
+          Add contact
+        </Button>
       </Group>
       <Stack>
-        {contacts.length === 0 && !adding && (
+        {contacts.length === 0 && (
           <Text size="sm" c="dimmed">
             No contacts yet.
           </Text>
         )}
-        {contacts.map((c) =>
-          editingId === c.id ? (
-            <EditContactForm
-              key={c.id}
-              contact={c}
-              applicationId={applicationId}
-              onDone={() => setEditingId(null)}
-            />
-          ) : (
-            <ContactRow
-              key={c.id}
-              contact={c}
-              onEdit={() => setEditingId(c.id)}
-              onDelete={() => remove.mutate(c.id)}
-            />
-          ),
-        )}
-        {adding && (
-          <form
-            noValidate
-            onSubmit={form.onSubmit((values) =>
-              create.mutate(ContactInputSchema.parse(values), {
-                onSuccess: () => {
-                  form.reset();
-                  setAdding(false);
-                },
-              }),
-            )}
-          >
-            <Stack gap="xs">
-              <ContactFields form={form} prefix="" />
-              <SimilarContactBanner
-                name={form.values.name}
-                known={known}
-                excludeIds={attached}
-                onUse={(k) =>
-                  create.mutate(
-                    { contactId: k.id },
-                    {
-                      onSuccess: () => {
-                        form.reset();
-                        setAdding(false);
-                      },
-                    },
-                  )
-                }
-              />
-              <Group justify="flex-end">
-                <Button variant="default" size="xs" onClick={() => setAdding(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" size="xs" loading={create.isPending}>
-                  Save contact
-                </Button>
-              </Group>
-            </Stack>
-          </form>
-        )}
+        {contacts.map((c) => (
+          <ContactRow
+            key={c.id}
+            contact={c}
+            onEdit={() => open(c)}
+            onDelete={() => remove.mutate(c.id)}
+          />
+        ))}
       </Stack>
+      <ContactFormModal
+        opened={formOpen}
+        contact={editing}
+        applicationId={applicationId}
+        attached={attached}
+        onClose={() => setFormOpen(false)}
+      />
     </Card>
   );
 }

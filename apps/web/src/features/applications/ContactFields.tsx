@@ -18,12 +18,26 @@ export const emptyContact = (): ContactFormValues => ({
 });
 
 /** Contact inputs bound to `form` at `prefix` (e.g. "contacts.0" or "" for a flat form). */
-// biome-ignore lint/suspicious/noExplicitAny: shared between differently-shaped forms
-export function ContactFields({ form, prefix }: { form: UseFormReturnType<any>; prefix: string }) {
+export function ContactFields({
+  form,
+  prefix,
+  autofocus = false,
+}: {
+  // biome-ignore lint/suspicious/noExplicitAny: shared between differently-shaped forms
+  form: UseFormReturnType<any>;
+  prefix: string;
+  /** Focus the name field when shown in a dialog. */
+  autofocus?: boolean;
+}) {
   const path = (f: keyof ContactFormValues) => (prefix ? `${prefix}.${f}` : f);
   return (
     <SimpleGrid cols={{ base: 1, sm: 2 }}>
-      <TextInput label="Contact name" withAsterisk {...form.getInputProps(path('name'))} />
+      <TextInput
+        label="Contact name"
+        withAsterisk
+        data-autofocus={autofocus || undefined}
+        {...form.getInputProps(path('name'))}
+      />
       <TextInput
         label="Contact role"
         placeholder="Recruiter, hiring manager…"

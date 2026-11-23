@@ -8,20 +8,11 @@ import {
   type CompanyWithCountsDto,
   DEFAULT_COMPANY_PRIORITY,
 } from '@job-tracker/shared';
-import {
-  Alert,
-  Button,
-  Group,
-  Input,
-  Modal,
-  SegmentedControl,
-  Select,
-  Stack,
-  TextInput,
-} from '@mantine/core';
+import { Alert, Input, SegmentedControl, Select, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useEffect } from 'react';
 import { useCreateCompany, useUpdateCompany } from '../../api/hooks';
+import { FormModal } from '../../components/FormModal';
 
 interface Values {
   name: string;
@@ -108,68 +99,60 @@ export function CompanyFormModal({
       }
       onClose();
     } catch {
-      // Shown below from the mutation error.
+      // Shown in the dialog from the mutation error.
     }
   });
 
   return (
-    <Modal opened={opened} onClose={onClose} title={company ? 'Edit company' : 'Add company'}>
-      <form onSubmit={submit} noValidate>
-        <Stack>
-          {company && company.totalApplications > 0 && (
-            <Alert variant="light" color="blue" role="status">
-              Changes apply to all {company.totalApplications} application
-              {company.totalApplications === 1 ? '' : 's'} at this company.
-            </Alert>
-          )}
-          <TextInput label="Name" withAsterisk data-autofocus {...form.getInputProps('name')} />
-          <Select
-            label="Size"
-            placeholder="Select…"
-            clearable
-            data={COMPANY_SIZES.map((s) => ({ value: s, label: COMPANY_SIZE_LABELS[s] }))}
-            {...form.getInputProps('size')}
-          />
-          <Select
-            label="Scout priority"
-            description="How hard the scout should look for jobs here. Blacklist hides the company from the scout."
-            allowDeselect={false}
-            data={COMPANY_PRIORITIES.map((p) => ({ value: p, label: COMPANY_PRIORITY_LABELS[p] }))}
-            {...form.getInputProps('priority')}
-          />
-          <Input.Wrapper label="Type">
-            <SegmentedControl
-              fullWidth
-              aria-label="Company type"
-              value={form.values.isPublic ? 'public' : 'private'}
-              onChange={(v) => form.setFieldValue('isPublic', v === 'public')}
-              data={[
-                { value: 'private', label: 'Private' },
-                { value: 'public', label: 'Public' },
-              ]}
-            />
-          </Input.Wrapper>
-          <TextInput label="Website" {...form.getInputProps('website')} />
-          <TextInput
-            label="Location"
-            placeholder="Tel Aviv, Remote…"
-            {...form.getInputProps('location')}
-          />
-          {error && (
-            <Alert color="red" role="alert">
-              {error.message}
-            </Alert>
-          )}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={pending}>
-              {company ? 'Save' : 'Add company'}
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+    <FormModal
+      opened={opened}
+      onClose={onClose}
+      title={company ? 'Edit company' : 'Add company'}
+      size="md"
+      onSubmit={submit}
+      submitLabel={company ? 'Save' : 'Add company'}
+      submitting={pending}
+      error={error?.message}
+    >
+      {company && company.totalApplications > 0 && (
+        <Alert variant="light" color="blue" role="status">
+          Changes apply to all {company.totalApplications} application
+          {company.totalApplications === 1 ? '' : 's'} at this company.
+        </Alert>
+      )}
+      <TextInput label="Name" withAsterisk data-autofocus {...form.getInputProps('name')} />
+      <Select
+        label="Size"
+        placeholder="Select…"
+        clearable
+        data={COMPANY_SIZES.map((s) => ({ value: s, label: COMPANY_SIZE_LABELS[s] }))}
+        {...form.getInputProps('size')}
+      />
+      <Select
+        label="Scout priority"
+        description="How hard the scout should look for jobs here. Blacklist hides the company from the scout."
+        allowDeselect={false}
+        data={COMPANY_PRIORITIES.map((p) => ({ value: p, label: COMPANY_PRIORITY_LABELS[p] }))}
+        {...form.getInputProps('priority')}
+      />
+      <Input.Wrapper label="Type">
+        <SegmentedControl
+          fullWidth
+          aria-label="Company type"
+          value={form.values.isPublic ? 'public' : 'private'}
+          onChange={(v) => form.setFieldValue('isPublic', v === 'public')}
+          data={[
+            { value: 'private', label: 'Private' },
+            { value: 'public', label: 'Public' },
+          ]}
+        />
+      </Input.Wrapper>
+      <TextInput label="Website" {...form.getInputProps('website')} />
+      <TextInput
+        label="Location"
+        placeholder="Tel Aviv, Remote…"
+        {...form.getInputProps('location')}
+      />
+    </FormModal>
   );
 }
