@@ -6,10 +6,12 @@ One user. The app is private: nothing except a basic health check is available w
 
 ## Web app
 
-- Visitors who aren't signed in are sent to a sign-in page; after signing in they return to the app.
+- Visitors who aren't signed in are sent to the sign-in page; after signing in they return to the page they were on.
 - There is no self sign-up. The single account is created by the owner when the app is set up, and a temporary password is emailed to them to change at first sign-in.
 - Two-step verification with an authenticator app is available (optional but recommended).
-- Sessions stay valid for 30 days without signing in again; password recovery is by verified email.
+- Sessions stay valid for 30 days without signing in again, whether the app is idle, the tab is closed or the computer sleeps: the app renews its access quietly in the background and when the tab comes back into view, instead of asking to sign in. Password recovery is by verified email.
+- When a session has really ended (past 30 days, signed out elsewhere, or revoked), the app goes straight to the sign-in page rather than showing a broken page. A stale or reused sign-in link also starts a fresh sign-in; only a sign-in that keeps failing shows an error with "Try again".
+- If the sign-in service can't be reached (for example right after the computer wakes, before the network is back), the session is kept and the app renews it as soon as the connection returns.
 - The header shows who is signed in and offers sign out.
 - During local development the app needs no sign-in.
 
