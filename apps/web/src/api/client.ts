@@ -17,9 +17,21 @@ export async function api<T>(
   path: string,
   init: RequestInit & { json?: unknown } = {},
 ): Promise<T> {
+  let res = await send(path, init);
+  // An expired access token (e.g. right after the computer wakes): renew the session and retry once.
+  // A second 401 is a real error and is not retried, so a token the API rejects can never loop.
+  if (res.status === 401 && (await handleUnauthorized())) res = await send(path, init);
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => null)) as { message?: string } | null;
+    throw new ApiError(res.status, payload?.message ?? res.statusText);
+  }
+  return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+}
+
+function send(path: string, init: RequestInit & { json?: unknown }) {
   const { json, headers, ...rest } = init;
   const token = getAccessToken();
-  const res = await fetch(`${BASE_URL}/api/v1${path}`, {
+  return fetch(`${BASE_URL}/api/v1${path}`, {
     ...rest,
     headers: {
       ...(json !== undefined && { 'Content-Type': 'application/json' }),
@@ -28,10 +40,4 @@ export async function api<T>(
     },
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   });
-  if (!res.ok) {
-    if (res.status === 401) handleUnauthorized();
-    const payload = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new ApiError(res.status, payload?.message ?? res.statusText);
-  }
-  return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
