@@ -13,7 +13,4 @@ export class FakeClientRegistry implements ClientRegistry {
   async list() {
     return this.clients.map((c) => ({ clientId: c.clientId }));
   }
-  async remove(clientId: string) {
-    this.clients = this.clients.filter((c) => c.clientId !== clientId);
-  }
 }

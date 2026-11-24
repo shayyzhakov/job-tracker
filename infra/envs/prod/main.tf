@@ -92,10 +92,10 @@ module "api" {
   }
 }
 
-# Dynamic client registration for MCP clients creates and prunes Cognito app clients at runtime.
+# Dynamic client registration for MCP clients creates Cognito app clients at runtime (it never deletes them).
 data "aws_iam_policy_document" "mcp_client_registration" {
   statement {
-    actions   = ["cognito-idp:CreateUserPoolClient", "cognito-idp:DeleteUserPoolClient", "cognito-idp:ListUserPoolClients"]
+    actions   = ["cognito-idp:CreateUserPoolClient", "cognito-idp:ListUserPoolClients"]
     resources = [module.auth.user_pool_arn]
   }
 }

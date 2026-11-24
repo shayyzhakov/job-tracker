@@ -24,7 +24,7 @@ Estimated cost: about $0-1/month (the KMS key that encrypts the OpenTofu state i
 | `bootstrap/`              | One-time: encrypted, versioned S3 state bucket + KMS key; optional GitHub OIDC deploy role. |
 | `modules/dynamodb`        | Single DynamoDB table (+2 indexes, PITR) and the Lambda access policy.                      |
 | `modules/lambda-function` | A Lambda (role, log group, zip from `dist-lambda/`), optionally with a public Function URL. |
-| `modules/web`             | S3 + CloudFront (API origin = the Function URL, with the secret header).                    |
+| `modules/web`             | S3 + CloudFront (API origin = the Function URL, with the secret header; security headers).  |
 | `modules/auth`            | Cognito user pool, client (code + PKCE), hosted login, your user.                           |
 | `modules/scout`           | Daily EventBridge schedule that invokes the scout Lambda.                                   |
 | `modules/budget`          | Monthly cost alert.                                                                         |
