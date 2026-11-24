@@ -33,6 +33,7 @@ Each open application is in one state: **your move**, **scheduled** (an intervie
 
 - **Tasks** is the landing page: cards grouped by urgency, a collapsed list of scheduled interviews and of applications waiting on others (with their next check-in date), and an empty state ("You're clear").
 - A badge on the Tasks nav item shows how many actions need the user; it turns red when any is overdue.
+- The application page shows the **Log how it went** prompt as a banner at the top while a held interview needs a debrief (the same `debrief` action as the Tasks card). Its dialog takes the text (saved as a note on that interview) and an optional reply-by date, and saving it marks the interview debriefed, so the prompt clears without the user knowing that a plain note does not. See [10](10-interview-notes.md).
 - In the applications list, a red marker on a row flags the applications that need the user.
 - Each interview round carries its own **next step**, **they'll reply by**, and for home assignments **due by** and **submitted** (interview form, MCP `schedule_interview` / `update_interview`, and the status-change call); an offer carries **offer expires** (application form while at offer, the offer dialog, MCP `update_application` / `change_application_status`). See [13](13-round-timeline.md).
 - The **Interviews scheduled** list shows each round's next step under it. "Mark submitted" on a home-assignment card sets the round's submitted date.
