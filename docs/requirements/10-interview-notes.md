@@ -17,7 +17,7 @@ Remember how each interview went: the technical questions asked, new facts about
 7. **Replaces the old interview notes field.** The single-line `notes` field is removed from the interview form and API. Existing text is migrated to one note per interview (created time = the interview's last update) so nothing is lost.
 8. **Cascade.** Deleting an interview deletes its notes. Deleting an application deletes all of its notes.
 9. **Claude (MCP).** The assistant can list the notes of an application (grouped by interview), and add, edit and remove a note. `get_application` includes notes. Removing a note is flagged as destructive, like other deletes (see [05](05-claude-integration.md)).
-10. **No side effects elsewhere.** Notes do not affect status, the action queue or gamification. The Tasks "Log how it went" card is unchanged: its "Add notes" button still opens the application, and saving a note does not mark the interview debriefed.
+10. **No side effects elsewhere.** Notes do not affect status, the action queue or gamification. A plain note never marks an interview debriefed. The "Log how it went" prompt (Tasks card, and the banner at the top of the application page) is cleared by its own **Log how it went** dialog on the application page, which saves the text as a note on that interview and marks it debriefed in one step (see [09](09-today.md)). The Tasks card's "Add notes" button still just opens the application.
 
 ## Acceptance criteria
 
@@ -37,7 +37,7 @@ Remember how each interview went: the technical questions asked, new facts about
 
 ## Not included (v1)
 
-Categories or tags, rich text or attachments, search across applications, notes on status steps that have no interview, auto-marking an interview debriefed when a note is saved, and AI summaries of notes.
+Categories or tags, rich text or attachments, search across applications, notes on status steps that have no interview, auto-marking an interview debriefed when a note is saved from the notes list, and AI summaries of notes.
 
 ## Open questions
 

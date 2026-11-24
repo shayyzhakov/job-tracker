@@ -44,6 +44,7 @@ import { formatDate, formatDateMaybeTime, formatIls } from '../../lib/format';
 import { ApplicationForm, toUpdatePayload, valuesFromApplication } from './ApplicationForm';
 import { ContactsSection } from './ContactsSection';
 import { CurrentStep } from './CurrentStep';
+import { DebriefBanner } from './DebriefBanner';
 import { InterviewsSection } from './InterviewsSection';
 import { NotesTab } from './NotesTab';
 import { buildStatusFlow } from './statusFlow';
@@ -305,6 +306,8 @@ export function ApplicationDetailPage() {
       </Group>
 
       <Slot name="application.detail.top" applicationId={app.id} status={app.status} />
+
+      <DebriefBanner app={app} />
 
       <Tabs defaultValue="details" keepMounted={false}>
         <Tabs.List mb="md">
