@@ -110,12 +110,77 @@ describe('ApplicationsService', () => {
       expect(interviews.created.map((i) => i.type)).toEqual(['coffee']);
     });
 
-    it('reopens an offer or a close when a round is chosen', async () => {
+    it('reopens a close when a round is chosen, undoing the close', async () => {
       const { id } = await service.create(input({ status: 'applied' }));
       await service.changeStatus(id, 'rejected');
       const updated = await service.changeStatus(id, 'phone_interview');
       expect(updated.status).toBe('applied');
-      expect(updated.history.map((h) => h.toStatus)).toEqual(['applied', 'rejected', 'applied']);
+      expect(updated.history.map((h) => h.toStatus)).toEqual(['applied']);
+    });
+
+    it('keeps the offer when a round is chosen at offer', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'offer');
+      const updated = await service.changeStatus(id, 'final_interview');
+      expect(updated.status).toBe('offer');
+      expect(updated.history.map((h) => h.toStatus)).toEqual(['applied', 'offer']);
+      expect(interviews.created.map((i) => i.type)).toEqual(['final']);
+    });
+
+    it('drops ghosted when the application goes back to applied', async () => {
+      const { id } = await service.create(input());
+      await service.changeStatus(id, 'applied');
+      await service.changeStatus(id, 'ghosted');
+      const updated = await service.changeStatus(id, 'applied');
+      expect(updated.status).toBe('applied');
+      expect(updated.history.map((h) => h.toStatus)).toEqual(['to_apply', 'applied']);
+    });
+
+    it('collapses to apply → applied → to apply → on hold to to apply → on hold', async () => {
+      const { id } = await service.create(input());
+      const first = (await service.get(id)).history[0];
+      await service.changeStatus(id, 'applied');
+      const back = await service.changeStatus(id, 'to_apply');
+      expect(back.history).toEqual([first]);
+      expect(back.appliedAt).toBeNull();
+      const updated = await service.changeStatus(id, 'on_hold');
+      expect(updated.history.map((h) => [h.fromStatus, h.toStatus])).toEqual([
+        [null, 'to_apply'],
+        ['to_apply', 'on_hold'],
+      ]);
+    });
+
+    it('keeps one closed outcome: ghosted then rejected keeps rejected only', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'ghosted');
+      const updated = await service.changeStatus(id, 'rejected');
+      expect(updated.history.map((h) => [h.fromStatus, h.toStatus])).toEqual([
+        [null, 'applied'],
+        ['applied', 'rejected'],
+      ]);
+    });
+
+    it('starts the history over when an applied application goes back to on hold', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      const updated = await service.changeStatus(id, 'on_hold');
+      expect(updated.history.map((h) => [h.fromStatus, h.toStatus])).toEqual([[null, 'on_hold']]);
+      expect(updated.appliedAt).toBeNull();
+    });
+
+    it('reopens a ghosted application when a future interview is scheduled', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'ghosted');
+      await service.onInterviewScheduled(id, new Date(NOW.getTime() + 86_400_000));
+      const app = await service.get(id);
+      expect(app.status).toBe('applied');
+      expect(app.history.map((h) => h.toStatus)).toEqual(['applied']);
+    });
+
+    it('leaves a closed application closed when a past interview is added', async () => {
+      const { id } = await service.create(input({ status: 'applied' }));
+      await service.changeStatus(id, 'ghosted');
+      await service.onInterviewScheduled(id, new Date(NOW.getTime() - 86_400_000));
+      expect((await service.get(id)).status).toBe('ghosted');
     });
 
     it('refuses to go back to applied or to apply while interviews exist', async () => {

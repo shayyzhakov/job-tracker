@@ -19,7 +19,8 @@
     "db:seed": "tsx --env-file=../../.env src/db/seed.ts",
     "db:migrate-notes": "tsx --env-file=../../.env src/db/migrate-notes.ts",
     "db:migrate-company-sizes": "tsx --env-file=../../.env src/db/migrate-company-sizes-cli.ts",
-    "db:migrate-round-timeline": "tsx --env-file=../../.env src/db/migrate-round-timeline-cli.ts"
+    "db:migrate-round-timeline": "tsx --env-file=../../.env src/db/migrate-round-timeline-cli.ts",
+    "db:migrate-status-history": "tsx --env-file=../../.env src/db/migrate-status-history-cli.ts"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.164",

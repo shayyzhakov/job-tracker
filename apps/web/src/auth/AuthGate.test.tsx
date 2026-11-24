@@ -1,7 +1,8 @@
 import { MantineProvider } from '@mantine/core';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { RefreshResult } from './session';
 import { getAccessToken, handleUnauthorized } from './token';
 
 const oidc = vi.hoisted(() => ({
@@ -12,12 +13,26 @@ const oidc = vi.hoisted(() => ({
     user: undefined as { access_token: string } | undefined,
     signinRedirect: vi.fn(),
     removeUser: vi.fn(),
+    events: {
+      addUserLoaded: vi.fn(() => () => {}),
+      addAccessTokenExpiring: vi.fn(() => () => {}),
+    },
   },
+}));
+
+const keeper = vi.hoisted(() => ({
+  refresh: vi.fn<() => Promise<RefreshResult>>(),
+  refreshIfStale: vi.fn<() => Promise<RefreshResult>>(),
 }));
 
 vi.mock('react-oidc-context', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useAuth: () => oidc.state,
+}));
+
+vi.mock('./session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./session')>()),
+  createSessionKeeper: () => keeper,
 }));
 
 import { AuthGate } from './AuthGate';
@@ -55,6 +70,10 @@ describe('AuthGate', () => {
       user: undefined,
     });
     oidc.state.signinRedirect.mockReset();
+    keeper.refresh.mockReset().mockResolvedValue('ok');
+    keeper.refreshIfStale.mockReset().mockResolvedValue('ok');
+    sessionStorage.clear();
+    window.history.replaceState({}, '', '/');
   });
 
   it('renders the app directly when login is not configured', () => {
@@ -62,10 +81,13 @@ describe('AuthGate', () => {
     expect(screen.getByText('secret app')).toBeInTheDocument();
   });
 
-  it('sends unauthenticated visitors to the Cognito hosted login', () => {
+  it('sends visitors with no session to sign in, remembering where they were', () => {
+    window.history.replaceState({}, '', '/applications/42?tab=notes');
     renderGate(config);
     expect(screen.queryByText('secret app')).not.toBeInTheDocument();
-    expect(oidc.state.signinRedirect).toHaveBeenCalledOnce();
+    expect(oidc.state.signinRedirect).toHaveBeenCalledExactlyOnceWith({
+      state: { returnTo: '/applications/42?tab=notes' },
+    });
   });
 
   it('shows the app and exposes the access token once signed in', () => {
@@ -89,17 +111,65 @@ describe('AuthGate', () => {
     expect(seen.every((t) => t === 'tok-first')).toBe(true);
   });
 
-  it('does not start another login when the API rejects a token we already have', () => {
-    Object.assign(oidc.state, { isAuthenticated: true, user: { access_token: 'tok-bad' } });
+  it('restores an expired stored session with the refresh token instead of signing in again', async () => {
+    Object.assign(oidc.state, { user: { access_token: 'old' } }); // stored, but expired
     renderGate(config);
-    handleUnauthorized();
+    await waitFor(() => expect(keeper.refresh).toHaveBeenCalledOnce());
     expect(oidc.state.signinRedirect).not.toHaveBeenCalled();
   });
 
-  it('shows sign-in errors with a retry instead of looping', async () => {
+  it('goes to sign-in when the stored session cannot be renewed', async () => {
+    keeper.refresh.mockResolvedValue('ended');
+    Object.assign(oidc.state, { user: { access_token: 'old' } });
+    renderGate(config);
+    await waitFor(() => expect(oidc.state.signinRedirect).toHaveBeenCalledOnce());
+  });
+
+  it('keeps the session and offers a retry when the sign-in service is unreachable', async () => {
+    keeper.refresh.mockResolvedValue('unreachable');
+    Object.assign(oidc.state, { user: { access_token: 'old' } });
+    renderGate(config);
+    expect(await screen.findByText(/can't reach the sign-in service/i)).toBeInTheDocument();
+    expect(oidc.state.signinRedirect).not.toHaveBeenCalled();
+  });
+
+  it('renews the session on a 401 and asks the client to retry', async () => {
+    Object.assign(oidc.state, { isAuthenticated: true, user: { access_token: 'tok-old' } });
+    renderGate(config);
+    await expect(handleUnauthorized()).resolves.toBe(true);
+    expect(keeper.refresh).toHaveBeenCalledOnce();
+    expect(oidc.state.signinRedirect).not.toHaveBeenCalled();
+  });
+
+  it('sends the user to sign in on a 401 when the session is over', async () => {
+    keeper.refresh.mockResolvedValue('ended');
+    Object.assign(oidc.state, { isAuthenticated: true, user: { access_token: 'tok-old' } });
+    renderGate(config);
+    await expect(handleUnauthorized()).resolves.toBe(false);
+    expect(oidc.state.signinRedirect).toHaveBeenCalledOnce();
+  });
+
+  it('checks the token when the tab becomes visible again (wake from sleep)', async () => {
+    Object.assign(oidc.state, { isAuthenticated: true, user: { access_token: 'tok' } });
+    renderGate(config);
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(keeper.refreshIfStale).toHaveBeenCalled());
+  });
+
+  it('retries a failed sign-in once automatically instead of showing an error page', async () => {
+    oidc.state.error = new Error('No matching state found in storage');
+    renderGate(config);
+    await waitFor(() => expect(oidc.state.signinRedirect).toHaveBeenCalledOnce());
+    expect(screen.queryByText(/sign-in failed/i)).not.toBeInTheDocument();
+  });
+
+  it('shows a repeated sign-in failure with a retry instead of looping', async () => {
+    sessionStorage.setItem('auth:lastAutoRetry', String(Date.now()));
     oidc.state.error = new Error('invalid_grant');
     renderGate(config);
-    expect(screen.getByText(/invalid_grant/)).toBeInTheDocument();
+    expect(await screen.findByText(/invalid_grant/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
     expect(oidc.state.signinRedirect).not.toHaveBeenCalled();
   });

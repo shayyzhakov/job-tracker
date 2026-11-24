@@ -15,6 +15,7 @@ const round = (id: string, type: TimelineInterviewDto['type'], at: string, compa
     scheduledAt: at,
     durationMinutes: null,
     location: null,
+    interviewerIds: [],
     timeUnknown: false,
     debriefedAt: null,
     nextStep: null,

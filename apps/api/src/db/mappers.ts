@@ -89,6 +89,8 @@ export interface InterviewItem {
   scheduledAt: string;
   durationMinutes: number | null;
   location: string | null;
+  /** Contact ids of the interviewers, in order; absent on rows written before interviewers existed. */
+  interviewerIds?: string[];
   timeUnknown?: boolean;
   debriefedAt?: string | null;
   /** Round timeline; absent on rows written before it existed. */
@@ -171,6 +173,7 @@ export const toInterviewDto = (i: InterviewItem): InterviewDto => ({
   scheduledAt: i.scheduledAt,
   durationMinutes: i.durationMinutes,
   location: i.location,
+  interviewerIds: i.interviewerIds ?? [],
   timeUnknown: i.timeUnknown ?? false,
   debriefedAt: i.debriefedAt ?? null,
   nextStep: i.nextStep ?? null,

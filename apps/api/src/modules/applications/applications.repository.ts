@@ -15,6 +15,7 @@ import {
   currentRound,
   INTERVIEW_TYPE_ROUND_STATUS,
   isOpenStatus,
+  isRoundStatus,
   statusGroup,
 } from '@job-tracker/shared';
 import {
@@ -77,7 +78,8 @@ export interface ApplicationState {
 }
 
 export interface StatusTransition {
-  from: ApplicationStatus;
+  /** The milestone before this one; null when the rewrite leaves this row first in the history. */
+  from: ApplicationStatus | null;
   to: ApplicationStatus;
   appliedAt: Date | null;
   at: Date;
@@ -85,6 +87,16 @@ export interface StatusTransition {
   interviewId?: string | null;
   /** Offer expiry for a move to offer; cleared on any other status change. */
   offerExpiresAt?: Date | null;
+  /**
+   * The history rewrite for this move (see `rewriteHistory`): rows to delete, whether to append a row
+   * (false when `to` is already in the path), and the milestones the path holds afterwards, which
+   * replace the milestones in `reachedStatuses`. Without it, a row is appended and `to` is added.
+   */
+  rewrite?: {
+    drop: { id: string; changedAt: string }[];
+    append: boolean;
+    path: ApplicationStatus[];
+  };
 }
 
 export interface ActivityRecord {
@@ -103,7 +115,7 @@ export interface ApplicationsRepository {
   list(query: ApplicationListQuery): Promise<ApplicationDto[]>;
   getState(id: string): Promise<ApplicationState | null>;
   update(id: string, patch: ApplicationFieldsPatch): Promise<void>;
-  /** Updates status (and appliedAt) and appends a history entry atomically. */
+  /** Updates status (and appliedAt) and rewrites the history (see `StatusTransition.rewrite`) atomically. */
   changeStatus(id: string, transition: StatusTransition): Promise<void>;
   /**
    * An interview round happened or was scheduled: restarts the wait (hand-over, snooze, follow-ups) and
@@ -248,7 +260,12 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     const now = new Date();
     const timing = timingByApplication(interviews, iso(now)).get(app.id) ?? NO_TIMING;
     const dto = toApplicationDto(app, company, timing);
-    const interviewDtos = interviews.map(toInterviewDto);
+    // Interviewers are contacts on this application; an id left behind by a failed detach is dropped.
+    const attached = new Set(contacts.map((c) => c.id));
+    const interviewDtos = interviews.map((i) => {
+      const dto = toInterviewDto(i);
+      return { ...dto, interviewerIds: dto.interviewerIds.filter((id) => attached.has(id)) };
+    });
     // Offers and closed applications have no current round: their timeline is the offer expiry, or none.
     const round =
       isOpenStatus(dto.status) && dto.status !== 'offer' ? currentRound(interviewDtos, now) : null;
@@ -330,7 +347,7 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
 
   async changeStatus(
     id: string,
-    { from, to, appliedAt, at, interviewId, offerExpiresAt }: StatusTransition,
+    { from, to, appliedAt, at, interviewId, offerExpiresAt, rewrite }: StatusTransition,
   ) {
     const current = (
       await this.db.doc.send(new GetCommand({ TableName: this.db.table, Key: key.app(id) }))
@@ -338,7 +355,10 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
     if (!current) return;
     const changedAt = iso(at);
     const history = historyItem(id, from, to, changedAt, interviewId ?? null);
-    const reached = [...new Set([...current.reachedStatuses, to])];
+    const reached = rewrite
+      ? [...new Set([...current.reachedStatuses.filter(isRoundStatus), ...rewrite.path])]
+      : [...new Set([...current.reachedStatuses, to])];
+    const append = rewrite?.append ?? true;
     await this.db.doc.send(
       new TransactWriteCommand({
         TransactItems: [
@@ -362,12 +382,19 @@ export class DynamoApplicationsRepository implements ApplicationsRepository {
               }),
             },
           },
-          {
-            Put: {
-              TableName: this.db.table,
-              Item: { ...key.history(id, changedAt, history.id), ...history },
-            },
-          },
+          ...(append
+            ? [
+                {
+                  Put: {
+                    TableName: this.db.table,
+                    Item: { ...key.history(id, changedAt, history.id), ...history },
+                  },
+                },
+              ]
+            : []),
+          ...(rewrite?.drop ?? []).map((h) => ({
+            Delete: { TableName: this.db.table, Key: key.history(id, h.changedAt, h.id) },
+          })),
         ],
       }),
     );

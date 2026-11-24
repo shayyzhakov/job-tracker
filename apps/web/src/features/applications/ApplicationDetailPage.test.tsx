@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { HttpResponse, http } from 'msw/http';
 import { describe, expect, it } from 'vitest';
 import { applicationDetail } from '../../../test/fixtures';
@@ -31,6 +31,7 @@ describe('ApplicationDetailPage', () => {
       scheduledAt,
       durationMinutes: null,
       location: null,
+      interviewerIds: [],
       timeUnknown: false,
       debriefedAt: null,
       nextStep: null,
@@ -111,6 +112,38 @@ describe('ApplicationDetailPage', () => {
     await waitFor(() => expect(body).toMatchObject({ name: 'Avi', role: 'Hiring manager' }));
   });
 
+  it('adds and edits sub-entities in a dialog, leaving the page as it was', async () => {
+    let patched: unknown;
+    server.use(
+      http.patch('/api/v1/applications/:id/contacts/:cid', async ({ request }) => {
+        patched = await request.json();
+        return HttpResponse.json({});
+      }),
+    );
+    const { user } = renderDetail();
+    await user.click(await screen.findByRole('button', { name: /schedule interview/i }));
+    const interview = await screen.findByRole('dialog', { name: /schedule interview/i });
+    expect(within(interview).getByLabelText(/date & time/i)).toBeInTheDocument();
+    // The contacts list behind the dialog is untouched.
+    expect(screen.getByText('Dana Levi')).toBeInTheDocument();
+    await user.click(within(interview).getByRole('button', { name: /cancel/i }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /schedule interview/i })).not.toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole('button', { name: /edit contact dana levi/i }));
+    const contact = within(await screen.findByRole('dialog', { name: /edit contact/i }));
+    const name = contact.getByLabelText(/contact name/i);
+    expect(name).toHaveValue('Dana Levi');
+    await user.clear(name);
+    await user.type(name, 'Dana Cohen');
+    await user.click(contact.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(patched).toMatchObject({ name: 'Dana Cohen' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: /edit contact/i })).not.toBeInTheDocument(),
+    );
+  });
+
   it('schedules an interview', async () => {
     let body: Record<string, unknown> | undefined;
     server.use(
@@ -178,6 +211,7 @@ describe('ApplicationDetailPage', () => {
     scheduledAt: '2999-01-01T10:00:00.000Z',
     durationMinutes: 60,
     location: null,
+    interviewerIds: [],
     timeUnknown: false,
     debriefedAt: null,
     nextStep: null,
@@ -211,6 +245,23 @@ describe('ApplicationDetailPage', () => {
     const step = await screen.findByTestId('current-step');
     expect(step).toHaveTextContent('Review system design');
     expect(step).not.toHaveTextContent('Old prep');
+  });
+
+  it("shows a round's interviewers by their contact names", async () => {
+    server.use(
+      http.get('/api/v1/applications/:id', () =>
+        HttpResponse.json(
+          applicationDetail({
+            status: 'technical_interview',
+            interviews: [round({ id: 'r1', interviewerIds: ['ct1', 'gone'] })],
+            currentRound: { interviewId: 'r1', phase: 'upcoming' },
+          }),
+        ),
+      ),
+    );
+    renderDetail();
+    // an id that is not a contact of the application is skipped
+    expect(await screen.findByText('With Dana Levi')).toBeInTheDocument();
   });
 
   it('shows an open home assignment with its due date and marks it submitted', async () => {

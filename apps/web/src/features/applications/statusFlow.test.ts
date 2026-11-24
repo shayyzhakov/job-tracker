@@ -9,6 +9,7 @@ const interview = (id: string, type: 'phone' | 'coffee' | 'other', scheduledAt: 
   scheduledAt,
   durationMinutes: null,
   location: null,
+  interviewerIds: [],
   timeUnknown: false,
   debriefedAt: null,
   nextStep: null,

@@ -88,6 +88,7 @@ export const upcomingInterview: UpcomingInterviewDto = {
   scheduledAt: '2026-11-07T12:00:00.000Z',
   durationMinutes: 60,
   location: null,
+  interviewerIds: [],
   timeUnknown: false,
   debriefedAt: null,
   nextStep: null,

@@ -26,6 +26,7 @@ export class DynamoInterviewsRepository {
       scheduledAt: iso(input.scheduledAt),
       durationMinutes: nul(input.durationMinutes),
       location: nul(input.location),
+      interviewerIds: input.interviewerIds ?? [],
       timeUnknown: input.timeUnknown ?? false,
       debriefedAt: null,
       nextStep: nul(input.nextStep),

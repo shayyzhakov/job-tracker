@@ -36,7 +36,10 @@ createRoot(root).render(
       {/* Israeli calendar: weeks start Sunday, weekend is Friday–Saturday. */}
       <DatesProvider settings={{ firstDayOfWeek: 0, weekendDays: [5, 6] }}>
         <Notifications />
-        <AuthGate config={authConfig}>
+        <AuthGate
+          config={authConfig}
+          onReturn={(path) => void router.navigate(path, { replace: true })}
+        >
           <QueryClientProvider client={queryClient}>
             <RouterProvider router={router} />
           </QueryClientProvider>

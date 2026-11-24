@@ -34,12 +34,13 @@ import {
   useDeleteApplication,
   useUpdateApplication,
 } from '../../api/hooks';
+import { FormModal } from '../../components/FormModal';
 import { LinkifiedText } from '../../components/LinkifiedText';
 import { ErrorAlert, PageLoader } from '../../components/QueryState';
 import { StatusBadge } from '../../components/StatusBadge';
 import { StatusSelect } from '../../components/StatusSelect';
 import { Slot } from '../../lib/extensions';
-import { formatDate, formatDateMaybeTime, formatDateTime, formatIls } from '../../lib/format';
+import { formatDate, formatDateMaybeTime, formatIls } from '../../lib/format';
 import { ApplicationForm, toUpdatePayload, valuesFromApplication } from './ApplicationForm';
 import { ContactsSection } from './ContactsSection';
 import { CurrentStep } from './CurrentStep';
@@ -143,7 +144,7 @@ function RoundTimeModal({
   const [dueAt, setDueAt] = useState('');
   const assignment = round?.status === 'home_assignment';
   return (
-    <Modal
+    <FormModal
       opened={round !== null}
       onClose={onClose}
       title={
@@ -153,55 +154,45 @@ function RoundTimeModal({
             : `When is the ${STATUS_LABELS[round.status].toLowerCase()}?`
           : ''
       }
-      centered
+      size="md"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!value) return;
+        onSubmit({
+          interviewAt: new Date(value), // parsed as local time
+          nextStep: nextStep.trim() || undefined,
+          dueAt: assignment && dueAt ? new Date(dueAt) : undefined,
+        });
+      }}
+      submitLabel="Save"
+      submitting={submitting}
+      submitDisabled={!value}
     >
-      <form
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!value) return;
-          onSubmit({
-            interviewAt: new Date(value), // parsed as local time
-            nextStep: nextStep.trim() || undefined,
-            dueAt: assignment && dueAt ? new Date(dueAt) : undefined,
-          });
-        }}
-      >
-        <Stack>
-          <TextInput
-            type="datetime-local"
-            label={assignment ? 'Received' : 'Date & time'}
-            description={assignment ? undefined : 'Past or future. Future ones show as scheduled.'}
-            value={value}
-            onChange={(e) => setValue(e.currentTarget.value)}
-            required
-          />
-          {assignment && (
-            <TextInput
-              type="datetime-local"
-              label="Due by"
-              description="Ranks it on Tasks until you mark it submitted."
-              value={dueAt}
-              onChange={(e) => setDueAt(e.currentTarget.value)}
-            />
-          )}
-          <TextInput
-            label="Next step"
-            description="What to do before this round. Stops showing once the round is over."
-            value={nextStep}
-            onChange={(e) => setNextStep(e.currentTarget.value)}
-          />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={submitting} disabled={!value}>
-              Save
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <TextInput
+        type="datetime-local"
+        label={assignment ? 'Received' : 'Date & time'}
+        description={assignment ? undefined : 'Past or future. Future ones show as scheduled.'}
+        value={value}
+        onChange={(e) => setValue(e.currentTarget.value)}
+        required
+        data-autofocus
+      />
+      {assignment && (
+        <TextInput
+          type="datetime-local"
+          label="Due by"
+          description="Ranks it on Tasks until you mark it submitted."
+          value={dueAt}
+          onChange={(e) => setDueAt(e.currentTarget.value)}
+        />
+      )}
+      <TextInput
+        label="Next step"
+        description="What to do before this round. Stops showing once the round is over."
+        value={nextStep}
+        onChange={(e) => setNextStep(e.currentTarget.value)}
+      />
+    </FormModal>
   );
 }
 
@@ -218,33 +209,27 @@ function OfferModal({
 }) {
   const [value, setValue] = useState('');
   return (
-    <Modal opened={opened} onClose={onClose} title="When does the offer expire?" centered>
-      <form
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit(value ? new Date(value) : undefined); // parsed as local time
-        }}
-      >
-        <Stack>
-          <TextInput
-            type="datetime-local"
-            label="Offer expires"
-            description="Optional. Ranks the offer on Tasks."
-            value={value}
-            onChange={(e) => setValue(e.currentTarget.value)}
-          />
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={submitting}>
-              Save
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+    <FormModal
+      opened={opened}
+      onClose={onClose}
+      title="When does the offer expire?"
+      size="md"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(value ? new Date(value) : undefined); // parsed as local time
+      }}
+      submitLabel="Save"
+      submitting={submitting}
+    >
+      <TextInput
+        type="datetime-local"
+        label="Offer expires"
+        description="Optional. Ranks the offer on Tasks."
+        value={value}
+        onChange={(e) => setValue(e.currentTarget.value)}
+        data-autofocus
+      />
+    </FormModal>
   );
 }
 
@@ -365,6 +350,7 @@ export function ApplicationDetailPage() {
                     <InterviewsSection
                       applicationId={app.id}
                       interviews={app.interviews}
+                      contacts={app.contacts}
                       notes={app.interviewNotes}
                     />
                     <ContactsSection applicationId={app.id} contacts={app.contacts} />
